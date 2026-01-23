@@ -1,7 +1,8 @@
 # QuickBooks AI Assistant - Context Documentation
 
-**Versión:** 3.0 🆕  
-**Fecha:** Enero 2026  
+**Versión:** 3.5 🆕  
+**Fecha:** Enero 2026 (Actualizado v3.5)  
+**Asistente:** Dexter (IA Experto)  
 **Desarrollador:** Alfredo  
 **LLM:** DeepSeek V3 vía OpenRouter  
 
@@ -15,11 +16,12 @@ QuickBooks AI Assistant (TMP AI) es un asistente conversacional inteligente desa
 
 Eliminar la necesidad de navegar la interfaz de QuickBooks Online para tareas repetitivas, permitiendo al contador trabajar mediante conversación natural en español con comprensión de terminología contable latinoamericana.
 
-### 🆕 Innovaciones v3.0
-
+- ✅ **Gestión Multi-Empresa PRO (v3.5)**: Registro y cambio "en caliente" de empresas
+- ✅ **Dexter**: Nueva identidad y personalidad refinada del asistente
+- ✅ **Independencia de Tokens**: Almacenamiento aislado por empresa en `meta.json`
 - ✅ **6 Módulos de Autonomía** con 18 funciones avanzadas
-- ✅ **31 Function Tools** totales (13 básicas + 18 autonomía)
-- ✅ **Optimización de tokens 57%** (duración $10: 2.7 → 6.3 meses)
+- ✅ **31+ Function Tools** totales (incluye `gestionar_empresas`)
+- ✅ **Optimización de tokens 57%** (ahorro masivo de costos)
 - ✅ **OCR de facturas PDF** con extracción inteligente
 - ✅ **System prompt dinámico** con contexto selectivo
 - ✅ **Sliding window** para historial conversacional
@@ -32,26 +34,22 @@ Eliminar la necesidad de navegar la interfaz de QuickBooks Online para tareas re
 
 ```
 QuickBooks AI Assistant
-├── main.py (~2,500 líneas) ⬆️ ACTUALIZADO v3.0
-│   ├── Autenticación QuickBooks OAuth 2.0
-│   ├── Chart of Accounts desde QBO API
-│   ├── Integración LLM (DeepSeek V3)
-│   ├── 31 Function Tools ⬆️ ACTUALIZADO
-│   │   ├── 13 Tools básicas
-│   │   └── 18 Tools de autonomía
+├── company_manager.py (~200 líneas) 🆕 (v3.5)
+│   ├── Extracción de Realm ID desde URLs
+│   ├── Gestión de `meta.json` por empresa (Tokens)
+│   ├── Carga/Guardado de contextos aislados
+│   └── Menú interactivo de selección al inicio
+│
+├── main.py (~3,000 líneas) ⬆️ ACTUALIZADO v3.5
+│   ├── Identidad: **Dexter** (Personalidad profesional/amigable)
+│   ├── Autenticación QuickBooks OAuth 2.0 (Multi-token)
+│   ├── Chart of Accounts dinámico por empresa
+│   ├── 32 Function Tools (Incluye `gestionar_empresas`)
 │   ├── Sistema de tracking de tokens
 │   ├── Procesamiento CSV batch
-│   ├── Bank Feed Processing
-│   ├── Reconciliación Bancaria
-│   ├── OCR de Bills (PDFs) 🆕
-│   ├── Optimizaciones de tokens 🆕
-│   └── Loop conversacional
-│
-├── ocr_bills.py (~200 líneas) 🆕
-│   ├── Extracción de texto de PDFs
-│   ├── Procesamiento con Gemini Flash 2.0
-│   ├── Generación de CSV preview
-│   └── Batch processing de carpetas
+│   ├── Bank Feed Intelligence (Aislado por empresa)
+│   ├── OCR de Bills (PDFs)
+│   └── Loop conversacional optimizado
 │
 ├── autonomia/ 🆕
 │   ├── __init__.py
@@ -1005,25 +1003,29 @@ buscar_cuenta("Checking Account")
 
 ---
 
+---
+
 ## 📄 LICENCIA
 
 Proyecto privado desarrollado por Alfredo para automatización contable interna.
 
 ---
 
-**Última actualización:** 22 de Enero, 2026  
-**Versión del documento:** 3.0 🆕  
+**Última actualización:** 23 de Enero, 2026  
+**Versión del documento:** 3.5 🆕  
 **Mantenedor:** Alfredo  
 
-**Cambios en v3.0:**
+**Cambios en v3.5 (Actual):**
+- ✅ **Identidad:** El asistente ahora se llama **Dexter**.
+- ✅ **Multi-Empresa:** Implementado `company_manager.py` para soporte ilimitado de empresas.
+- ✅ **Hot-Swap:** Cambio de empresa sin reiniciar la aplicación con tokens aislados.
+- ✅ **Persistencia:** Almacenamiento de contexto (Chart, Reportes, Reglas) por empresa en `companies/`.
+- ✅ **Actualizado:** De ~2,500 a ~3,000 líneas de código totales.
+
+**Cambios en v3.0 (Previo):**
 - ✅ Agregados 6 módulos de autonomía con 18 funciones
-- ✅ Actualizado de 19 a 31 function tools
 - ✅ Implementada optimización de tokens (57% reducción)
 - ✅ Agregado OCR de facturas PDF con Gemini
 - ✅ System prompt dinámico con contexto selectivo
 - ✅ Sliding window para historial conversacional
-- ✅ Tools dinámicos según contexto
 - ✅ Análisis de mercado y valoración del proyecto
-- ✅ Actualizado de ~2,420 a ~2,500 líneas de código
-- ✅ Nuevos ejemplos de uso con autonomía
-- ✅ Métricas de optimización y ahorro
