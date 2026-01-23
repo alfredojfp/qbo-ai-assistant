@@ -1,0 +1,16 @@
+1. Experiencia de Usuario (UX) y Accesibilidad 📱
+Interfaz de WhatsApp/Telegram: Actualmente Dexter vive en la terminal. Integrarlo con una API de mensajería permitiría que pudieras enviarle una foto de una factura desde tu celular y que él la procese y registre en QuickBooks al instante mientras estás fuera de la oficina.
+Dashboard Visual (Streamlit): Crear una pequeña interfaz web que acompañe a la conversación, donde los reportes que genero (P&L, Balance) se muestren en gráficos interactivos (Plotly) en lugar de solo texto o tablas de Excel.
+Modo "Resumen Matutino": Un sistema programado que, al iniciar tu día, te envíe un resumen de: Saldo en bancos, facturas por vencer y cuántas transacciones del bank feed necesitan tu atención.
+2. Funcionalidad Contable Avanzada 📊
+Matching Automático Bank Feed - OCR: Perfeccionar la lógica para que, cuando Dexter procese un PDF de una factura, busque automáticamente si ya existe una transacción en el Bank Feed que coincida en monto y fecha, y te sugiera: "Alfredo, encontré el pago de esta factura en el banco, ¿quieres que los concilie?"
+Predicción de Flujo de Caja (Forecasting): Implementar un módulo de "Autonomía de Análisis" que use datos históricos para predecir cuánto efectivo tendrás al final del próximo mes, alertándote sobre posibles baches de liquidez.
+Gestión de Adjuntos: Una herramienta para que cuando Dexter cree un Bill o Invoice, suba automáticamente el PDF original a QuickBooks como adjunto, manteniendo tu contabilidad 100% digital y auditable.
+3. Naturalidad y Cognición del Agente 🧠
+Memoria de Largo Plazo (Vector DB): En lugar de solo recordar los últimos 5 turnos, usar una base de datos vectorial (como ChromaDB) para que Dexter recuerde decisiones que tomaste hace meses. Ejemplo: "¿Recuerdas que la última vez clasificamos este gasto de Amazon como Suministros de Oficina? He aplicado lo mismo hoy".
+Personalidad Proactiva: Configurar a Dexter para que no solo responda, sino que analice. Si detecta un gasto inusualmente alto en una categoría, podría decirte: "Alfredo, he notado que los gastos en publicidad subieron un 40% este mes respecto al promedio, ¿quieres que analice el detalle?"
+Refinamiento Bilingüe "Spanglish": Para usuarios contables, a veces es natural mezclar términos. Optimizar el modelo para entender perfectamente instrucciones híbridas (ej: "Hazme el reconcile de esta checking account") sin confundirse.
+4. Optimización Técnica y Eficiencia ⚡
+API Batch de QuickBooks: Actualmente creamos transacciones una por una. Implementar el endpoint /batch de QBO permitiría crear 50 facturas en una sola llamada, reduciendo drásticamente el tiempo de ejecución y el uso de cuotas de API.
+Enrutador de Modelos (Hybrid LLM): Usar un modelo más pequeño y económico (como Llama 3) para tareas sencillas (ej: "Lista mis clientes") y reservar a DeepSeek V3 solo para análisis complejos. Esto podría reducir tus costos operativos en un 30-50% adicional.
+Validación de Datos "Pre-flight": Un sistema de validación antes de tocar la API que detecte errores comunes (como fechas en periodos ya cerrados) antes de siquiera intentar la conexión, ahorrando errores de red y tokens.
