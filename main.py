@@ -89,13 +89,16 @@ OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 QB_BASE_URL = f"https://sandbox-quickbooks.api.intuit.com/v3/company/{QB_REALM_ID}"
 QB_AUTH_URL = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer"
 
-# Configuración LLM
-LLM_MODEL = "deepseek/deepseek-chat-v3-0324"
+# Configuración LLM (Hybrid Model Routing)
+LLM_MODEL_HEAVY = "deepseek/deepseek-chat"
+LLM_MODEL_LIGHT = "meta-llama/llama-3.1-8b-instruct"
 LLM_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-# Precios del modelo (USD por millón de tokens)
-PRICE_INPUT_PER_1M = 0.19
-PRICE_OUTPUT_PER_1M = 0.87
+# Precios promedio (USD por millón de tokens)
+PRICE_INPUT_DEEPSEEK = 0.14
+PRICE_OUTPUT_DEEPSEEK = 0.28
+PRICE_INPUT_LLAMA = 0.05
+PRICE_OUTPUT_LLAMA = 0.08
 
 # Archivos del sistema
 FILE_CHART_CACHE = "chart_of_accounts.json"
@@ -109,6 +112,7 @@ session_state = {
     "start_time": datetime.now(),
     "input_tokens": 0,
     "output_tokens": 0,
+    "total_cost": 0.0,
     "operations": {
         "searches": 0,
         "deposits": 0,
@@ -390,16 +394,22 @@ def find_account(search_term: str, exact: bool = False, category: str = None) ->
 
 # ==================== TRACKING DE TOKENS ====================
 
-def update_token_usage(input_tokens: int, output_tokens: int):
-    """Actualiza el contador de tokens de la sesión"""
+def update_token_usage(input_tokens: int, output_tokens: int, model: str):
+    """Actualiza los contadores de tokens y el costo acumulado de la sesión"""
     session_state["input_tokens"] += input_tokens
     session_state["output_tokens"] += output_tokens
+    
+    # Calcular costo de este llamado basado en el modelo
+    if "deepseek" in model.lower():
+        cost = (input_tokens / 1_000_000 * PRICE_INPUT_DEEPSEEK) + (output_tokens / 1_000_000 * PRICE_OUTPUT_DEEPSEEK)
+    else:
+        cost = (input_tokens / 1_000_000 * PRICE_INPUT_LLAMA) + (output_tokens / 1_000_000 * PRICE_OUTPUT_LLAMA)
+        
+    session_state["total_cost"] += cost
 
 def calculate_session_cost() -> float:
-    """Calcula el costo de la sesión actual"""
-    input_cost = (session_state["input_tokens"] / 1_000_000) * PRICE_INPUT_PER_1M
-    output_cost = (session_state["output_tokens"] / 1_000_000) * PRICE_OUTPUT_PER_1M
-    return input_cost + output_cost
+    """Retorna el costo acumulado de la sesión"""
+    return session_state.get("total_cost", 0.0)
 
 def save_session_to_csv():
     """Guarda los datos de la sesión en el CSV histórico"""
@@ -1501,8 +1511,21 @@ def call_llm(user_message: str, tools: List[dict] = None, max_iterations: int = 
             *conversation_history[-(max_iterations*4+10):] # Ventana de contexto amplia
         ]
 
+        # Seleccionar modelo basado en complejidad
+        # Si ya estamos en una iteración avanzada (tool calls), mantenemos el modelo original
+        if iteration == 1:
+            msg_lower = user_message.lower()
+            complejo = any(kw in msg_lower for kw in [
+                "analiza", "porque", "compara", "explica", "clasifica", "extrae", 
+                "informe", "reporte", "balance", "p&l", "asiento", "journal", "ocr"
+            ])
+            selected_model = LLM_MODEL_HEAVY if complejo else LLM_MODEL_LIGHT
+            self_model = selected_model # Tracking interno
+        else:
+            selected_model = self_model
+
         payload = {
-            "model": LLM_MODEL,
+            "model": selected_model,
             "messages": messages,
             "temperature": 0.3
         }
@@ -1527,11 +1550,12 @@ def call_llm(user_message: str, tools: List[dict] = None, max_iterations: int = 
 
         result = response.json()
 
-        # Actualizar tokens
+        # Actualizar tokens y costo
         usage = result.get("usage", {})
         update_token_usage(
             usage.get("prompt_tokens", 0),
-            usage.get("completion_tokens", 0)
+            usage.get("completion_tokens", 0),
+            selected_model
         )
 
         assistant_message = result["choices"][0]["message"]
