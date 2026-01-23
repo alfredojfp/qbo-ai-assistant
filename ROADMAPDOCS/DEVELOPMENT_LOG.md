@@ -5,6 +5,19 @@
 
 ---
 
+## 🚀 Cambios Realizados Ayer (22-01-2026)
+
+### 1. Instalación Automatizada e Infraestructura
+*   **Script de Instalación (`install.sh`):** Creación de un motor de instalación 100% automatizado con detección de SO (Linux/macOS), gestión de entornos virtuales y configuración interactiva de `.env`.
+*   **Estructura de Carpetas Contables:** Estandarización del proyecto mediante la creación de carpetas críticas (`Backup/`, `Bank Reconciliation/`, `Pending bills/`, etc.) aseguradas con `.gitkeep` para su persistencia en el repositorio.
+*   **Gestión de Dependencias:** Configuración de `requirements.txt` y validación de librerías esenciales para el procesamiento de datos y OCR.
+
+### 2. Consolidación de Código
+*   **Migración Masiva:** Integración de más de 30 archivos Python y ~42,000 líneas de código en la estructura actual del asistente, sentando las bases de la versión 3.x.
+*   **Optimización de Git:** Reajuste del `.gitignore` para proteger información sensible y tokens mientras se mantiene la estructura operativa del proyecto.
+
+---
+
 ## 🚀 Cambios Realizados Hoy (23-01-2026)
 
 ### 1. Restauración de Identidad y Estética
