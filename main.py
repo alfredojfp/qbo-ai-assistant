@@ -120,7 +120,8 @@ session_state = {
     },
     "chart_of_accounts": {},
     "saved_reports": {},
-    "last_search_results": {}
+    "last_search_results": {},
+    "language": "es"
 }
 
 # Historial de conversación
@@ -1460,51 +1461,10 @@ Tu usuario se llama Alfredo, dirígete a él de manera respetuosa pero cercana.
 CAPACIDADES:
 ✅ Clasificación | ✅ Reportes | ✅ Facturas | ✅ Búsquedas | ✅ OCR | ✅ Gestión Multi-empresa
 
-REGLAS:
-1. Idioma: Siempre en Español. Identifícate como "Dexter".
-2. Tiempo: Si no se especifica, asume el mes actual para los reportes.
-3. Seguridad: Confirma siempre antes de ejecutar transacciones o cambios irreversibles.
-4. Memoria: Mantén el contexto de la conversación y las preferencias del usuario Alfredo.
-5. Estética: Usa emojis de forma moderada para mejorar la lectura (✅❌📊💰).
-6. Terminología contable:
-   - "anticipo" = customer deposit
-   - "prepago" = prepaid expense (activo)
-   - "proveedor" = vendor
-   - "factura" = invoice
-   - "cuenta por pagar" = bill
-   - "retainer" = client retainer (pasivo)
-
-VALIDACIONES CRÍTICAS:
-- Antes de crear transacciones, verificar existencia de clientes/vendors/cuentas usando los tools
-- Si no existe coincidencia exacta, sugerir alternativas con fuzzy matching
-- Advertir si se usa cuenta de categoría incorrecta (ej: cuenta de Income en un Bill de Expense)
-- Validar que sumas cuadren en depósitos multi-cliente
-- Detectar duplicados potenciales (mismo cliente, monto y fecha)
-
-COMPORTAMIENTO:
-- Conversación natural, amigable y profesional
-- Confirmaciones claras pero concisas antes de acciones irreversibles
-- Resúmenes visuales después de operaciones (usando emojis)
-- Ofrecer guardar configuraciones de reportes frecuentes
-- Aprender de patrones del usuario (cuentas frecuentes, clientes recurrentes)
-
-CONTEXTO DISPONIBLE:
-- Chart of Accounts completo cargado en memoria (validar siempre antes de usar)
-- Historial completo de la conversación
-- Reportes guardados del usuario con sus configuraciones
-- Últimos resultados de búsquedas en session_state
-
-MANEJO DE ERRORES:
-- Si un tool falla, explicar el error en español claro y ofrecer alternativa
-- Si falta un token de QuickBooks, instruir al usuario cómo refrescarlo
-- Si hay ambigüedad, mostrar opciones numeradas para que el usuario elija
-
-OPTIMIZACIÓN:
-- Usar búsquedas paralelas cuando sea posible (ej: buscar cliente y cuentas simultáneamente)
-- Cachear resultados de búsquedas recientes en session_state
-- Sugerir usar CSV batch para operaciones repetitivas
-
-Responde SIEMPRE en español, de manera concisa, profesional y con formato claro."""
+Responde SIEMPRE en el IDIOMA SELECCIONADO por el usuario. 
+Si el idioma es ES: Responde en español, de manera concisa y profesional.
+Si el idioma es EN: Respond in English, concisely and professionally.
+Actualmente el idioma seleccionado es: {idioma}"""
 
 def call_llm(user_message: str, tools: List[dict] = None, max_iterations: int = 5) -> str:
     """Llama al LLM con soporte de tools y maneja iteraciones automáticamente"""
@@ -1512,7 +1472,9 @@ def call_llm(user_message: str, tools: List[dict] = None, max_iterations: int = 
     chart_summary = f"\\n\\nCHART OF ACCOUNTS EN MEMORIA: {len(session_state.get('chart_of_accounts', {}))} cuentas disponibles."
 
     # Construir el prompt del sistema local con los detalles necesarios
-    local_system_content = SYSTEM_PROMPT
+    current_lang = session_state.get("language", "es").upper()
+    local_system_content = SYSTEM_PROMPT.replace("{idioma}", current_lang)
+    
     if necesita_chart(user_message):
         local_system_content += chart_summary
     
@@ -2780,6 +2742,20 @@ def process_quick_command(user_input: str) -> Optional[str]:
 
         return response
 
+    # Cambiar idioma
+    if "cambiar" in input_lower and ("idioma" in input_lower or "language" in input_lower):
+        new_lang = "en" if session_state["language"] == "es" else "es"
+        session_state["language"] = new_lang
+        
+        # Guardar en contexto de empresa para persistencia
+        if 'COMPANY_CONTEXT' in globals() and 'CURRENT_COMPANY' in globals() and CURRENT_COMPANY:
+            COMPANY_CONTEXT["language"] = new_lang
+            save_company_context(CURRENT_COMPANY['name'], COMPANY_CONTEXT)
+            
+        lang_name = "Inglés" if new_lang == "en" else "Español"
+        status_msg = f"✅ Idioma cambiado a: **{lang_name}** / Language changed to: **{lang_name}**"
+        return status_msg
+
     return None
 
 
@@ -2992,10 +2968,15 @@ if __name__ == "__main__":
     if COMPANY_CONTEXT.get("saved_reports"):
         session_state["saved_reports"] = COMPANY_CONTEXT["saved_reports"]
 
+    # Cargar idioma preferido
+    if COMPANY_CONTEXT.get("language"):
+        session_state["language"] = COMPANY_CONTEXT["language"]
+
     print("✅ Contexto cargado:")
     print(f"   - {len(COMPANY_CONTEXT['chart_of_accounts'])} cuentas")
     print(f"   - {len(COMPANY_CONTEXT.get('saved_reports', {}))} reportes")
     print(f"   - {len(COMPANY_CONTEXT.get('bank_feed_rules', {}))} reglas")
+    print(f"   - Idioma: {session_state['language'].upper()}")
     print()
 
     # Verificar credenciales mínimas
