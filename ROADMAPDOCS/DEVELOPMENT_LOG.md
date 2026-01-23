@@ -40,8 +40,16 @@
 
 ---
 
+### 6. Automatización de Bancos y Experiencia de Usuario (Proactivas)
+*   **Matching Engine (Bank Feed):** Diseño y propuesta técnica para el motor de coincidencia inteligente entre estados de cuenta (CSV) y registros de QuickBooks (vía `ROADMAPDOCS/MATCHING_ENGINE_BANK_FEED.md`).
+*   **Guía Interactiva (Onboarding):** Dexter ahora inicia con una pregunta proactiva de guía ("¿Quieres que te guíe...?").
+*   **Ayuda Contextual:** Implementación de comandos rápidos de ayuda (`ayuda ocr`, `ayuda bancos`, `ayuda reportes`) que proporcionan instrucciones directas paso a paso.
+*   **Manual de Usuario PRO:** Creación de `MANUAL_USUARIO.md`, sustituyendo los manuales antiguos (.tex/.pdf) por un recurso interactivo y legible por IA.
+
+---
+
 ## 🛠️ Estado del Proyecto
-*   **Versión Actual:** v3.6 (Hybrid Model Ready)
+*   **Versión Actual:** v3.7 (Interactive Guide Ready)
 *   **Estabilidad:** Alta (Sintaxis verificada y compilada)
 *   **Backup preventivo:** Realizado exitosamente en `Backup/`.
 

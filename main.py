@@ -1471,6 +1471,12 @@ Tu usuario se llama Alfredo, dirígete a él de manera respetuosa pero cercana.
 CAPACIDADES:
 ✅ Clasificación | ✅ Reportes | ✅ Facturas | ✅ Búsquedas | ✅ OCR | ✅ Gestión Multi-empresa
 
+GUÍA INTERACTIVA:
+- Si detectas que Alfredo quiere realizar una tarea compleja (OCR, Reconciliación, Reportes Pro), ofrécele guiarlo paso a paso.
+- Si Alfredo parece perdido, sugiere el uso de comandos de ayuda como "ayuda ocr" o "ayuda bancos".
+- Mantén una actitud proactiva: si necesitas que Alfredo coloque archivos en una carpeta, indícale la ruta exacta (ej: /Pending bills/).
+- Siempre consulta el manual de usuario (MANUAL_USUARIO.md) si tienes dudas sobre los procedimientos internos.
+
 Responde SIEMPRE en el IDIOMA SELECCIONADO por el usuario. 
 Si el idioma es ES: Responde en español, de manera concisa y profesional.
 Si el idioma es EN: Respond in English, concisely and professionally.
@@ -2780,6 +2786,19 @@ def process_quick_command(user_input: str) -> Optional[str]:
         status_msg = f"✅ Idioma cambiado a: **{lang_name}** / Language changed to: **{lang_name}**"
         return status_msg
 
+    # Ayuda Contextual
+    if "ayuda" in input_lower or "manual" in input_lower:
+        if "ocr" in input_lower or "factura" in input_lower:
+            return "📖 **AYUDA OCR:**\n1. Coloca PDFs/imágenes en `/Pending bills/`.\n2. Dime: 'Procesa las facturas'.\n3. Yo extraeré los datos y te preguntaré si tengo dudas.\n4. Los archivos irán a `/Processed bills/`."
+        
+        if "banco" in input_lower or "reconcilia" in input_lower:
+            return "📖 **AYUDA BANCOS:**\n1. Descarga el CSV de tu banco.\n2. Colócalo en `/Bank Reconciliation/`.\n3. Dime: 'Reconcilia el banco con el archivo X'.\n4. Yo crearé los registros faltantes y validaré el balance."
+        
+        if "reporte" in input_lower or "analiza" in input_lower:
+            return "📖 **AYUDA REPORTES:**\n- Puedes pedir P&L, Balance Sheet o análisis comparativos.\n- Ejemplo: 'Haz un P&L de este mes vs el anterior'.\n- También puedo generar Excels complejos con gráficos."
+            
+        return "📖 **DEXTER HELP:**\nPuedes pedir ayuda específica:\n- `ayuda ocr`\n- `ayuda bancos`\n- `ayuda reportes`"
+
     return None
 
 
@@ -2857,7 +2876,10 @@ def main_loop():
     print()
     print("Sistema listo 🚀")
     print()
+    print("🤖 Hola Alfredo, ¿quieres que te guíe en algún proceso hoy (como OCR o Bancos)\no prefieres ir directo a tus consultas?")
+    print()
     print("Comandos rápidos:")
+    print("  • 'ayuda ocr' - Guía paso a paso para facturas")
     print("  • '¿cuánto he gastado?' - Estadísticas de tokens")
     print("  • 'informe de tokens' - Genera Excel con estadísticas")
     print("  • 'template csv' - Crea plantilla para depósitos")
