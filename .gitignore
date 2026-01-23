@@ -229,6 +229,36 @@ autonomia/*.db
 autonomia/*.sqlite
 
 # =================================================================
+
+# =================================================================
+# ESTRUCTURA DE CARPETAS - Mantener carpetas pero ignorar contenido
+# =================================================================
+# Estas reglas mantienen las carpetas vacías con .gitkeep
+# pero ignoran todo el contenido sensible
+
+# Backup folder
+Backup/*
+!Backup/.gitkeep
+
+# Bank Reconciliation
+Bank Reconciliation/*
+!Bank Reconciliation/.gitkeep
+
+# Bills folders
+Pending bills/*
+!Pending bills/.gitkeep
+
+Processed bills/*
+!Processed bills/.gitkeep
+
+# Test folder
+Test/*
+!Test/.gitkeep
+
+# Outputs folder
+outputs/*
+!outputs/.gitkeep
+
 # NOTAS IMPORTANTES
 # =================================================================
 # Este .gitignore protege:
