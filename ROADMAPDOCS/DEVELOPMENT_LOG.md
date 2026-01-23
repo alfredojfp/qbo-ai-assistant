@@ -1,6 +1,5 @@
-# 📜 Registro de Desarrollo (Changelog) - Dexter v3.5/v3.6
-
-**Fecha:** 23 de Enero, 2026  
+# 📜 Registro de Desarrollo (Changelog) - Dexter v3.5/v3.7
+**Fecha de última actualización:** 23 de Enero, 2026  
 **Proyecto:** QuickBooks AI Assistant
 
 ---
@@ -9,7 +8,7 @@
 
 ### 1. Instalación Automatizada e Infraestructura
 *   **Script de Instalación (`install.sh`):** Creación de un motor de instalación 100% automatizado con detección de SO (Linux/macOS), gestión de entornos virtuales y configuración interactiva de `.env`.
-*   **Estructura de Carpetas Contables:** Estandarización del proyecto mediante la creación de carpetas críticas (`Backup/`, `Bank Reconciliation/`, `Pending bills/`, etc.) aseguradas con `.gitkeep` para su persistencia en el repositorio.
+*   **Estructura de Carpetas Contables:** Estandarización del proyecto mediante la creación de carpetas críticas (`Backup/`, `Bank Reconciliation/`, `Pending bills/`, etc.) aseguradas con `.gitkeep`.
 *   **Gestión de Dependencias:** Configuración de `requirements.txt` y validación de librerías esenciales para el procesamiento de datos y OCR.
 
 ### 2. Consolidación de Código
@@ -20,50 +19,36 @@
 
 ## 🚀 Cambios Realizados Hoy (23-01-2026)
 
-### 1. Restauración de Identidad y Estética
-*   **Identidad:** Se fijó oficialmente el nombre del asistente como **Dexter** (anteriormente Alfredo/TMP AI).
-*   **Banner:** Se reemplazó el banner ASCII complejo por uno minimalista y profesional para evitar errores de renderizado en terminal.
-*   **Prompt del Sistema:** Rediseño total del `SYSTEM_PROMPT` para incluir reglas de comportamiento claras, terminología contable específica y validaciones críticas.
+### 1. Reconstrucción Estructural (The Great Fix)
+*   **Auditoría de Sintaxis:** Reparación íntegra de `main.py` eliminando bloques truncados y resolviendo múltiples `SyntaxError` que impedían la ejecución.
+*   **Restauración de Lógica AI:** Reconstrucción manual del `SYSTEM_PROMPT` y la función `call_llm`, recuperando la orquestación de herramientas (Tool Calls) que estaba corrompida.
+*   **Limpieza de Ejecución:** Eliminación de llamadas recursivas y código duplicado ("Ghost Code") al final del script, estabilizando el bucle principal de conversación.
+*   **Normalización de Imports:** Centralización y limpieza de la zona de encabezados, vinculando correctamente el módulo `company_manager.py` con el núcleo de la aplicación.
+*   **Gestión de Sesión:** Refactorización de `session_state` para un rastreo dinámico de tokens y costos basado en el modelo (Hybrid Routing).
 
-### 2. Estabilización Técnica y Refactorización (Critical Fixes)
-*   **Restauración de Código Corrupto:** Se recuperó el bloque `SYSTEM_PROMPT` que se había perdido o corrompido, devolviendo la lógica base al agente.
-*   **Corrección de Sintaxis:** Se resolvieron múltiples `SyntaxError` en las definiciones de funciones clave, particularmente en `call_llm`.
-*   **Manejo de Imports:** Se limpiaron imports duplicados y se agregaron librerías faltantes como `pandas` y las funciones específicas de `company_manager`.
-*   **Eliminación de Redundancias:** Se eliminaron llamadas duplicadas al `main_loop()` al final del script que causaban ejecuciones dobles.
-*   **Lógica de Costos:** Se refactorizó `update_token_usage` y `calculate_session_cost` para transicionar de un precio fijo a un cálculo dinámico basado en el modelo utilizado (Hybrid LLM).
+### 2. Identidad y Personalidad
+*   **Fijación de Branding:** Nombre oficial del asistente: **Dexter**.
+*   **Banner Minimalista:** Rediseño del banner de inicio para máxima compatibilidad con terminales Linux y macOS.
+*   **Tono Dinámico:** Ajuste del comportamiento para ser más proactivo, educativo y cercano al usuario.
 
 ### 3. Sistema Multi-Empresa PRO (v3.5)
-*   **Módulo `company_manager.py`:** Creación de un motor independiente para gestionar múltiples cuentas de QuickBooks de forma aislada.
-*   **Registro Dinámico:** Nueva herramienta `gestionar_empresas` que permite registrar empresas pegando directamente un link de QBO o un Realm ID.
-*   **Hot-Swap:** Capacidad de cambiar de empresa "en caliente" sin reiniciar el script, gestionando contextos de forma segura.
-*   **Tokens Independientes:** Almacenamiento cifrado/aislado de tokens por empresa en `./companies/[Nombre]/meta.json`.
+*   **Aislamiento de Contexto:** Cada empresa en QuickBooks ahora tiene su propia base de datos de contexto (`context.json`) y tokens (`meta.json`) en subcarpetas aisladas bajo `./companies/`.
+*   **Hot-Swap de Empresas:** Implementación de la herramienta `gestionar_empresas` que permite cambiar de compañía en tiempo real sin reiniciar la aplicación.
 
-### 4. Soporte Bilingüe y Optimización de Modelos (v3.6)
-*   **Idiomas:** Implementación de soporte oficial para **Español** e **Inglés**, con persistencia de idioma guardada por empresa.
-*   **Comando Rápido:** Lógica simplificada para cambiar de idioma instantáneamente escribiendo "cambiar idioma".
-*   **Enrutador de Modelos (Hybrid LLM):** Dexter ahora decide dinámicamente:
-    *   **Llama 3.1 8B:** Para tareas administrativas y consultas simples (Ahorro de costos).
-    *   **DeepSeek V3:** Para análisis financiero, clasificación contable y lógica compleja.
+### 4. Inteligencia Híbrida y Bilingüe (v3.6)
+*   **Model Routing:** Dexter ahora decide entre Llama 3 (tareas simples) y DeepSeek V3 (análisis contable) para optimizar costos y velocidad.
+*   **Soporte ES/EN:** Sistema de traducción dinámica con persistencia de idioma guardada por empresa.
 
-### 5. Documentación y Control de Calidad
-*   **`CONTEXT.md`**: Actualizado a la versión 3.5 reflejando la nueva arquitectura híbrida.
-*   **`ROADMAPDOCS/`**: Creación de esta carpeta centralizada para planificación y logs de desarrollo.
-*   **`MEMORIA_Y_ARQUITECTURA.md`**: Documento de consulta técnica sobre futuras implementaciones de Vector DB y Embeddings.
-*   **Testing:** Actualización de `test_suite.py` para validar la integridad de las nuevas herramientas y estructuras de datos.
-
----
-
-### 6. Automatización de Bancos y Experiencia de Usuario (Proactivas)
-*   **Matching Engine (Bank Feed):** Diseño y propuesta técnica para el motor de coincidencia inteligente entre estados de cuenta (CSV) y registros de QuickBooks (vía `ROADMAPDOCS/MATCHING_ENGINE_BANK_FEED.md`).
-*   **Guía Interactiva (Onboarding):** Dexter ahora inicia con una pregunta proactiva de guía ("¿Quieres que te guíe...?").
-*   **Ayuda Contextual:** Implementación de comandos rápidos de ayuda (`ayuda ocr`, `ayuda bancos`, `ayuda reportes`) que proporcionan instrucciones directas paso a paso.
-*   **Manual de Usuario PRO:** Creación de `MANUAL_USUARIO.md`, sustituyendo los manuales antiguos (.tex/.pdf) por un recurso interactivo y legible por IA.
+### 5. Guía Interactiva y Automatización de Bancos (v3.7)
+*   **Matching Engine (Bank Feed):** Diseño técnico del motor de conciliación inteligente entre CSVs bancarios y registros existentes en QBO para evitar duplicidades.
+*   **Sistema de Onboarding:** Dexter detecta el estado de las carpetas y ofrece guiar al usuario paso a paso en tareas complejas (OCR, Reconciliación).
+*   **Manual de Usuario Vivo:** Creación de `MANUAL_USUARIO.md`, integrándolo como la base de conocimiento primaria del agente para su propia auto-explicación.
 
 ---
 
 ## 🛠️ Estado del Proyecto
 *   **Versión Actual:** v3.7 (Interactive Guide Ready)
-*   **Estabilidad:** Alta (Sintaxis verificada y compilada)
-*   **Backup preventivo:** Realizado exitosamente en `Backup/`.
+*   **Estabilidad:** Crítica estabilizada / Operativa.
+*   **Seguridad:** Backups preventivos generados en `Backup/`.
 
 **Elaborado por:** Dexter (vía Alfredo)
