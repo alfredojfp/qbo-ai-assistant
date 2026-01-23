@@ -61,6 +61,12 @@ class TestRunner:
         print(f"{'='*70}")
 
         # Guardar resultados
+        class DateTimeEncoder(json.JSONEncoder):
+            def default(self, obj):
+                if isinstance(obj, datetime):
+                    return obj.isoformat()
+                return super().default(obj)
+
         with open('test_results.json', 'w') as f:
             json.dump({
                 'timestamp': datetime.now().isoformat(),
@@ -71,7 +77,7 @@ class TestRunner:
                     'warnings': self.warnings
                 },
                 'results': self.results
-            }, f, indent=2)
+            }, f, indent=2, cls=DateTimeEncoder)
         print(f"\n📄 Resultados guardados en: test_results.json")
 
 # Importar módulos del sistema
@@ -112,17 +118,17 @@ def test_imports():
         # Verificar que los módulos de autonomía se importaron
         from main import (
             # Nivel 1
-            toolsearchweb,
-            toolsearchqbodocs,
+            tool_search_web,
+            tool_search_qbo_docs,
             # Nivel 2
-            toolcreatejournalentry,
-            toolcreatetransfer,
+            tool_create_journal_entry,
+            tool_create_transfer,
             # Nivel 3
-            toolexecutepython,
+            tool_execute_python,
             # Bank Feed
-            toolanalyzebankfeedforclassification,
+            tool_analyze_bank_feed_for_classification,
             # User Learning
-            toollearnfrominteraction
+            tool_learn_from_interaction
         )
         return {'success': True, 'modules': 7}
     except ImportError as e:
@@ -162,8 +168,10 @@ def test_chart_of_accounts():
     if not chart:
         return {'success': False, 'error': 'Chart vacío'}
 
+    # chart es un diccionario {id: data}
+    first_id = list(chart.keys())[0] if chart else None
     print(f"  → {len(chart)} cuentas cargadas")
-    print(f"  → Ejemplo: {chart[0]['name'] if chart else 'N/A'}")
+    print(f"  → Ejemplo: {chart[first_id]['name'] if first_id else 'N/A'}")
 
     return {'success': True, 'count': len(chart)}
 
@@ -203,15 +211,15 @@ def test_search_functions():
 def test_tool_definitions():
     """Test 5: Verificar definiciones de tools"""
     required_tools = [
-        'buscarcliente',
-        'buscarvendor',
-        'buscarcuenta',
-        'generarplreport',
-        'generatebalancesheet',
-        'crearinvoice',
-        'crearbill',
-        'creardeposito',
-        'refrescarchartaccounts'
+        'buscar_cliente',
+        'buscar_vendor',
+        'buscar_cuenta',
+        'generar_reporte_pl',
+        'generar_balance_sheet',
+        'crear_invoice',
+        'crear_bill',
+        'crear_deposito',
+        'refrescar_chart_accounts'
     ]
 
     missing = [tool for tool in required_tools if tool not in TOOL_FUNCTIONS]
@@ -249,8 +257,8 @@ def test_autonomy_tools():
 
 def test_session_state():
     """Test 7: Verificar session state"""
-    required_keys = ['starttime', 'inputtokens', 'outputtokens', 
-                     'operations', 'chartofaccounts']
+    required_keys = ['start_time', 'input_tokens', 'output_tokens', 
+                     'operations', 'chart_of_accounts']
 
     missing = [key for key in required_keys if key not in session_state]
 
@@ -263,19 +271,21 @@ def test_session_state():
     return {'success': len(missing) == 0, 'details': dict(session_state)}
 
 def test_tool_parameters():
-    """Test 8: Verificar parámetros de tools"""
+    """Test 8: Verificar parámetros de tools (schemas)"""
+    from main import TOOLS
     errors = []
 
-    for tool_name, tool_def in TOOL_FUNCTIONS.items():
-        if 'description' not in tool_def:
+    for tool in TOOLS:
+        tool_name = tool["function"]["name"]
+        if 'description' not in tool["function"]:
             errors.append(f"{tool_name}: missing description")
 
-        if 'parameters' not in tool_def:
+        if 'parameters' not in tool["function"]:
             errors.append(f"{tool_name}: missing parameters")
-        elif 'properties' not in tool_def['parameters']:
+        elif 'properties' not in tool["function"]['parameters']:
             errors.append(f"{tool_name}: missing parameters.properties")
 
-    print(f"  → Tools validadas: {len(TOOL_FUNCTIONS)}")
+    print(f"  → Tools validadas: {len(TOOLS)}")
     print(f"  → Errores encontrados: {len(errors)}")
 
     if errors:
@@ -322,14 +332,14 @@ def test_file_structure():
     required_files = [
         'main.py',
         '.env',
-        'ocrbills.py',
+        'ocr_bills.py',
         'autonomia/__init__.py',
-        'autonomia/autonomianivel1websearch.py',
-        'autonomia/autonomianivel2apiexplorer.py',
-        'autonomia/autonomianivel3codeexecutor.py',
-        'autonomia/bankfeedintelligence.py',
-        'autonomia/userbehaviorlearning.py',
-        'autonomia/dynamicreportgenerator.py'
+        'autonomia/autonomia_nivel1_websearch.py',
+        'autonomia/autonomia_nivel2_api_explorer.py',
+        'autonomia/autonomia_nivel3_code_executor.py',
+        'autonomia/bank_feed_intelligence.py',
+        'autonomia/user_behavior_learning.py',
+        'autonomia/dynamic_report_generator.py'
     ]
 
     required_dirs = [

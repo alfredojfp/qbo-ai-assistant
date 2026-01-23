@@ -285,3 +285,9 @@ outputs/*
 # - Carpetas: Backup/, Bank Reconciliation/, Test/
 # =================================================================
 
+
+# =================================================================
+# MULTI-COMPANY DATA (company-specific files)
+# =================================================================
+companies/
+.current_company.json

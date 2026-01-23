@@ -46,6 +46,19 @@ from autonomia.dynamic_report_generator import (
 )
 from dotenv import load_dotenv
 from typing import Dict, List, Optional, Tuple, Any
+
+# Multi-company support
+from company_manager import (
+    select_company_interactive,
+    load_current_company,
+    save_company_selection,
+    load_company_context,
+    save_company_context,
+    list_local_companies,
+    extract_realm_id,
+    save_company_meta,
+    get_company_meta
+)
 import pandas as pd
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
@@ -54,6 +67,13 @@ from difflib import SequenceMatcher
 
 # ==================== CONFIGURACIÓN ====================
 load_dotenv()
+
+# ═════════════════════════════════════════════════════════════════
+# MULTI-COMPANY GLOBALS
+# ═════════════════════════════════════════════════════════════════
+CURRENT_COMPANY = None
+COMPANY_CONTEXT = None
+
 
 # Credenciales QuickBooks
 QB_ACCESS_TOKEN = os.getenv("QB_ACCESS_TOKEN")
@@ -197,11 +217,20 @@ def refresh_qb_token():
         QB_ACCESS_TOKEN = tokens["access_token"]
         QB_REFRESH_TOKEN = tokens["refresh_token"]
 
-        # Actualizar .env
+        # Actualizar .env (como respaldo)
         update_env_file("QB_ACCESS_TOKEN", QB_ACCESS_TOKEN)
         update_env_file("QB_REFRESH_TOKEN", QB_REFRESH_TOKEN)
 
-        print("✅ Token refrescado exitosamente")
+        # Actualizar tokens de la empresa actual
+        if CURRENT_COMPANY:
+            save_company_meta(
+                CURRENT_COMPANY["name"], 
+                CURRENT_COMPANY["realm_id"], 
+                access_token=QB_ACCESS_TOKEN, 
+                refresh_token=QB_REFRESH_TOKEN
+            )
+
+        print(f"✅ Token refrescado exitosamente para {CURRENT_COMPANY['name'] if CURRENT_COMPANY else 'QBO'}")
         return True
     else:
         print(f"❌ Error al refrescar token: {response.text}")
@@ -1267,7 +1296,7 @@ def procesar_csv_bank_feed(csv_file: str) -> dict:
 
     return results
 
-# ==================== RECONCILIACIÓN BANCARIA ====================
+
 
 def procesar_reconciliacion_bancaria(csv_file: str) -> dict:
     """Procesa CSV de reconciliación bancaria con balance opcional"""
@@ -1424,184 +1453,21 @@ def procesar_reconciliacion_bancaria(csv_file: str) -> dict:
         'total_debits': float(total_debits),
         'mode': balance_mode
     }
-    return results
-
-
-# ==================== RECONCILIACIÓN BANCARIA ====================
-
-def procesar_reconciliacion_bancaria(csv_file: str) -> dict:
-    """Procesa CSV de reconciliación bancaria con balance opcional"""
-    from decimal import Decimal
-
-    print(f"\n🏦 RECONCILIACIÓN BANCARIA")
-    print("="*70)
-    print(f"📁 Archivo: {csv_file}\n")
-
-    if not os.path.exists(csv_file):
-        return {"success": False, "error": f"Archivo no encontrado: {csv_file}"}
-
-    try:
-        with open(csv_file, 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            headers = reader.fieldnames
-            required = ['date', 'description', 'debit', 'credit']
-            missing = [col for col in required if col not in headers]
-            if missing:
-                return {"success": False, "error": f"Columnas faltantes: {missing}"}
-            has_balance = 'balance' in headers
-            balance_mode = "CON balance" if has_balance else "SIN balance"
-            print(f"📋 Modo: {balance_mode}")
-            rows = list(reader)
-    except Exception as e:
-        return {"success": False, "error": f"Error leyendo CSV: {e}"}
-
-    if not rows:
-        return {"success": False, "error": "CSV vacío"}
-
-    transactions = []
-    opening_balance = Decimal('0')
-    ending_balance = Decimal('0')
-    running_balance = Decimal('0')
-    total_debits = Decimal('0')
-    total_credits = Decimal('0')
-    validation_errors = []
-
-    for idx, row in enumerate(rows, start=2):
-        date = row['date'].strip()
-        description = row['description'].strip()
-        debit_str = row['debit'].strip()
-        credit_str = row['credit'].strip()
-        reference = row.get('reference', '').strip()
-        balance_str = row.get('balance', '').strip() if has_balance else ''
-
-        try:
-            debit = Decimal(debit_str) if debit_str else Decimal('0')
-            credit = Decimal(credit_str) if credit_str else Decimal('0')
-            balance = Decimal(balance_str) if balance_str else None
-        except:
-            validation_errors.append(f"Fila {idx}: Formato inválido")
-            continue
-
-        desc_lower = description.lower()
-        is_opening = 'opening' in desc_lower and 'balance' in desc_lower
-        is_ending = 'ending' in desc_lower and 'balance' in desc_lower
-
-        if is_opening:
-            opening_balance = balance if (has_balance and balance) else Decimal('0')
-            running_balance = opening_balance
-            continue
-
-        if is_ending:
-            if has_balance and balance:
-                ending_balance = balance
-            continue
-
-        if debit > 0 and credit > 0:
-            validation_errors.append(f"Fila {idx}: Debit Y credit simultáneos")
-            continue
-
-        if debit > 0:
-            total_debits += debit
-            running_balance -= debit
-        if credit > 0:
-            total_credits += credit
-            running_balance += credit
-
-        if has_balance and balance is not None:
-            diff = abs(balance - running_balance)
-            if diff > Decimal('0.01'):
-                validation_errors.append(f"Fila {idx}: Balance no cuadra")
-
-        transactions.append({
-            'row_num': idx, 'date': date, 'description': description,
-            'debit': float(debit), 'credit': float(credit),
-            'balance': float(running_balance), 'reference': reference
-        })
-
-    calculated_ending = opening_balance + total_credits - total_debits
-
-    if validation_errors:
-        return {"success": False, "error": "Validación falló", "validation_errors": validation_errors}
-
-    if not transactions:
-        return {"success": False, "error": "No hay transacciones"}
-
-    checking_accounts = find_account("Checking", category="ACTIVO")
-    if not checking_accounts:
-        checking_accounts = find_account("Bank", category="ACTIVO")
-    if not checking_accounts:
-        return {"success": False, "error": "No se encontró cuenta bancaria"}
-
-    bank_account_id = checking_accounts[0]['id']
-    income_accounts = find_account("Income", category="INGRESO")
-    expense_accounts = find_account("Expense", category="GASTO")
-
-    if not income_accounts or not expense_accounts:
-        return {"success": False, "error": "Cuentas contables no encontradas"}
-
-    income_account_id = income_accounts[0]['id']
-    expense_account_id = expense_accounts[0]['id']
-
-    results = {"total": len(transactions), "success": 0, "errors": 0, "details": []}
-
-    for txn in transactions:
-        try:
-            if txn['credit'] > 0:
-                amount = txn['credit']
-                result = create_deposit(
-                    account_id=bank_account_id,
-                    line_items=[{"amount": amount, "from_account_id": income_account_id, "description": txn['description']}],
-                    txn_date=parse_date(txn['date']),
-                    memo=f"Reconciliation - {txn['reference']}" if txn['reference'] else "Bank Reconciliation"
-                )
-            else:
-                amount = txn['debit']
-                vendors = search_vendor("Bank Charges")
-                if not vendors:
-                    results['errors'] += 1
-                    continue
-                vendor_id = vendors[0]['id']
-                result = create_bill(
-                    vendor_id=vendor_id,
-                    line_items=[{"amount": amount, "account_id": expense_account_id, "description": txn['description']}],
-                    txn_date=parse_date(txn['date']),
-                    memo=f"Reconciliation - {txn['reference']}" if txn['reference'] else "Bank Reconciliation"
-                )
-
-            if result.get('success'):
-                results['success'] += 1
-            else:
-                results['errors'] += 1
-        except Exception as e:
-            results['errors'] += 1
-
-    log_operation("csv_batches")
-    results['success'] = results['success'] > 0
-    results['summary'] = {
-        'opening_balance': float(opening_balance),
-        'ending_balance': float(calculated_ending),
-        'total_credits': float(total_credits),
-        'total_debits': float(total_debits),
-        'mode': balance_mode
-    }
-    return results
-
-
-# ==================== LLM INTEGRATION ====================
-
 SYSTEM_PROMPT = """
-Eres asistente IA para QuickBooks. Tono natural y amigable.
+Eres Dexter, un asistente de IA experto para QuickBooks. Tu tono es natural, amigable y profesional.
+Tu usuario se llama Alfredo, dirígete a él de manera respetuosa pero cercana.
 
 CAPACIDADES:
-✅ Clasificación | ✅ Reportes | ✅ Facturas | ✅ Búsquedas | ✅ OCR
+✅ Clasificación | ✅ Reportes | ✅ Facturas | ✅ Búsquedas | ✅ OCR | ✅ Gestión Multi-empresa
 
 REGLAS:
-1. Español, usa "Alfredo"
-2. Asume defaults (mes actual)
-3. Confirma antes de ejecutar
-4. Mantén contexto
-5. Emojis: ✅❌📊💰
-"ticipo" = customer deposit
+1. Idioma: Siempre en Español. Identifícate como "Dexter".
+2. Tiempo: Si no se especifica, asume el mes actual para los reportes.
+3. Seguridad: Confirma siempre antes de ejecutar transacciones o cambios irreversibles.
+4. Memoria: Mantén el contexto de la conversación y las preferencias del usuario Alfredo.
+5. Estética: Usa emojis de forma moderada para mejorar la lectura (✅❌📊💰).
+6. Terminología contable:
+   - "anticipo" = customer deposit
    - "prepago" = prepaid expense (activo)
    - "proveedor" = vendor
    - "factura" = invoice
@@ -1642,16 +1508,18 @@ Responde SIEMPRE en español, de manera concisa, profesional y con formato claro
 
 def call_llm(user_message: str, tools: List[dict] = None, max_iterations: int = 5) -> str:
     """Llama al LLM con soporte de tools y maneja iteraciones automáticamente"""
-
     # Agregar contexto del chart of accounts al mensaje del sistema
-    chart_summary = f"\n\nCHART OF ACCOUNTS EN MEMORIA: {len(session_state.get('chart_of_accounts', {}))} cuentas disponibles."
+    chart_summary = f"\\n\\nCHART OF ACCOUNTS EN MEMORIA: {len(session_state.get('chart_of_accounts', {}))} cuentas disponibles."
 
-    relevant_tools = get_relevant_tools(user_message) if tools else {}
-    recent_hist, context_hint = build_conversation_context(conversation_history)
-    system_content = SYSTEM_PROMPT
+    # Construir el prompt del sistema local con los detalles necesarios
+    local_system_content = SYSTEM_PROMPT
     if necesita_chart(user_message):
-        system_content += "\n" + chart_summary
-    system_content += "\n" + context_hint
+        local_system_content += chart_summary
+    
+    recent_hist, context_hint = build_conversation_context(conversation_history)
+    local_system_content += "\n" + context_hint
+
+    relevant_tools = get_relevant_tools(user_message) if tools else []
 
     # Solo agregar mensaje del usuario si no está vacío (para tool calls iterativos)
     if user_message:
@@ -1665,9 +1533,10 @@ def call_llm(user_message: str, tools: List[dict] = None, max_iterations: int = 
     while iteration < max_iterations:
         iteration += 1
 
+        # Construir mensajes incluyendo el historial actualizado en cada iteración
         messages = [
-            {"role": "system", "content": SYSTEM_PROMPT + chart_summary},
-            *recent_hist
+            {"role": "system", "content": local_system_content},
+            *conversation_history[-(max_iterations*4+10):] # Ventana de contexto amplia
         ]
 
         payload = {
@@ -1677,7 +1546,7 @@ def call_llm(user_message: str, tools: List[dict] = None, max_iterations: int = 
         }
 
         if tools:
-            payload["tools"] = tools
+            payload["tools"] = relevant_tools
             payload["tool_choice"] = "auto"
 
         headers = {
@@ -2154,6 +2023,310 @@ TOOLS = [
                 "required": []
             }
         }
+    },
+    # ========== TOOLS DE AUTONOMÍA ==========
+    {
+        "type": "function",
+        "function": {
+            "name": "buscarenweb",
+            "description": "Busca información actualizada en internet (vía DuckDuckGo).",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Consulta de búsqueda"}
+                },
+                "required": ["query"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "buscardocsqbo",
+            "description": "Busca específicamente en la documentación oficial de QuickBooks Online API.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Consulta técnica sobre la API"}
+                },
+                "required": ["query"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "crearasientodiario",
+            "description": "Crea un Journal Entry (asiento contable) complejo en QuickBooks. Los débitos deben ser iguales a los créditos.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "lines": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "account_id": {"type": "string"},
+                                "amount": {"type": "number"},
+                                "posting_type": {"type": "string", "enum": ["Debit", "Credit"]},
+                                "description": {"type": "string"}
+                            },
+                            "required": ["account_id", "amount", "posting_type"]
+                        }
+                    },
+                    "txn_date": {"type": "string", "description": "Fecha YYYY-MM-DD"},
+                    "memo": {"type": "string"}
+                },
+                "required": ["lines", "txn_date"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "creartransferencia",
+            "description": "Crea una transferencia de fondos entre dos cuentas bancarias en QuickBooks.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "from_account_id": {"type": "string"},
+                    "to_account_id": {"type": "string"},
+                    "amount": {"type": "number"},
+                    "txn_date": {"type": "string"},
+                    "memo": {"type": "string"}
+                },
+                "required": ["from_account_id", "to_account_id", "amount", "txn_date"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "qborequestgenerico",
+            "description": "Realiza una petición genérica a cualquier endpoint de la API de QuickBooks v3.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "method": {"type": "string", "enum": ["GET", "POST", "UPDATE"]},
+                    "endpoint": {"type": "string", "description": "Nombre del recurso (ej: Purchase, PaymentMethod)"},
+                    "data": {"type": "object", "description": "Cuerpo del JSON para POST/UPDATE"},
+                    "entity_id": {"type": "string", "description": "ID del recurso para GET/UPDATE específico"}
+                },
+                "required": ["method", "endpoint"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "listarendpointsqbo",
+            "description": "Lista los endpoints más comunes disponibles en la API de QuickBooks.",
+            "parameters": {
+                "type": "object",
+                "properties": {}
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "infoendpointqbo",
+            "description": "Obtiene información detallada sobre cómo usar un endpoint específico de la API.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "endpoint_name": {"type": "string"}
+                },
+                "required": ["endpoint_name"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "ejecutarcodigo",
+            "description": "Ejecuta fragmentos de código Python para análisis de datos avanzados o cálculos complejos.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "code": {"type": "string", "description": "Código Python a ejecutar"}
+                },
+                "required": ["code"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "analizarbankfeed",
+            "description": "Analiza una lista de transacciones bancarias para sugerir clasificaciones contables basadas en aprendizaje previo.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "account_name": {"type": "string"},
+                    "transactions": {
+                        "type": "array",
+                        "items": {"type": "object"}
+                    },
+                    "min_confidence": {"type": "number", "default": 0.7}
+                },
+                "required": ["account_name", "transactions"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "registrarclasificacion",
+            "description": "Registra el aprendizaje de una clasificación manual hecha por el usuario.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "description": {"type": "string"},
+                    "account_id": {"type": "string"},
+                    "account_name": {"type": "string"},
+                    "amount": {"type": "number"},
+                    "date": {"type": "string"},
+                    "vendor": {"type": "string"},
+                    "qb_suggestion": {"type": "string"}
+                },
+                "required": ["description", "account_id", "account_name", "amount", "date"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "estadisticasclasificacion",
+            "description": "Obtiene estadísticas sobre el aprendizaje del sistema de clasificación bancaria.",
+            "parameters": {
+                "type": "object",
+                "properties": {}
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "buscarpatron",
+            "description": "Busca si existe un patrón de clasificación previo para una descripción dada.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "description": {"type": "string"}
+                },
+                "required": ["description"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "aprenderinteraccion",
+            "description": "Aprende de las preferencias del usuario basadas en sus interacciones.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "interaction_type": {"type": "string", "enum": ["account_use", "vendor_use", "report_use"]},
+                    "details": {"type": "object"},
+                    "context": {"type": "string"}
+                },
+                "required": ["interaction_type", "details"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "obtenersugerencias",
+            "description": "Obtiene sugerencias de acciones basadas en el comportamiento histórico del usuario.",
+            "parameters": {
+                "type": "object",
+                "properties": {}
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "registrarcorreccion",
+            "description": "Registra una corrección del usuario cuando el sistema comete un error.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "wrong": {"type": "string"},
+                    "correct": {"type": "string"},
+                    "context": {"type": "string"}
+                },
+                "required": ["wrong", "correct", "context"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "obtenercontexto",
+            "description": "Obtiene un resumen del contexto reciente de la conversación y tareas activas.",
+            "parameters": {
+                "type": "object",
+                "properties": {}
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "generarreportecustom",
+            "description": "Genera reportes personalizados interpretando peticiones en lenguaje natural.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "user_request": {"type": "string"},
+                    "filters": {"type": "object"}
+                },
+                "required": ["user_request"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "parsearfecha",
+            "description": "Convierte expresiones temporales (ej: 'el mes pasado') en fechas específicas.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "expression": {"type": "string"}
+                },
+                "required": ["expression"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "gestionar_empresas",
+            "description": "Permite registrar una nueva empresa (vía link QBO o ID), listar las registradas o cambiar entre ellas.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "accion": {
+                        "type": "string", 
+                        "enum": ["registrar", "listar", "cambiar"],
+                        "description": "Acción a realizar: 'registrar' una nueva, 'listar' todas, o 'cambiar' a una existente."
+                    },
+                    "nombre": {
+                        "type": "string",
+                        "description": "Nombre de la empresa (requerido para 'registrar' y 'cambiar')."
+                    },
+                    "link_o_id": {
+                        "type": "string",
+                        "description": "URL de QuickBooks o Realm ID de la empresa (requerido para 'registrar')."
+                    }
+                },
+                "required": ["accion"]
+            }
+        }
     }
 ]
 
@@ -2326,6 +2499,69 @@ def tool_refrescar_chart_accounts() -> dict:
         "cuentas_cargadas": len(chart),
         "mensaje": "Chart of Accounts actualizado exitosamente"
     }
+
+def tool_gestionar_empresas(accion: str, nombre: str = None, link_o_id: str = None) -> dict:
+    """
+    Tool: Gestiona el registro y cambio de empresas.
+    """
+    global CURRENT_COMPANY, QB_REALM_ID, QB_BASE_URL, COMPANY_CONTEXT, QB_ACCESS_TOKEN, QB_REFRESH_TOKEN
+    
+    if accion == "registrar":
+        if not nombre or not link_o_id:
+            return {"success": False, "message": "Faltan datos (nombre o link_o_id)"}
+        
+        realm_id = extract_realm_id(link_o_id)
+        if not realm_id:
+            return {"success": False, "message": "No se pudo extraer un Realm ID válido del link proporcionado."}
+        
+        save_company_meta(nombre, realm_id)
+        return {"success": True, "message": f"Empresa '{nombre}' (ID: {realm_id}) registrada exitosamente. Ya puedes cambiar a ella usando 'cambiar'."}
+        
+    elif accion == "listar":
+        companies = list_local_companies()
+        res = "Empresas registradas:\n"
+        for c in companies:
+            status = "✅" if c["has_tokens"] else "🔑"
+            res += f"- {status} {c['name']} (ID: {c['realm_id']})\n"
+        return {"success": True, "message": res, "empresas": companies}
+        
+    elif accion == "cambiar":
+        if not nombre:
+            return {"success": False, "message": "Falta el nombre de la empresa objetivo."}
+        
+        companies = list_local_companies()
+        target = next((c for c in companies if c['name'].lower() == nombre.lower()), None)
+        
+        if not target:
+            return {"success": False, "message": f"No encontré ninguna empresa registrada como '{nombre}'."}
+        
+        # Guardar contexto actual
+        if CURRENT_COMPANY:
+            save_company_context(CURRENT_COMPANY['name'], COMPANY_CONTEXT)
+        
+        # Cargar meta y tokens de la nueva empresa
+        meta = get_company_meta(target['name'])
+        CURRENT_COMPANY = target
+        QB_REALM_ID = target['realm_id']
+        QB_BASE_URL = f"https://sandbox-quickbooks.api.intuit.com/v3/company/{QB_REALM_ID}"
+        
+        if meta.get("access_token") and meta.get("refresh_token"):
+            QB_ACCESS_TOKEN = meta["access_token"]
+            QB_REFRESH_TOKEN = meta["refresh_token"]
+        
+        save_company_selection(CURRENT_COMPANY)
+        
+        # Recargar contexto
+        COMPANY_CONTEXT = load_company_context(target['name'])
+        session_state["chart_of_accounts"] = COMPANY_CONTEXT.get("chart_of_accounts", {})
+        
+        return {
+            "success": True, 
+            "message": f"🔄 ¡Cambio exitoso! Ahora estoy operando en '{target['name']}'. He cargado sus cuentas y preferencias.",
+            "empresa": target['name']
+        }
+    
+    return {"success": False, "message": "Acción no reconocida."}
 
 def tool_procesar_bank_feed_csv(archivo_csv: str) -> dict:
     """Tool: Procesa CSV de Bank Feed con splits"""
@@ -2514,6 +2750,7 @@ TOOL_FUNCTIONS = {
     # Dynamic Report Generator
     "generarreportecustom": tool_generate_custom_report,
     "parsearfecha": tool_parse_date_expression,
+    "gestionar_empresas": tool_gestionar_empresas,
 }
 
 
@@ -2548,27 +2785,50 @@ def process_quick_command(user_input: str) -> Optional[str]:
 
 # ==================== OPTIMIZACIONES ====================
 
-def get_relevant_tools(user_message: str) -> dict:
+def get_relevant_tools(user_message: str) -> list:
+    """Retorna lista de definiciones de tools (schemas) relevantes."""
     msg = user_message.lower()
-    relevant = {}
-    if "clasificar" in msg or "orrstown" in msg:
-        for n in ["clasificarorrstown", "reconocertransaccion"]:
-            if n in TOOL_FUNCTIONS: relevant[n] = TOOL_FUNCTIONS[n]
-    if "reporte" in msg or "p&l" in msg:
-        for n in ["generarplreport", "generatebalancesheet"]:
-            if n in TOOL_FUNCTIONS: relevant[n] = TOOL_FUNCTIONS[n]
-    if "busca" in msg or "search" in msg:
-        for n in ["searchcustomer", "searchvendor", "findaccount"]:
-            if n in TOOL_FUNCTIONS: relevant[n] = TOOL_FUNCTIONS[n]
-    if "bill" in msg or "factura" in msg:
-        for n in ["procesarlotebills", "createbill"]:
-            if n in TOOL_FUNCTIONS: relevant[n] = TOOL_FUNCTIONS[n]
-    if not relevant:
-        for n in ["searchcustomer", "generarplreport"]:
-            if n in TOOL_FUNCTIONS: relevant[n] = TOOL_FUNCTIONS[n]
-    if "refrescarchartaccounts" in TOOL_FUNCTIONS:
-        relevant["refrescarchartaccounts"] = TOOL_FUNCTIONS["refrescarchartaccounts"]
-    return relevant
+    relevant_names = set()
+
+    # Mapeo de keywords a nombres de tools
+    if any(kw in msg for kw in ["clasificar", "bank", "banco", "feed"]):
+        relevant_names.update(["analizarbankfeed", "registrarclasificacion", "buscarpatron", "procesar_bank_feed_csv"])
+    
+    if any(kw in msg for kw in ["reporte", "p&l", "balance", "estado"]):
+        relevant_names.update(["generar_reporte_pl", "generar_balance_sheet", "generarreportecustom", "parsearfecha"])
+    
+    if any(kw in msg for kw in ["busca", "search", "cliente", "vendor", "cuenta"]):
+        relevant_names.update(["buscar_cliente", "buscar_vendor", "buscar_cuenta", "buscar_item"])
+    
+    if any(kw in msg for kw in ["bill", "factura", "ocr", "pdf"]):
+        relevant_names.update(["procesar_lote_bills", "crear_bill"])
+    
+    if any(kw in msg for kw in ["invoice", "pago", "cobro"]):
+        relevant_names.update(["crear_invoice", "crear_pago"])
+
+    if any(kw in msg for kw in ["asiento", "journal", "transferencia", "mover"]):
+        relevant_names.update(["crearasientodiario", "creartransferencia"])
+
+    if any(kw in msg for kw in ["web", "internet", "google", "api", "endpoint"]):
+        relevant_names.update(["buscarenweb", "buscardocsqbo", "listarendpointsqbo", "infoendpointqbo"])
+
+    if any(kw in msg for kw in ["codigo", "python", "calcula", "analiza"]):
+        relevant_names.update(["ejecutarcodigo"])
+
+    # Always include a few basics if no match
+    if not relevant_names:
+        relevant_names.update(["buscar_cliente", "buscar_cuenta", "generar_reporte_pl"])
+
+    # Multi-company
+    if any(k in msg for k in ["empresa", "compañía", "cliente", "registrar", "cambiar", "listar"]):
+        relevant_names.add("gestionar_empresas")
+
+    # Refrescar siempre disponible si se pide
+    if "refrescar" in msg:
+        relevant_names.add("refrescar_chart_accounts")
+
+    # Filtrar la lista global TOOLS
+    return [t for t in TOOLS if t["function"]["name"] in relevant_names]
 
 def build_conversation_context(history: list, max_turns: int = 5) -> tuple:
     recent = history[-(max_turns * 2):] if len(history) > max_turns * 2 else history
@@ -2583,7 +2843,7 @@ def build_conversation_context(history: list, max_turns: int = 5) -> tuple:
     return recent, context
 
 def necesita_chart(msg: str) -> bool:
-    kw = ["clasificar", "cuenta", "bill", "journal", "asiento"]
+    kw = ["clasifica", "cuenta", "bill", "journal", "asiento"]
     return any(k in msg.lower() for k in kw)
 
 # ==================== LOOP PRINCIPAL ====================
@@ -2591,8 +2851,8 @@ def necesita_chart(msg: str) -> bool:
 def main_loop():
     """Loop principal conversacional"""
     print("="*70)
-    print("           🤖 TMP AI - QuickBooks Assistant")
-    print("              Desarrollado por Alfredo")
+    print("           🤖 DEXTER - QuickBooks AI Assistant")
+    print("              Operando para: Alfredo")
     print("="*70)
     print()
     print("Sistema listo 🚀")
@@ -2670,25 +2930,75 @@ def main_loop():
 
 # ==================== ENTRY POINT ====================
 
+
 if __name__ == "__main__":
-     # ASCII Art Banner
-    print("""
-    ╔═══════════════════════════════════════════════════════════════╗
-    ║                                                               ║
-    ║        ██████╗ ██████╗  ██████╗      █████╗ ██╗               ║
-    ║       ██╔═══██╗██╔══██╗██╔═══██╗    ██╔══██╗██║               ║
-    ║       ██║   ██║██████╔╝██║   ██║    ███████║██║               ║
-    ║       ██║▄▄ ██║██╔══██╗██║   ██║    ██╔══██║██║               ║
-    ║       ╚██████╔╝██████╔╝╚██████╔╝    ██║  ██║██║               ║
-    ║        ╚══▀▀═╝ ╚═════╝  ╚═════╝     ╚═╝  ╚═╝╚═╝               ║
-    ║                                                               ║
-    ║              TMP AI Assistant v1.0                            ║
-    ║                                                               ║
-    ║                                                               ║
-    ╚═══════════════════════════════════════════════════════════════╝
-    """)
-    
-    # Verificar credenciales
+
+    # ASCII Art Banner
+    # Banner
+    print("-" * 70)
+    print(" " * 20 + "DEXTER - AI Assistant v1.0")
+    print("-" * 70)
+
+    # ---------------------------------------------------------------
+    # SELECTOR DE EMPRESA (MULTI-COMPANY)
+    # ---------------------------------------------------------------
+
+
+    # Intentar cargar empresa previamente seleccionada
+    CURRENT_COMPANY = load_current_company()
+
+    if CURRENT_COMPANY:
+        print(f"📁 Empresa activa: {CURRENT_COMPANY['name']}")
+        print(f"   Realm ID: {CURRENT_COMPANY['realm_id']}")
+        print()
+        cambiar = input("¿Deseas cambiar de empresa? (s/N): ").strip().lower()
+        if cambiar in ["s", "si", "sí", "y", "yes"]:
+            CURRENT_COMPANY = None
+
+    # Si no hay empresa seleccionada, mostrar selector
+    if not CURRENT_COMPANY:
+        CURRENT_COMPANY = select_company_interactive(QB_REALM_ID)
+        if not CURRENT_COMPANY:
+            print("❌ No se seleccionó ninguna empresa. Saliendo...")
+            exit(0)
+
+    # Guardar selección
+    save_company_selection(CURRENT_COMPANY)
+
+    QB_REALM_ID = CURRENT_COMPANY["realm_id"]
+    QB_BASE_URL = f"https://sandbox-quickbooks.api.intuit.com/v3/company/{QB_REALM_ID}"
+
+    # Cargar tokens específicos de la empresa si existen
+    meta = get_company_meta(CURRENT_COMPANY['name'])
+    if meta.get("access_token") and meta.get("refresh_token"):
+        QB_ACCESS_TOKEN = meta["access_token"]
+        QB_REFRESH_TOKEN = meta["refresh_token"]
+        print(f"🔑 Tokens cargados específicamente para {CURRENT_COMPANY['name']}")
+
+    # Cargar contexto de la empresa
+    print(f"📊 Cargando contexto de {CURRENT_COMPANY['name']}...")
+    COMPANY_CONTEXT = load_company_context(CURRENT_COMPANY['name'])
+
+    # Cargar Chart of Accounts específico de esta empresa
+    if COMPANY_CONTEXT.get("chart_of_accounts"):
+        session_state["chart_of_accounts"] = COMPANY_CONTEXT["chart_of_accounts"]
+        print(f"✅ Chart cargado desde caché ({len(COMPANY_CONTEXT['chart_of_accounts'])} cuentas)")
+    else:
+        session_state["chart_of_accounts"] = load_chart_of_accounts()
+        COMPANY_CONTEXT["chart_of_accounts"] = session_state["chart_of_accounts"]
+        save_company_context(CURRENT_COMPANY['name'], COMPANY_CONTEXT)
+
+    # Cargar otros contextos
+    if COMPANY_CONTEXT.get("saved_reports"):
+        session_state["saved_reports"] = COMPANY_CONTEXT["saved_reports"]
+
+    print("✅ Contexto cargado:")
+    print(f"   - {len(COMPANY_CONTEXT['chart_of_accounts'])} cuentas")
+    print(f"   - {len(COMPANY_CONTEXT.get('saved_reports', {}))} reportes")
+    print(f"   - {len(COMPANY_CONTEXT.get('bank_feed_rules', {}))} reglas")
+    print()
+
+    # Verificar credenciales mínimas
     missing_creds = []
     if not QB_ACCESS_TOKEN:
         missing_creds.append("QB_ACCESS_TOKEN")
@@ -2711,35 +3021,16 @@ if __name__ == "__main__":
     if "error" in test_query:
         print(f"⚠️ Error conectando a QuickBooks: {test_query['error']}")
         print("\n🔄 Intentando refrescar token...")
-
         if not refresh_qb_token():
             print("\n❌ No se pudo refrescar el token. Verifica tus credenciales.")
             exit(1)
 
     print("✅ Conexión establecida\n")
 
-    # Cargar Chart of Accounts
-    session_state["chart_of_accounts"] = load_chart_of_accounts()
-
-    # Cargar reportes guardados
-    if os.path.exists(FILE_SAVED_REPORTS):
-        try:
-            with open(FILE_SAVED_REPORTS, 'r') as f:
-                session_state["saved_reports"] = json.load(f)
-                print(f"📁 {len(session_state['saved_reports'])} reportes guardados cargados\n")
-        except:
-            session_state["saved_reports"] = {}
-
+    # Asegurar Chart of Accounts cargado en session_state
+    if not session_state.get("chart_of_accounts"):
+        session_state["chart_of_accounts"] = load_chart_of_accounts()
+    
     # Iniciar loop principal
-    try:
-        main_loop()
-    except KeyboardInterrupt:
-        print("\n\n⚠️ Sesión interrumpida por el usuario")
-        save_session_to_csv()
-        print("✅ Datos guardados")
-    except Exception as e:
-        print(f"\n\n❌ Error crítico: {e}")
-        import traceback
-        traceback.print_exc()
-        save_session_to_csv()
-        print("\n✅ Sesión guardada a pesar del error")
+    main_loop()
+
