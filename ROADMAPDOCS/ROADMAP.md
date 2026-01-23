@@ -36,6 +36,11 @@ Este documento define la hoja de ruta estratégica para transformar a **Dexter**
     *   Alertas tempranas de falta de liquidez.
 3.  **Gestión de Adjuntos Digitales**:
     *   Subida automática del archivo PDF/Imagen a la transacción correspondiente en QuickBooks para auditorías "paperless".
+4.  **Módulo de Análisis Avanzado (CFO Virtual)**:
+    *   **Reportes Multi-Periodo**: Capacidad de comparar P&L y balances entre múltiples períodos (mensuales, trimestrales, anuales) con cálculo automático de variaciones (Accrual/Cash).
+    *   **Excel Premium Multicapa**: Generación de archivos .xlsx con múltiples pestañas (Resumen Ejecutivo, P&L Comparativo, Análisis de Proveedores, Gráficos Dinámicos).
+    *   **Análisis de Drill-down de Gastos**: Identificación proactiva de aumentos de precios por proveedor y relación gasto vs ventas.
+    *   **Memoria de Reportes (Presets)**: Guardado de configuraciones de análisis favoritas para ejecución recurrente con un solo comando.
 
 ---
 
