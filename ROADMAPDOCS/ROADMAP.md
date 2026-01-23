@@ -28,9 +28,10 @@ Este documento define la hoja de ruta estratégica para transformar a **Dexter**
 ## 📊 FASE 2: INTELIGENCIA CONTABLE PROACTIVA (Funcionalidad)
 *Objetivo: Automatizar el criterio contable y mejorar la precisión de los datos.*
 
-1.  **Matching Inteligente (OCR ↔ Bank Feed)**:
-    *   Cruzar datos de facturas extraídas por OCR con transacciones pendientes en el banco.
-    *   Sugerencias de conciliación automática simplificada.
+1.  **Matching Inteligente (OCR ↔ Bank Feed ↔ Libros)**:
+    *   **Tarea Diaria Proactiva**: Al iniciar, Dexter analiza el estado de cuenta bancario (CSV) y busca coincidencias con registros existentes (Checks, Bill Payments, Payments).
+    *   Cruzar datos de facturas extraídas por OCR con transacciones pendientes en el banco para evitar duplicados.
+    *   Sugerencias de conciliación automática inteligente basada en monto, fecha y vendor.
 2.  **Módulo de Forecasting (Flujo de Caja)**:
     *   Análisis predictivo de ingresos y gastos para los próximos 30/60/90 días.
     *   Alertas tempranas de falta de liquidez.
