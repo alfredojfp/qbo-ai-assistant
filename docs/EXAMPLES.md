@@ -565,7 +565,7 @@ Estos NO consumen tokens LLM:
 
 ---
 
-## 🆕 Ejemplos nuevos (v3.5) — Multi-Empresa, OCR, Dexter
+## 🆕 Ejemplos nuevos (v3.5/v3.6/v3.7) — Multi-Empresa, Bilingüe, Onboarding
 
 ### Ejemplo 11: Cambio de empresa en caliente
 

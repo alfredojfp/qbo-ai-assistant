@@ -14,7 +14,7 @@ Guía completa de resolución de problemas comunes.
 6. [Errores de Chart of Accounts](#6-errores-de-chart-of-accounts)
 7. [Problemas de Performance](#7-problemas-de-performance)
 8. [Errores Generales](#8-errores-generales)
-9. [Problemas Multi-Empresa (v3.5)](#9-problemas-multi-empresa-v35)
+9. [Problemas Multi-Empresa (v3.5+)](#9-problemas-multi-empresa-v35)
 
 ---
 

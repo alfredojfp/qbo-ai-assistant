@@ -2,7 +2,7 @@
 
 **Tema:** Implementación de Memoria Vectorial vs. Lógica Estructurada en Dexter  
 **Fecha:** 23 de Enero, 2026  
-**Proyecto:** QuickBooks AI Assistant (v3.5)
+**Proyecto:** QuickBooks AI Assistant (v3.7 — análisis basado en v3.5)
 
 ---
 
@@ -29,7 +29,7 @@
 *   **Localmente:** Usando la librería `sentence-transformers` (Gratis e infinito).
 *   **Vía API:** Usando OpenAI o Google Gemini (Costo ínfimo, muy rápido).
 
-### 4. Comparativa: v3.5 vs. Implementación Vectorial
+### 4. Comparativa: v3.7 (actual) vs. Implementación Vectorial
 **Usuario:** "Cual seria la diferencia de funcionamiento, ventajas y desventajas de esa implementacion vs la version actual?"
 
 **Dexter:** Comparó la memoria de corto plazo actual (basada en sesiones/JSON) con la vectorial:

@@ -5,6 +5,34 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [3.7.0] - 2026-01-23 — Guía Interactiva y Matching Engine
+
+### 🆕 Agregado
+- **Guía Interactiva (Onboarding)**: Dexter detecta el estado de las carpetas (`Pending bills/`, `Bank Reconciliation/`, etc.) y ofrece guiar al usuario paso a paso en tareas complejas (OCR, Reconciliación)
+- **Matching Engine (Bank Feed)**: diseño técnico del motor de conciliación inteligente entre CSVs bancarios y registros existentes en QBO para evitar duplicidades
+- **Manual de Usuario Vivo**: `USER_GUIDE.md` integrado como base de conocimiento primaria del agente para su propia auto-explicación
+- Banner minimalista rediseñado para máxima compatibilidad con terminales Linux y macOS
+- Tono dinámico: comportamiento más proactivo, educativo y cercano al usuario
+
+### 🔄 Cambiado
+- Reconstrucción estructural de `main.py`: auditoría de sintaxis, eliminación de bloques truncados y resolución de `SyntaxError`
+- Restauración del `SYSTEM_PROMPT` y de la función `call_llm` (orquestación de tool calls)
+- Eliminación de llamadas recursivas y código duplicado al final del script
+- Normalización de imports y vinculación explícita de `company_manager.py` con el núcleo
+- Refactorización de `session_state` para rastreo dinámico de tokens y costos basado en el modelo (Hybrid Routing)
+
+---
+
+## [3.6.0] - 2026-01-23 — Inteligencia Híbrida y Bilingüe
+
+### 🆕 Agregado
+- **Model Routing híbrido**: Dexter decide entre Llama 3 (tareas simples, bajo costo) y DeepSeek V3 (análisis contable complejo) para optimizar costos y velocidad
+- **Bilingüe ES/EN oficial**: sistema de traducción dinámica con persistencia de idioma guardada por empresa en `meta.json`
+
+### 🔄 Cambiado
+- El LLM por defecto del proyecto es ahora híbrido: ya no solo DeepSeek V3
+- Costo por sesión reducido aún más (Llama 3 ≈ 10× más barato que DeepSeek V3)
+
 ---
 
 ## [3.5] - 2026-01-23 — Multi-Empresa PRO
@@ -85,4 +113,4 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 ---
 
 **Mantenedor:** Alfredo
-**Asistente:** Dexter (v3.5+)
+**Asistente:** Dexter (v3.7)

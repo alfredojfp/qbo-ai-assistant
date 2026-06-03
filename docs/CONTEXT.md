@@ -1,28 +1,29 @@
 # QuickBooks AI Assistant - Context Documentation
 
-**Versión:** 3.5 🆕  
-**Fecha:** Enero 2026 (Actualizado v3.5)  
+**Versión:** 3.7.0 🆕  
+**Fecha:** Enero 2026 (Actualizado v3.7)  
 **Asistente:** Dexter (IA Experto)  
 **Desarrollador:** Alfredo  
-**LLM:** DeepSeek V3 vía OpenRouter  
+**LLM:** DeepSeek V3 + Llama 3 (Hybrid Routing vía OpenRouter)  
 
-> **Nota (2026-06-03):** Este documento ha sido sincronizado a v3.5. Para el catálogo exhaustivo de tools, ver [`CAPACIDADES.md`](CAPACIDADES.md). Para arquitectura técnica, ver [`ARCHITECTURE.md`](ARCHITECTURE.md). Para multi-empresa, ver [`MULTI_EMPRESA.md`](MULTI_EMPRESA.md). Para cambios recientes, ver [`CHANGELOG.md`](CHANGELOG.md).
+> **Nota (2026-06-03):** Este documento ha sido sincronizado a v3.7.0. Para el catálogo exhaustivo de tools, ver [`CAPACIDADES.md`](CAPACIDADES.md). Para arquitectura técnica, ver [`ARCHITECTURE.md`](ARCHITECTURE.md). Para multi-empresa, ver [`MULTI_EMPRESA.md`](MULTI_EMPRESA.md). Para cambios recientes, ver [`CHANGELOG.md`](CHANGELOG.md). Para el log de desarrollo técnico, ver [`roadmap/DEVELOPMENT_LOG.md`](roadmap/DEVELOPMENT_LOG.md).
 
 ---
 
 ## 📋 OVERVIEW
 
-QuickBooks AI Assistant (TMP AI) es un asistente conversacional inteligente desarrollado en Python que automatiza tareas contables en QuickBooks Online mediante procesamiento de lenguaje natural. El sistema utiliza DeepSeek V3 a través de OpenRouter con function calling para ejecutar operaciones contables complejas mediante comandos en español.
+QuickBooks AI Assistant (TMP AI / Dexter) es un asistente conversacional inteligente desarrollado en Python que automatiza tareas contables en QuickBooks Online mediante procesamiento de lenguaje natural. El sistema utiliza **Model Routing híbrido** (DeepSeek V3 para análisis contable complejo + Llama 3 para tareas simples) a través de OpenRouter con function calling para ejecutar operaciones contables complejas mediante comandos en español o inglés.
 
 ### Objetivo Principal
 
-Eliminar la necesidad de navegar la interfaz de QuickBooks Online para tareas repetitivas, permitiendo al contador trabajar mediante conversación natural en español con comprensión de terminología contable latinoamericana.
+Eliminar la necesidad de navegar la interfaz de QuickBooks Online para tareas repetitivas, permitiendo al contador trabajar mediante conversación natural en español (o inglés) con comprensión de terminología contable latinoamericana.
 
-- ✅ **Gestión Multi-Empresa PRO (v3.5)**: Registro y cambio "en caliente" de empresas
-- ✅ **Dexter**: Nueva identidad y personalidad refinada del asistente
-- ✅ **Independencia de Tokens**: Almacenamiento aislado por empresa en `meta.json`
+- ✅ **Multi-Empresa PRO (v3.5)**: Registro y cambio "en caliente" de empresas con tokens aislados
+- ✅ **Inteligencia Híbrida (v3.6)**: Model Routing Llama 3 ↔ DeepSeek V3 + bilingüe ES/EN con persistencia por empresa
+- ✅ **Guía Interactiva (v3.7)**: Onboarding paso a paso + Matching Engine Bank Feed + Manual de Usuario vivo
+- ✅ **Dexter**: Identidad y personalidad refinada del asistente
 - ✅ **6 Módulos de Autonomía** con 18 funciones avanzadas
-- ✅ **31+ Function Tools** totales (incluye `gestionar_empresas`)
+- ✅ **32 Function Tools** totales (incluye `gestionar_empresas`)
 - ✅ **Optimización de tokens 57%** (ahorro masivo de costos)
 - ✅ **OCR de facturas PDF** con extracción inteligente
 - ✅ **System prompt dinámico** con contexto selectivo
@@ -42,14 +43,18 @@ QuickBooks AI Assistant
 │   ├── Carga/Guardado de contextos aislados
 │   └── Menú interactivo de selección al inicio
 │
-├── main.py (~3,000 líneas) ⬆️ ACTUALIZADO v3.5
+├── main.py (~3,000 líneas) ⬆️ ACTUALIZADO v3.7
 │   ├── Identidad: **Dexter** (Personalidad profesional/amigable)
 │   ├── Autenticación QuickBooks OAuth 2.0 (Multi-token)
 │   ├── Chart of Accounts dinámico por empresa
 │   ├── 32 Function Tools (Incluye `gestionar_empresas`)
+│   ├── Model Routing híbrido: Llama 3 ↔ DeepSeek V3 (v3.6)
+│   ├── Bilingüe ES/EN con persistencia por empresa (v3.6)
 │   ├── Sistema de tracking de tokens
 │   ├── Procesamiento CSV batch
 │   ├── Bank Feed Intelligence (Aislado por empresa)
+│   ├── Matching Engine para conciliación inteligente (v3.7)
+│   ├── Sistema de Onboarding interactivo (v3.7)
 │   ├── OCR de Bills (PDFs)
 │   └── Loop conversacional optimizado
 │
@@ -1013,11 +1018,20 @@ Proyecto privado desarrollado por Alfredo para automatización contable interna.
 
 ---
 
-**Última actualización:** 23 de Enero, 2026  
-**Versión del documento:** 3.5 🆕  
+**Última actualización:** 23 de Enero, 2026 (sincronizado a v3.7.0 el 2026-06-03)  
+**Versión del documento:** 3.7.0 🆕  
 **Mantenedor:** Alfredo  
 
-**Cambios en v3.5 (Actual):**
+**Cambios en v3.7 (Actual):**
+- ✅ **Guía Interactiva:** Dexter detecta el estado de las carpetas y guía al usuario paso a paso (Onboarding).
+- ✅ **Matching Engine:** Diseño técnico del motor de conciliación inteligente entre CSVs bancarios y QBO (evita duplicados).
+- ✅ **Manual de Usuario Vivo:** `USER_GUIDE.md` integrado como base de conocimiento para auto-explicación de Dexter.
+
+**Cambios en v3.6:**
+- ✅ **Model Routing híbrido:** Llama 3 (tareas simples, bajo costo) ↔ DeepSeek V3 (análisis contable complejo).
+- ✅ **Bilingüe ES/EN:** Traducción dinámica con persistencia de idioma por empresa en `meta.json`.
+
+**Cambios en v3.5:**
 - ✅ **Identidad:** El asistente ahora se llama **Dexter**.
 - ✅ **Multi-Empresa:** Implementado `company_manager.py` para soporte ilimitado de empresas.
 - ✅ **Hot-Swap:** Cambio de empresa sin reiniciar la aplicación con tokens aislados.

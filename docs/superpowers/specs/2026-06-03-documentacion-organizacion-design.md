@@ -3,7 +3,8 @@
 **Fecha:** 2026-06-03
 **Autor:** Proceso de brainstorming con Dexter
 **Estado:** Diseño aprobado por el usuario — pendiente de revisión
-**Versión del proyecto:** 3.5 (Dexter)
+**Versión del proyecto (al momento de la spec):** 3.5 (Dexter)
+**Versión actual del proyecto:** 3.7.0 — ver [`../CHANGELOG.md`](../CHANGELOG.md) para el historial completo y las novedades de v3.6 y v3.7.
 **Alcance:** Documentación y estructura. NO modifica código.
 
 ---

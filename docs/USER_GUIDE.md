@@ -1,7 +1,7 @@
-# 📖 Guía de Usuario: Dexter (v3.5)
+# 📖 Guía de Usuario: Dexter (v3.7)
 *Tu Asistente de IA Inteligente para QuickBooks*
 
-> **Nota histórica:** Este documento es la versión expandida de `MANUAL_USUARIO.md` (v3.5), reorganizado y renombrado a `USER_GUIDE.md` como parte de la organización de documentación realizada el 2026-06-03.
+> **Nota histórica:** Este documento es la versión expandida de `MANUAL_USUARIO.md` (v3.5), reorganizado y renombrado a `USER_GUIDE.md` como parte de la organización de documentación realizada el 2026-06-03. La versión actual de Dexter es **v3.7** (Guía Interactiva + Matching Engine, construida sobre v3.6 Inteligencia Híbrida y v3.5 Multi-Empresa).
 
 ---
 
@@ -58,7 +58,7 @@ Verás algo como:
 
 ```
 ============================================================
-   🏢  DEXTER - QuickBooks AI Assistant v3.5
+   🏢  DEXTER - QuickBooks AI Assistant v3.7
 ============================================================
 
 🔐 Selecciona empresa:

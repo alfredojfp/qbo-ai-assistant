@@ -4,6 +4,8 @@
 
 **Goal:** Convertir el proyecto QuickBooks AI Assistant (TMP AI / Dexter v3.5) en un repositorio autoexplicativo con un README raíz como hub, docs sincronizados a v3.5 y documentos especializados para vacíos actuales.
 
+> **Nota (2026-06-03, post-ejecución):** Este plan fue ejecutado en su totalidad. La versión actual del proyecto es **v3.7.0** (Guía Interactiva + Matching Engine, construida sobre v3.6 Inteligencia Híbrida y v3.5 Multi-Empresa). La documentación fue posteriormente sincronizada a v3.7. Ver [`../CHANGELOG.md`](../CHANGELOG.md) para el historial completo.
+
 **Architecture:** 12 tareas secuenciales. Primero movimientos físicos de carpetas, luego creación de documentos nuevos, luego sincronización de existentes, finalmente creación del README raíz. Sin tocar código.
 
 **Tech Stack:** Markdown, Git, sistema de archivos. Sin código.

@@ -1,6 +1,6 @@
-# 🏢 Gestión Multi-Empresa (v3.5)
+# 🏢 Gestión Multi-Empresa (v3.5+)
 
-Guía específica de la funcionalidad multi-empresa introducida en v3.5. Permite a Dexter gestionar **múltiples empresas de QuickBooks** de forma independiente con tokens aislados y cambio en caliente.
+Guía específica de la funcionalidad multi-empresa introducida en v3.5. Permite a Dexter gestionar **múltiples empresas de QuickBooks** de forma independiente con tokens aislados y cambio en caliente. La versión actual del proyecto es **v3.7**, que mantiene la multi-empresa de v3.5 como base.
 
 ---
 
@@ -130,7 +130,7 @@ Usuario: "cambia a Tech Inc"
 
 ---
 
-## ⚠️ Limitaciones actuales (v3.5)
+## ⚠️ Limitaciones actuales (v3.7)
 
 - **Token usage** se acumula globalmente, no por empresa
 - **User Behavior Learning** aún no aísla patrones por empresa (planeado para v3.6)

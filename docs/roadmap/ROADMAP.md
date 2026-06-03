@@ -2,7 +2,7 @@
 
 **Fecha:** 23 de Enero, 2026  
 **Versión del Plan:** 1.0  
-**Estado Actual:** v3.5 (Multi-Empresa, Bilingüe, Autonómico)
+**Estado Actual:** v3.7 (Guía Interactiva, Matching Engine) — base v3.5 (Multi-Empresa) + v3.6 (Híbrido/Bilingüe)
 
 ---
 

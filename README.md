@@ -2,7 +2,7 @@
 
 # 🤖 Dexter — QuickBooks AI Assistant
 
-![Version](https://img.shields.io/badge/version-3.5-blue.svg)
+![Version](https://img.shields.io/badge/version-3.7.0-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.9+-green.svg)
 ![License](https://img.shields.io/badge/license-Private-red.svg)
 ![Status](https://img.shields.io/badge/status-Active-success.svg)
@@ -73,6 +73,8 @@ python main.py
 |-----------|-------------|
 | 💬 **IA conversacional en español** | Entiende terminología contable latinoamericana (anticipo, prepago, retainer) |
 | 🏢 **Multi-empresa (v3.5)** | Gestiona múltiples empresas QBO con tokens aislados y cambio en caliente |
+| 🌐 **Bilingüe ES/EN (v3.6)** | Model Routing (Llama 3 / DeepSeek V3) + traducción dinámica con persistencia por empresa |
+| 🎯 **Guía interactiva (v3.7)** | Onboarding paso a paso, Matching Engine para conciliación bancaria, Manual de Usuario vivo |
 | 🔧 **32 function tools** | Búsquedas, transacciones, reportes, herramientas de autonomía |
 | 🧠 **6 módulos de autonomía** | Web search, API explorer, code execution, bank feed ML, user learning, dynamic reports |
 | 📄 **OCR de facturas PDF** | Extrae datos de PDFs y crea bills automáticamente (Gemini Flash 2.0) |
@@ -157,9 +159,9 @@ python main.py
 | 📙 [**docs/CONTEXT.md**](docs/CONTEXT.md) | 🛠️ Devs / LLMs | Contexto completo del proyecto (32 KB) |
 | 🏗️ [**docs/ARCHITECTURE.md**](docs/ARCHITECTURE.md) | 🛠️ Devs | Diagramas, dataflow, patrones de diseño |
 | 🔧 [**docs/CAPACIDADES.md**](docs/CAPACIDADES.md) | 🛠️ Devs | Catálogo de los 32 tools y 6 módulos |
-| 🏢 [**docs/MULTI_EMPRESA.md**](docs/MULTI_EMPRESA.md) | 👥 Todos | Guía específica multi-empresa v3.5 |
+| 🏢 [**docs/MULTI_EMPRESA.md**](docs/MULTI_EMPRESA.md) | 👥 Todos | Guía específica multi-empresa (v3.5) |
 | 🚀 [**docs/INSTALL.md**](docs/INSTALL.md) | 🛠️ Devs | Instalación detallada paso a paso |
-| 📜 [**docs/CHANGELOG.md**](docs/CHANGELOG.md) | 👥 Todos | Historial versionado v1.0 → v3.5 |
+| 📜 [**docs/CHANGELOG.md**](docs/CHANGELOG.md) | 👥 Todos | Historial versionado v1.0 → v3.7 |
 | 🗺️ [**docs/roadmap/**](docs/roadmap/) | 👥 Todos | Roadmap y documentos estratégicos |
 
 ---
@@ -369,6 +371,8 @@ Ver [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) si encuentras problemas
 - [x] v2.0 — DeepSeek V3 con function calling (13 tools)
 - [x] v3.0 — 6 módulos de autonomía, optimización 57%, OCR (31 tools)
 - [x] v3.5 — Multi-empresa con tokens aislados (32 tools)
+- [x] v3.6 — Inteligencia Híbrida (Model Routing Llama 3 / DeepSeek V3) + Bilingüe ES/EN
+- [x] v3.7 — Guía Interactiva (Onboarding) + Matching Engine Bank Feed + Manual de Usuario vivo
 
 ### 🚧 En desarrollo (post-organización)
 - [ ] Encriptación de `meta.json` por empresa
@@ -443,7 +447,7 @@ Ver [`docs/roadmap/ROADMAP.md`](docs/roadmap/ROADMAP.md) para el roadmap complet
 
 **Desarrollador principal:** Alfredo
 
-**Asistente IA:** Dexter (v3.5+)
+**Asistente IA:** Dexter (v3.7)
 
 **Tecnologías clave:**
 - **DeepSeek V3** vía [OpenRouter](https://openrouter.ai)

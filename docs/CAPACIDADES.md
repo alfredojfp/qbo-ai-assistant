@@ -2,9 +2,10 @@
 
 Catálogo exhaustivo de las **32 function tools** y los **6 módulos de autonomía** que componen QuickBooks AI Assistant (Dexter).
 
-> **Versión del proyecto:** 3.5
+> **Versión del proyecto:** 3.7.0
 > **Total de tools:** 32 (13 básicas + 18 de autonomía + 1 multi-empresa)
 > **Total de módulos de autonomía:** 6
+> **Novedades v3.6/v3.7:** Model Routing híbrido (Llama 3 ↔ DeepSeek V3), Bilingüe ES/EN persistente, Onboarding interactivo, Matching Engine Bank Feed
 
 ---
 

@@ -117,7 +117,7 @@ Dexter es un agente conversacional en Python que conecta un LLM (DeepSeek V3) co
 
 ---
 
-## 🏢 Multi-empresa (v3.5)
+## 🏢 Multi-empresa (v3.5+)
 
 **Concepto clave:** Cada empresa tiene su propio `meta.json` con tokens, chart, reportes y bank feed aislados.
 
@@ -147,7 +147,7 @@ Qbo Scripts/
 | Chart of Accounts | ✅ Sí |
 | Saved Reports | ✅ Sí |
 | Bank Feed History | ✅ Sí |
-| User Behavior Patterns | ⚠️ Compartido (v3.5) |
+| User Behavior Patterns | ⚠️ Compartido (v3.7) |
 | Token Usage CSV | ⚠️ Compartido (a nivel global) |
 
 ### Hot-swap

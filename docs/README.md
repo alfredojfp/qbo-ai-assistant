@@ -20,9 +20,9 @@ Bienvenido a la documentación de **Dexter**, tu asistente de IA para QuickBooks
 | 📙 [**CONTEXT.md**](CONTEXT.md) | Desarrolladores / LLMs | Contexto completo del proyecto (32 KB) |
 | 🏗️ [**ARCHITECTURE.md**](ARCHITECTURE.md) | Desarrolladores | Diagramas, dataflow, patrones de diseño |
 | 🔧 [**CAPACIDADES.md**](CAPACIDADES.md) | Desarrolladores | Catálogo de los 32 tools y 6 módulos de autonomía |
-| 🏢 [**MULTI_EMPRESA.md**](MULTI_EMPRESA.md) | Todos | Guía específica de la feature v3.5 multi-empresa |
+| 🏢 [**MULTI_EMPRESA.md**](MULTI_EMPRESA.md) | Todos | Guía específica de la feature multi-empresa (v3.5) |
 | 🚀 [**INSTALL.md**](INSTALL.md) | Desarrolladores | Instalación detallada paso a paso |
-| 📜 [**CHANGELOG.md**](CHANGELOG.md) | Todos | Historial versionado v1.0 → v3.5 |
+| 📜 [**CHANGELOG.md**](CHANGELOG.md) | Todos | Historial versionado v1.0 → v3.7 |
 | 🗺️ [**roadmap/**](roadmap/) | Todos | Roadmap y documentos estratégicos |
 
 ---
@@ -37,15 +37,15 @@ Bienvenido a la documentación de **Dexter**, tu asistente de IA para QuickBooks
 
 ---
 
-## 🆕 Novedades v3.5 (Multi-Empresa PRO)
+## 🆕 Novedades v3.7 (Guía Interactiva + Matching Engine)
 
-- **Multi-empresa** con tokens aislados por empresa
-- **Cambio en caliente** sin reiniciar la app
-- **Identidad "Dexter"** (antes "Asistente TMP AI")
-- **32 function tools** (1 nuevo: `gestionar_empresas`)
-- Persistencia por empresa en `companies/<nombre>/meta.json`
+- **Onboarding interactivo**: Dexter detecta el estado de las carpetas y guía paso a paso
+- **Matching Engine Bank Feed**: Conciliación inteligente CSV ↔ QBO (evita duplicados)
+- **Manual de Usuario vivo**: `USER_GUIDE.md` como base de conocimiento de auto-explicación
+- Construido sobre **v3.6**: Model Routing (Llama 3 / DeepSeek V3) + bilingüe ES/EN con persistencia por empresa
+- Construido sobre **v3.5**: Multi-empresa con tokens aislados y cambio en caliente
 
-Ver [`MULTI_EMPRESA.md`](MULTI_EMPRESA.md) para detalles completos.
+Ver [`CHANGELOG.md`](CHANGELOG.md) para historial completo. Ver [`roadmap/DEVELOPMENT_LOG.md`](roadmap/DEVELOPMENT_LOG.md) para detalles técnicos.
 
 ---
 
