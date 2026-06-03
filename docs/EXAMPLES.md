@@ -565,6 +565,104 @@ Estos NO consumen tokens LLM:
 
 ---
 
+## 🆕 Ejemplos nuevos (v3.5) — Multi-Empresa, OCR, Dexter
+
+### Ejemplo 11: Cambio de empresa en caliente
+
+```
+👤: "cambia a Tech Inc"
+
+🤖: [gestionar_empresas("select", "Tech Inc")]
+
+   ✅ Cambiado a Tech Inc
+   📊 Chart de cuentas recargado: 87 cuentas
+   🔑 Tokens actualizados correctamente
+
+👤: "busca el cliente Acme en esta empresa"
+
+🤖: 🔍 Buscando "Acme" en Tech Inc...
+   ℹ️ Tech Inc no tiene clientes con "Acme" en el nombre
+   💡 Sugerencia: ¿quizás querías buscar en Acme Corp? Usa "cambia a Acme Corp"
+```
+
+### Ejemplo 12: OCR de facturas PDF
+
+```
+👤: "Procesa los PDFs en Pending bills"
+
+🤖: 📂 Escaneando carpeta Pending bills/...
+   📄 3 PDFs encontrados
+
+   🔄 Procesando acme_jan.pdf con Gemini Flash 2.0...
+   ✅ Factura extraída:
+      Vendor: ACME Corp
+      Total: $1,250.00
+      Fecha: 2026-01-15
+
+   🔄 Procesando utility.pdf...
+   ✅ Vendor: Electric Company - $345.80
+
+   📊 CSV preview: Pending bills/preview_bills.csv
+
+👤: "apruebo"
+
+🤖: ✅ 2 bills creados en QuickBooks
+   📁 Archivos movidos a: Processed bills/
+```
+
+### Ejemplo 13: Bank Feed Intelligence con matching
+
+```
+👤: "Tengo un cargo de $500 de Office Depot en el banco"
+
+🤖: [analizarbankfeed]
+
+   🔍 Buscando coincidencias...
+
+   ⚠️ Match encontrado:
+      • Bill existente: Office Depot #4521 ($498.50) del 15/01
+      • Diferencia: $1.50 (probable mismo cargo, redondeo o fee)
+
+   ¿Quieres que use el bill existente o cree uno nuevo?
+```
+
+### Ejemplo 14: Reporte personalizado con lenguaje natural
+
+```
+👤: "¿Cuáles fueron mis gastos más altos del último trimestre agrupados por categoría?"
+
+🤖: [generarreportecustom]
+
+   📊 Gastos Q4 2025 por categoría:
+
+   1. Payroll:              $125,450 (42%)
+   2. Rent & Occupancy:     $45,000  (15%)
+   3. Marketing:            $28,900  (10%)
+   4. Professional Services:$15,600  (5%)
+   5. Insurance:            $12,500  (4%)
+
+   💡 Insight: Marketing subió 22% vs Q3, revisa ROI.
+
+   ¿Quieres que lo guarde como "Gastos Q4"?
+```
+
+### Ejemplo 15: Dexter saluda y se presenta
+
+```
+👤: "hola"
+
+🤖: ¡Hola Alfredo! 👋 Soy Dexter, tu asistente para QuickBooks.
+
+   📊 Estado actual:
+   • Empresa activa: Acme Corp
+   • Chart de cuentas: 142 cuentas (cache: 2 horas)
+   • Sesión iniciada: 14:30
+
+   ¿En qué te ayudo hoy?
+```
+
+---
+
 ## 🆘 ¿Necesitas Más Ayuda?
 
 - **Problemas técnicos:** [TROUBLESHOOTING.md](TROUBLESHOOTING.md)

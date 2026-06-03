@@ -6,6 +6,8 @@
 **Desarrollador:** Alfredo  
 **LLM:** DeepSeek V3 vía OpenRouter  
 
+> **Nota (2026-06-03):** Este documento ha sido sincronizado a v3.5. Para el catálogo exhaustivo de tools, ver [`CAPACIDADES.md`](CAPACIDADES.md). Para arquitectura técnica, ver [`ARCHITECTURE.md`](ARCHITECTURE.md). Para multi-empresa, ver [`MULTI_EMPRESA.md`](MULTI_EMPRESA.md). Para cambios recientes, ver [`CHANGELOG.md`](CHANGELOG.md).
+
 ---
 
 ## 📋 OVERVIEW

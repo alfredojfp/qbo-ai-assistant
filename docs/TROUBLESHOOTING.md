@@ -14,6 +14,7 @@ Guía completa de resolución de problemas comunes.
 6. [Errores de Chart of Accounts](#6-errores-de-chart-of-accounts)
 7. [Problemas de Performance](#7-problemas-de-performance)
 8. [Errores Generales](#8-errores-generales)
+9. [Problemas Multi-Empresa (v3.5)](#9-problemas-multi-empresa-v35)
 
 ---
 
@@ -578,6 +579,94 @@ R: Se guarda el tracking de tokens automáticamente al cerrar.
 
 **P: ¿Puedo recuperar un depósito mal creado?**  
 R: Debes eliminarlo desde QuickBooks Online manualmente.
+
+---
+
+## 9. Problemas Multi-Empresa (v3.5)
+
+### ❌ Error: "Empresa no encontrada"
+
+**Síntomas:**
+```
+❌ Empresa 'Tech Inc' no encontrada. Empresas registradas: Acme Corp, Design Co
+```
+
+**Causa:** Intentas cambiar a una empresa no registrada.
+
+**Solución:**
+```
+👤: "lista las empresas"
+🤖: 🏢 Empresas registradas: Acme Corp, Design Co
+
+👤: "registra Tech Inc con realm_id <tu_realm_id>"
+```
+
+---
+
+### ❌ Error: "Token inválido al cambiar empresa"
+
+**Síntomas:**
+```
+❌ 401 Unauthorized al cambiar a Tech Inc
+```
+
+**Causa:** El access token de Tech Inc expiró y el refresh falló.
+
+**Solución:**
+```bash
+# Opción 1: Refrescar manualmente
+python scripts/refresh_token.py
+
+# Opción 2: Re-autorizar la app
+# Ve a https://developer.intuit.com → tu app → "Keys & OAuth"
+# Regenera tokens y actualiza .env
+```
+
+---
+
+### ❌ Error: "Chart de cuentas vacío tras cambiar"
+
+**Síntomas:**
+```
+⚠️ No se encontraron cuentas en la empresa actual
+```
+
+**Causa:** El caché de chart está vacío o es de otra empresa.
+
+**Solución:**
+```
+👤: "refrescar chart"
+🤖: 📊 Descargando chart desde QBO... 87 cuentas encontradas ✅
+```
+
+---
+
+### ❌ Error: "No puedo registrar nueva empresa"
+
+**Síntomas:**
+```
+❌ No se puede registrar empresa: realm_id no válido
+```
+
+**Solución:**
+1. Verifica que el `realm_id` es correcto (en la URL de QBO, después de `/company/`)
+2. Verifica que la app está autorizada en esa empresa
+3. Si la app no está autorizada, ejecuta `python scripts/refresh_token.py`
+
+---
+
+### ❌ Error: "Cambio de empresa no se refleja"
+
+**Síntomas:** Dices "cambia a Tech Inc" pero las operaciones siguen aplicando a la empresa anterior.
+
+**Causa:** Bug en v3.5 conocido cuando hay concurrencia con operaciones pendientes.
+
+**Solución:**
+1. Espera a que terminen las operaciones en curso
+2. Vuelve a decir "cambia a Tech Inc"
+3. Si persiste, reinicia la app
+
+Ver [`MULTI_EMPRESA.md`](MULTI_EMPRESA.md) para más detalles.
 
 ---
 
