@@ -88,5 +88,38 @@ class TestMenuCommandRoutes(unittest.TestCase):
             self.assertIn(f'"{inv}"', src, f"main_loop must support '{inv}' as menu invoker")
 
 
+class TestBankFeedReExports(unittest.TestCase):
+    """Verifica que los 4 tools de bank_feed re-exportados desde main.py
+    siguen siendo importables y callables (Fase 1 del refactor)."""
+
+    def test_all_four_reexports_importable(self):
+        from main import (
+            tool_analizarbankfeed,
+            tool_registrarclasificacion,
+            tool_estadisticasclasificacion,
+            tool_buscarpatron,
+        )
+        for fn in [
+            tool_analizarbankfeed,
+            tool_registrarclasificacion,
+            tool_estadisticasclasificacion,
+            tool_buscarpatron,
+        ]:
+            self.assertTrue(callable(fn))
+
+    def test_reexports_point_to_autonomia_implementations(self):
+        """Sanity: los re-exports NO son stubs vacíos."""
+        from main import tool_analizarbankfeed, tool_buscarpatron
+        # Cada tool debería tener un __module__ apuntando a autonomia.bank_feed_intelligence
+        self.assertEqual(
+            tool_analizarbankfeed.__module__,
+            "autonomia.bank_feed_intelligence",
+        )
+        self.assertEqual(
+            tool_buscarpatron.__module__,
+            "autonomia.bank_feed_intelligence",
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -32,8 +32,13 @@ from autonomia.bank_feed_intelligence import (
     tool_analyze_bank_feed_for_classification,
     tool_record_bank_feed_classification,
     tool_get_classification_history_stats,
-    tool_find_pattern_for_transaction
+    tool_find_pattern_for_transaction,
 )
+# Re-exports Fase 1 refactor: nombres cortos para `from main import tool_xxx`
+tool_analizarbankfeed = tool_analyze_bank_feed_for_classification
+tool_registrarclasificacion = tool_record_bank_feed_classification
+tool_estadisticasclasificacion = tool_get_classification_history_stats
+tool_buscarpatron = tool_find_pattern_for_transaction
 from autonomia.user_behavior_learning import (
     tool_learn_from_interaction,
     tool_get_user_suggestions,
