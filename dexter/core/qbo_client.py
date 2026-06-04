@@ -7,7 +7,7 @@ Este módulo se importa desde main.py (NO desde dexter.core.*)
 para evitar acoplamiento circular.
 """
 import os
-from typing import Any, Callable, Dict, List
+from typing import Any, Callable, Dict, List, Optional
 
 
 class QBOClientError(Exception):
@@ -153,6 +153,105 @@ class QBOClientImpl:
                 return {"raw": response.text}
         return {"raw": str(response)}
 
+    def search_customer(self, name: str) -> List[Dict[str, Any]]:
+        """
+        Búsqueda fuzzy de clientes por nombre.
+        Requiere _search_customer_fn inyectado por make_deposit_qbo_client.
+        """
+        if not hasattr(self, "_search_customer_fn") or not self._search_customer_fn:
+            return []
+        return self._search_customer_fn(name, exact=False)
+
+    def create_customer(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Crea un cliente en QBO.
+        `data` debe tener al menos `DisplayName`.
+        """
+        payload = {
+            "DisplayName": data["DisplayName"],
+        }
+        if data.get("CompanyName"):
+            payload["CompanyName"] = data["CompanyName"]
+        if data.get("PrimaryEmailAddr"):
+            email = data["PrimaryEmailAddr"]
+            if isinstance(email, dict):
+                payload["PrimaryEmailAddr"] = email
+            else:
+                payload["PrimaryEmailAddr"] = {"Address": email}
+
+        response = self._request("POST", "customer", data=payload)
+        if hasattr(response, "status_code"):
+            if response.status_code != 200:
+                raise QBOClientError(
+                    f"create_customer failed: HTTP {response.status_code}: {response.text}"
+                )
+            try:
+                body = response.json()
+                cust = body.get("Customer", {})
+                return {
+                    "Id": cust.get("Id"),
+                    "DisplayName": cust.get("DisplayName"),
+                }
+            except Exception:
+                return {"raw": response.text}
+        return {"raw": str(response)}
+
+    def create_deposit(
+        self,
+        date: str,
+        account_id: str,
+        lines: List[Dict[str, Any]],
+        memo: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        """
+        Crea un Deposit en QBO con una o más líneas.
+        Cada line debe tener: amount, from_account_id.
+        Opcionales: customer_id, description.
+        """
+        deposit_data: Dict[str, Any] = {
+            "DepositToAccountRef": {"value": account_id},
+            "TxnDate": date,
+            "Line": [],
+        }
+
+        for item in lines:
+            line: Dict[str, Any] = {
+                "DetailType": "DepositLineDetail",
+                "Amount": item["amount"],
+                "DepositLineDetail": {
+                    "AccountRef": {"value": item["from_account_id"]},
+                },
+            }
+            if item.get("customer_id"):
+                line["DepositLineDetail"]["Entity"] = {
+                    "Type": "Customer",
+                    "EntityRef": {"value": item["customer_id"]},
+                }
+            if item.get("description"):
+                line["Description"] = item["description"]
+            deposit_data["Line"].append(line)
+
+        if memo:
+            deposit_data["PrivateNote"] = memo
+
+        response = self._request("POST", "deposit", data=deposit_data)
+        if hasattr(response, "status_code"):
+            if response.status_code != 200:
+                raise QBOClientError(
+                    f"create_deposit failed: HTTP {response.status_code}: {response.text}"
+                )
+            try:
+                body = response.json()
+                deposit = body.get("Deposit", {})
+                return {
+                    "deposit_id": deposit.get("Id"),
+                    "total": deposit.get("TotalAmt"),
+                    "date": deposit.get("TxnDate"),
+                }
+            except Exception:
+                return {"raw": response.text}
+        return {"raw": str(response)}
+
 
 def find_bank_account_id(
     find_account_fn: Callable,
@@ -172,3 +271,54 @@ def find_bank_account_id(
         if results:
             return results[0]["id"]
     return ""
+
+
+def make_deposit_qbo_client(
+    search_customer_fn: Callable[[str, bool], List[Dict[str, Any]]],
+    qbo_request_fn: Callable[[str, str, dict, dict], Any],
+) -> "QBOClientImpl":
+    """
+    Crea un QBOClientImpl con soporte para deposits multi-cliente.
+    Wrapper sobre `make_qbo_client` con un search_customer inyectado.
+    """
+    client = make_qbo_client(
+        _wrap_search_customer(search_customer_fn),
+        qbo_request_fn,
+    )
+    client._search_customer_fn = search_customer_fn
+    return client
+
+
+def _wrap_search_customer(search_customer_fn):
+    """Crea un callable tipo qbo_query que solo sirve para Customer."""
+    def wrapped(sql: str) -> Dict[str, Any]:
+        if "Customer" not in sql:
+            return {"QueryResponse": {}}
+        # Extraer término LIKE
+        import re
+        m = re.search(r"LIKE\s*'%(.*?)%'", sql)
+        if m:
+            term = m.group(1)
+        else:
+            m = re.search(r"DisplayName\s*=\s*'(.*?)'", sql)
+            if m:
+                term = m.group(1)
+            else:
+                return {"QueryResponse": {}}
+        exact = "LIKE" not in sql
+        customers = search_customer_fn(term, exact)
+        return {
+            "QueryResponse": {
+                "Customer": [
+                    {
+                        "Id": c["id"],
+                        "DisplayName": c.get("name", ""),
+                        "CompanyName": c.get("company", ""),
+                        "Balance": c.get("balance", 0),
+                        "Active": c.get("active", True),
+                    }
+                    for c in customers
+                ]
+            }
+        }
+    return wrapped

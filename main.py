@@ -2046,6 +2046,36 @@ TOOLS = [
     {
         "type": "function",
         "function": {
+            "name": "depositar_lote_csv",
+            "description": "Procesa CSV de deposits multi-cliente usando el motor batch con state machine, disambiguación interactiva y dry-run obligatorio. Columnas requeridas: date, client_name, amount. Si un cliente no existe, pregunta si crearlo. Si confirmar=false, solo hace dry-run sin crear nada en QBO.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "ruta_archivo": {
+                        "type": "string",
+                        "description": "Ruta al CSV de líneas de deposit (date, client_name, amount)"
+                    },
+                    "cuenta_banco_id": {
+                        "type": "string",
+                        "description": "ID de la cuenta bancaria destino (opcional; se auto-detecta)"
+                    },
+                    "cuenta_ingreso_id": {
+                        "type": "string",
+                        "description": "ID de la cuenta de ingreso (opcional; se auto-detecta)"
+                    },
+                    "confirmar": {
+                        "type": "boolean",
+                        "description": "Si False, solo corre dry-run sin crear (default True)",
+                        "default": True
+                    }
+                },
+                "required": ["ruta_archivo"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "procesar_lote_bills",
             "description": (
                 "Procesa un lote de bills/invoices desde un PDF usando OCR con Gemini. "
@@ -2777,8 +2807,9 @@ def tool_taggear_reconciliacion(
 
 def tool_limpiar_tags_reconciliacion(batch_id: str) -> dict:
     """
-    Tool: Limpia los tags BNK-RECON aplicados por un batch.
+    Tool: Limpia los tags BNK-RECON aplicados por un batch previo.
     Lee el reporte del batch y borra los Memo/PrivateNote.
+    Útil para deshacer una reconciliación de prueba.
     """
     from dexter.core.batch import BatchEngine, BatchStorage, ReconciliationTaggerSkill
     from dexter.core.qbo_client import make_qbo_client
@@ -2797,6 +2828,115 @@ def tool_limpiar_tags_reconciliacion(batch_id: str) -> dict:
             "success": False,
             "error": "No se puede reconstruir el período del batch.",
         }
+
+    skill = ReconciliationTaggerSkill(
+        engine=engine,
+        qbo_client=qbo,
+        period_start=period_start,
+        period_end=period_start,
+        account_id="",
+    )
+    result = skill.cleanup_tags(batch_id)
+    return {
+        "success": True,
+        "removed": result.get("removed", 0),
+        "errors": result.get("errors", []),
+    }
+
+
+def tool_depositar_lote_csv(
+    ruta_archivo: str,
+    cuenta_banco_id: str = None,
+    cuenta_ingreso_id: str = None,
+    confirmar: bool = True,
+) -> dict:
+    """
+    Tool: Procesa CSV de deposits multi-cliente con el motor batch.
+    Usa el Sprint 2 (DepositBatchSkill) con state machine,
+    disambiguación interactiva y dry-run obligatorio.
+
+    Args:
+        ruta_archivo: Ruta al CSV (columnas: date, client_name, amount).
+            Opcionales: terms, memo.
+        cuenta_banco_id: ID de la cuenta bancaria. Si no se da, se auto-detecta.
+        cuenta_ingreso_id: ID de la cuenta de income default. Si no se da,
+            se auto-detecta buscando cuentas tipo INGRESO.
+        confirmar: Si True, pide confirmación antes de ejecutar.
+            Si False, solo corre el dry-run (no crea nada en QBO).
+    """
+    from dexter.core.batch import (
+        BatchEngine, BatchStorage, Disambiguator, DepositBatchSkill,
+    )
+    from dexter.core.qbo_client import make_deposit_qbo_client
+
+    if not os.path.exists(ruta_archivo):
+        return {"success": False, "error": f"Archivo no encontrado: {ruta_archivo}"}
+
+    if not cuenta_banco_id:
+        cuenta_banco_id = find_bank_account_id(find_account)
+        if not cuenta_banco_id:
+            return {
+                "success": False,
+                "error": "No se pudo identificar la cuenta bancaria. "
+                         "Especifica cuenta_banco_id o refresca el chart.",
+            }
+
+    if not cuenta_ingreso_id:
+        results = find_account("sales", exact=False, category="INGRESO")
+        if not results:
+            results = find_account("income", exact=False, category="INGRESO")
+        if not results:
+            return {
+                "success": False,
+                "error": "No se pudo identificar la cuenta de income. "
+                         "Especifica cuenta_ingreso_id.",
+            }
+        cuenta_ingreso_id = results[0]["id"]
+
+    storage = BatchStorage("data/dexter.db")
+    engine = BatchEngine(storage)
+    disambiguator = Disambiguator(input_func=input, output_func=print)
+    qbo = make_deposit_qbo_client(search_customer, qbo_request)
+
+    skill = DepositBatchSkill(
+        engine=engine,
+        disambiguator=disambiguator,
+        qbo_client=qbo,
+        bank_account_id=cuenta_banco_id,
+        income_account_id=cuenta_ingreso_id,
+    )
+    batch_id = skill.from_csv(ruta_archivo)
+
+    # Dry-run: validar sin crear
+    print(f"\n📋 BATCH {batch_id} CREADO")
+    print(f"   Items: {len(storage.get_items(batch_id))}")
+    print(f"   Cuenta banco: {cuenta_banco_id}")
+    print(f"   Cuenta income: {cuenta_ingreso_id}")
+
+    if not confirmar:
+        return {
+            "success": True,
+            "batch_id": batch_id,
+            "dry_run": True,
+            "message": "Batch creado. Revisa con 'listar batches' antes de confirmar.",
+        }
+
+    # Confirmar y ejecutar
+    if not disambiguator.confirm_batch(batch_id):
+        return {
+            "success": False,
+            "batch_id": batch_id,
+            "message": "Operación cancelada por el usuario.",
+        }
+
+    summary = skill.execute(batch_id)
+    return {
+        "success": summary.get("executed", 0) > 0,
+        "batch_id": batch_id,
+        "executed": summary.get("executed", 0),
+        "failed": summary.get("failed", 0),
+        "errors": summary.get("errors", []),
+    }
 
     skill = ReconciliationTaggerSkill(
         engine=engine,
@@ -2960,6 +3100,7 @@ TOOL_FUNCTIONS = {
     "procesar_reconciliacion_bancaria": tool_procesar_reconciliacion_bancaria,
     "taggear_reconciliacion": tool_taggear_reconciliacion,
     "limpiar_tags_reconciliacion": tool_limpiar_tags_reconciliacion,
+    "depositar_lote_csv": tool_depositar_lote_csv,
     "procesar_lote_bills": procesar_lote_bills,
 
     # ========== CAPACIDADES DE AUTONOMÍA ==========

@@ -8,6 +8,7 @@ from unittest.mock import MagicMock
 
 from dexter.core.qbo_client import (
     QBOClientImpl, QBOClientError, make_qbo_client, find_bank_account_id,
+    make_deposit_qbo_client,
 )
 
 
@@ -257,6 +258,159 @@ class TestFindBankAccount(unittest.TestCase):
         self.assertEqual(result, "acc_99")
         # Primera llamada debe ser con custom1
         self.assertEqual(find_account.call_args_list[0][0][0], "custom1")
+
+
+class TestQBOClientSearchCustomer(unittest.TestCase):
+    def test_search_customer_sin_injectar_retorna_vacio(self):
+        client = QBOClientImpl(MagicMock(), MagicMock())
+        result = client.search_customer("Acme")
+        self.assertEqual(result, [])
+
+    def test_search_customer_con_injectar(self):
+        search_fn = MagicMock(return_value=[{"id": "c1", "name": "Acme"}])
+        client = make_deposit_qbo_client(search_fn, MagicMock())
+        result = client.search_customer("Acme")
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["name"], "Acme")
+        # No debe llamar con exact=True
+        search_fn.assert_called_once_with("Acme", exact=False)
+
+
+class TestQBOClientCreateCustomer(unittest.TestCase):
+    def test_create_customer_basico(self):
+        response = MagicMock()
+        response.status_code = 200
+        response.json.return_value = {
+            "Customer": {"Id": "new_1", "DisplayName": "New Co"}
+        }
+        request = MagicMock(return_value=response)
+        client = QBOClientImpl(MagicMock(), request)
+
+        result = client.create_customer({"DisplayName": "New Co"})
+        self.assertEqual(result["Id"], "new_1")
+        # Verifica que llamó al endpoint customer con POST
+        args = request.call_args
+        self.assertEqual(args[0][0], "POST")
+        self.assertEqual(args[0][1], "customer")
+        self.assertEqual(args[1]["data"]["DisplayName"], "New Co")
+
+    def test_create_customer_con_company_y_email(self):
+        response = MagicMock()
+        response.status_code = 200
+        response.json.return_value = {"Customer": {"Id": "1"}}
+        request = MagicMock(return_value=response)
+        client = QBOClientImpl(MagicMock(), request)
+
+        client.create_customer({
+            "DisplayName": "X",
+            "CompanyName": "X S.A.",
+            "PrimaryEmailAddr": "x@x.com",
+        })
+        payload = request.call_args[1]["data"]
+        self.assertEqual(payload["CompanyName"], "X S.A.")
+        self.assertEqual(payload["PrimaryEmailAddr"], {"Address": "x@x.com"})
+
+    def test_create_customer_con_email_dict(self):
+        response = MagicMock()
+        response.status_code = 200
+        response.json.return_value = {"Customer": {"Id": "1"}}
+        request = MagicMock(return_value=response)
+        client = QBOClientImpl(MagicMock(), request)
+
+        client.create_customer({
+            "DisplayName": "X",
+            "PrimaryEmailAddr": {"Address": "x@x.com"},
+        })
+        payload = request.call_args[1]["data"]
+        self.assertEqual(payload["PrimaryEmailAddr"]["Address"], "x@x.com")
+
+    def test_create_customer_falla(self):
+        response = MagicMock()
+        response.status_code = 400
+        response.text = "Bad Request"
+        request = MagicMock(return_value=response)
+        client = QBOClientImpl(MagicMock(), request)
+        with self.assertRaises(QBOClientError):
+            client.create_customer({"DisplayName": "X"})
+
+
+class TestQBOClientCreateDeposit(unittest.TestCase):
+    def test_create_deposit_basico(self):
+        response = MagicMock()
+        response.status_code = 200
+        response.json.return_value = {
+            "Deposit": {"Id": "dep_1", "TotalAmt": 150.0, "TxnDate": "2026-06-15"}
+        }
+        request = MagicMock(return_value=response)
+        client = QBOClientImpl(MagicMock(), request)
+
+        result = client.create_deposit(
+            date="2026-06-15",
+            account_id="bank_1",
+            lines=[{
+                "amount": 100.0,
+                "from_account_id": "inc_1",
+                "customer_id": "cust_1",
+                "description": "Pago",
+            }, {
+                "amount": 50.0,
+                "from_account_id": "inc_1",
+            }],
+            memo="BNK-RECON",
+        )
+        self.assertEqual(result["deposit_id"], "dep_1")
+        self.assertEqual(result["total"], 150.0)
+        args = request.call_args
+        self.assertEqual(args[0][0], "POST")
+        self.assertEqual(args[0][1], "deposit")
+        payload = args[1]["data"]
+        self.assertEqual(payload["DepositToAccountRef"]["value"], "bank_1")
+        self.assertEqual(payload["TxnDate"], "2026-06-15")
+        self.assertEqual(payload["PrivateNote"], "BNK-RECON")
+        self.assertEqual(len(payload["Line"]), 2)
+        # Primera línea tiene customer
+        first = payload["Line"][0]
+        self.assertEqual(first["Amount"], 100.0)
+        self.assertEqual(
+            first["DepositLineDetail"]["Entity"]["EntityRef"]["value"],
+            "cust_1",
+        )
+        # Segunda línea sin customer
+        second = payload["Line"][1]
+        self.assertNotIn("Entity", second["DepositLineDetail"])
+
+    def test_create_deposit_sin_memo(self):
+        response = MagicMock()
+        response.status_code = 200
+        response.json.return_value = {"Deposit": {"Id": "d1"}}
+        request = MagicMock(return_value=response)
+        client = QBOClientImpl(MagicMock(), request)
+
+        client.create_deposit("2026-06-15", "bank_1",
+                              [{"amount": 10.0, "from_account_id": "i1"}])
+        payload = request.call_args[1]["data"]
+        self.assertNotIn("PrivateNote", payload)
+
+    def test_create_deposit_falla(self):
+        response = MagicMock()
+        response.status_code = 500
+        response.text = "Server error"
+        request = MagicMock(return_value=response)
+        client = QBOClientImpl(MagicMock(), request)
+        with self.assertRaises(QBOClientError):
+            client.create_deposit("2026-06-15", "bank_1",
+                                  [{"amount": 10.0, "from_account_id": "i1"}])
+
+
+class TestMakeDepositQBOClient(unittest.TestCase):
+    def test_factory_crea_cliente_con_customer(self):
+        search_fn = MagicMock()
+        request = MagicMock()
+        client = make_deposit_qbo_client(search_fn, request)
+        self.assertIsInstance(client, QBOClientImpl)
+        # Verifica que search_customer está disponible
+        result = client.search_customer("test")
+        search_fn.assert_called_once_with("test", exact=False)
 
 
 if __name__ == "__main__":
