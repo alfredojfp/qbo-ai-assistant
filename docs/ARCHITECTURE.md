@@ -2,6 +2,9 @@
 
 Documento técnico de referencia para desarrolladores que necesiten entender, mantener o extender QuickBooks AI Assistant (Dexter).
 
+> **Versión:** 4.0.0-dev
+> **Refactor:** Fases 0-7 completadas 2026-06-04 — ver [`dexter/tools/README.md`](../dexter/tools/README.md) y [`CHANGELOG.md`](CHANGELOG.md)
+
 ---
 
 ## 🎯 Visión general
@@ -11,10 +14,12 @@ Dexter es un agente conversacional en Python que conecta un LLM (DeepSeek V3) co
 - **Aislamiento de contexto por empresa** (v3.5+)
 - **Optimización agresiva de tokens** (57% reducción vs v2.0)
 - **Extensibilidad mediante módulos de autonomía** (6 módulos en `autonomia/`)
+- **Registry modular de tools** (v4.0: 14 módulos en `dexter/tools/`)
+- **Data-driven tool routing** (v4.0: `get_relevant_tools` itera `KEYWORDS_BY_MODULE`)
 
 ---
 
-## 📐 Diagrama de componentes
+## 📐 Diagrama de componentes (v4.0)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -24,27 +29,43 @@ Dexter es un agente conversacional en Python que conecta un LLM (DeepSeek V3) co
                              │
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                       main.py (3,000 líneas)                     │
+│                       main.py (3,551 líneas)                    │
 │  ┌──────────────────────────────────────────────────────────┐  │
-│  │ • Loop conversacional                                     │  │
+│  │ • Loop conversacional (main_loop)                         │  │
 │  │ • System prompt dinámico                                  │  │
-│  │ • 32 Function tools (JSON Schema)                         │  │
+│  │ • 24 tool_xxx wrappers (backward compat shim)            │  │
 │  │ • Tracking de tokens (CSV + Excel)                        │  │
+│  │ • get_relevant_tools() data-driven                        │  │
 │  └──────────────────────────────────────────────────────────┘  │
 └────────────┬──────────────────────────┬─────────────────────────┘
              │                          │
              ▼                          ▼
 ┌────────────────────────┐   ┌──────────────────────────────────┐
-│  company_manager.py    │   │       autonomia/ (6 módulos)      │
-│  • Multi-empresa       │   │  • nivel1: web search             │
-│  • meta.json aislado   │   │  • nivel2: API explorer           │
-│  • Hot-swap            │   │  • nivel3: code executor          │
-│                        │   │  • bank feed intelligence         │
-│                        │   │  • user behavior learning         │
-│                        │   │  • dynamic report generator       │
+│  company_manager.py    │   │  dexter/tools/ (v4.0 — 14 módulos)│
+│  • Multi-empresa       │   │  ┌──────────────────────────┐    │
+│  • meta.json aislado   │   │  │ Registry agregador       │    │
+│  • Hot-swap            │   │  │ • ALL_SCHEMAS (43)       │    │
+│                        │   │  │ • ALL_FUNCTIONS (43)     │    │
+│                        │   │  │ • KEYWORDS_BY_MODULE     │    │
+│                        │   │  └──────────────────────────┘    │
+│                        │   │  • bank_feed  (5)   • search (4) │
+│                        │   │  • transactions (4) • reports (5)│
+│                        │   │  • tokens (2)      • admin   (2) │
+│                        │   │  • batch (3)       • recon   (3) │
+│                        │   │  • ocr (1)         • behavior(4) │
+│                        │   │  • report_custom (2)• api_exp(5)│
+│                        │   │  • journal (2)     • web_code(1)│
 └────────────┬───────────┘   └──────────────┬───────────────────┘
              │                               │
              ▼                               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│         autonomia/ (6 módulos — funciones core)                │
+│  • nivel1_websearch         • bank_feed_intelligence            │
+│  • nivel2_api_explorer      • user_behavior_learning            │
+│  • nivel3_code_executor     • dynamic_report_generator          │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+                             ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │                    APIs Externas                                │
 │  • QuickBooks Online API v3 (REST)                              │
@@ -59,7 +80,24 @@ Dexter es un agente conversacional en Python que conecta un LLM (DeepSeek V3) co
 
 | Archivo | Líneas | Responsabilidad |
 |---------|--------|-----------------|
-| `main.py` | ~3,000 | Loop conversacional, 32 tools, tracking, system prompt |
+| `main.py` | 3,551 | Loop conversacional, 24 tool_xxx wrappers, shim de dexter.tools, tracking, system prompt |
+| `dexter/tools/` | 16 archivos | **🆕 v4.0** Registry modular de 43 tools en 14 dominios + helpers |
+| `dexter/tools/__init__.py` | ~80 | Registry agregador (`ALL_SCHEMAS`, `ALL_FUNCTIONS`, `KEYWORDS_BY_MODULE`) |
+| `dexter/tools/_schema_utils.py` | ~50 | Helpers `make_schema`, `prop_str/num/bool/list` |
+| `dexter/tools/bank_feed.py` | ~100 | 5 tools (4 bank_feed_intelligence + procesar_bank_feed_csv) |
+| `dexter/tools/search.py` | ~25 | 4 tools (buscar_cliente/vendor/cuenta/item) |
+| `dexter/tools/transactions.py` | ~25 | 4 tools (crear_invoice/bill/deposito/pago) |
+| `dexter/tools/reports.py` | ~30 | 5 tools (P&L, BS, guardar/cargar/listar) |
+| `dexter/tools/tokens.py` | ~25 | 2 tools (estadísticas, informe Excel) |
+| `dexter/tools/admin.py` | ~25 | 2 tools (refrescar_chart, gestionar_empresas) |
+| `dexter/tools/batch.py` | ~25 | 3 tools (csv_depositos, template, depositar_lote) |
+| `dexter/tools/reconciliation.py` | ~30 | 3 tools (procesar, taggear, limpiar_tags) |
+| `dexter/tools/ocr.py` | ~20 | 1 tool (procesar_lote_bills) |
+| `dexter/tools/behavior.py` | ~25 | 4 tools (aprender, sugerencias, correcciones, contexto) |
+| `dexter/tools/report_custom.py` | ~25 | 2 tools (generar_custom, parsear_fecha) |
+| `dexter/tools/api_explorer.py` | ~30 | 5 tools (listar/info/qbo_request/buscar_web/buscar_docs) |
+| `dexter/tools/journal.py` | ~20 | 2 tools (asiento, transferencia) |
+| `dexter/tools/web_code.py` | ~15 | 1 tool (ejecutar_codigo) |
 | `company_manager.py` | ~200 | Multi-empresa, `meta.json`, hot-swap |
 | `ocr_bills.py` | ~150 | Extracción de datos de PDFs de facturas |
 | `gitmanager.py` | 449 | Utilidad de versionado (commits, status, log) |

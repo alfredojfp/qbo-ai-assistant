@@ -1,30 +1,35 @@
 # 🔧 Catálogo de Capacidades
 
-Catálogo exhaustivo de las **32 function tools** y los **6 módulos de autonomía** que componen QuickBooks AI Assistant (Dexter).
+Catálogo exhaustivo de las **43 function tools** organizadas en **14 módulos de dominio** que componen QuickBooks AI Assistant (Dexter).
 
-> **Versión del proyecto:** 3.7.0
-> **Total de tools:** 32 (13 básicas + 18 de autonomía + 1 multi-empresa)
-> **Total de módulos de autonomía:** 6
-> **Novedades v3.6/v3.7:** Model Routing híbrido (Llama 3 ↔ DeepSeek V3), Bilingüe ES/EN persistente, Onboarding interactivo, Matching Engine Bank Feed
+> **Versión del proyecto:** 4.0.0-dev
+> **Total de tools:** 43
+> **Total de módulos de dominio:** 14
+> **Organización:** `dexter/tools/` (refactor Fases 0-7, 2026-06-04)
+> **Novedades v4.0:** Registry modular, data-driven tool routing, BNK-RECON tag-only, batch genérico, multi-empresa persistencia
+> **Documentación técnica:** `dexter/tools/README.md`
 
 ---
 
 ## 📊 Resumen ejecutivo
 
-| Categoría | Tools | Descripción |
-|-----------|-------|-------------|
-| Búsquedas | 4 | Localizar clientes, vendors, cuentas, items |
-| Transacciones | 4 | Crear invoices, bills, deposits, payments |
-| Reportes | 3 | Generar P&L, balance sheet, guardar configs |
-| Gestión de reportes | 2 | Cargar/guardar configuraciones de reportes |
-| **Web Search (Nivel 1)** | 2 | Buscar en web y en docs QBO |
-| **API Explorer (Nivel 2)** | 5 | Acceso genérico a QBO API + journal/transfer |
-| **Code Executor (Nivel 3)** | 1 | Ejecutar Python dinámicamente |
-| **Bank Feed Intelligence** | 4 | Clasificación inteligente de transacciones |
-| **User Behavior Learning** | 4 | Aprender patrones del usuario |
-| **Dynamic Report Generator** | 2 | Reportes personalizados con lenguaje natural |
-| **Multi-Empresa (v3.5)** | 1 | Gestionar empresas (cambio hot-swap) |
-| **TOTAL** | **32** | |
+| Módulo | Tools | Categoría | Descripción |
+|--------|---:|---|-------------|
+| `search` | 4 | Búsqueda | Localizar clientes, vendors, cuentas, items |
+| `transactions` | 4 | Crear | Crear invoices, bills, deposits, payments |
+| `reports` | 5 | Reportes | P&L, balance sheet, guardar/cargar/listar configs |
+| `tokens` | 2 | Tracking | Estadísticas de uso + informe Excel |
+| `admin` | 2 | Administración | Refrescar chart, multi-empresa |
+| `batch` | 3 | Lote | CSV depósitos, template, batch engine |
+| `reconciliation` | 3 | Reconciliación | BNK-RECON tag-only (no crea txns) |
+| `ocr` | 1 | OCR | Procesar PDFs de `Pending bills/` |
+| `behavior` | 4 | Learning | Aprender, sugerencias, correcciones, contexto |
+| `report_custom` | 2 | Reportes | Reportes dinámicos, parsear fechas |
+| `api_explorer` | 5 | API | 26 endpoints QBO + web search + docs |
+| `journal` | 2 | Asientos | Journal entry, transferencia |
+| `web_code` | 1 | Ejecución | Ejecutar Python dinámicamente |
+| `bank_feed` | 5 | Bank Feed | Clasificación inteligente + CSV processor |
+| **TOTAL** | **43** | | |
 
 ---
 
@@ -305,3 +310,39 @@ Catálogo exhaustivo de las **32 function tools** y los **6 módulos de autonom�
 - [MULTI_EMPRESA.md](MULTI_EMPRESA.md) — Feature multi-empresa
 - [EXAMPLES.md](EXAMPLES.md) — Ejemplos de uso reales
 - [USER_GUIDE.md](USER_GUIDE.md) — Guía para usuarios finales
+- **[`dexter/tools/README.md`](../dexter/tools/README.md)** — 🆕 v4.0: Registry modular de 43 tools en 14 dominios
+
+---
+
+## 🆕 Cambios en v4.0 (Refactor modular)
+
+**2026-06-04 — Fases 0-7 del refactor main.py → dexter/tools/**
+
+### Antes (v3.7)
+- 32 tools hardcoded en `main.py` monolítico (~3,000 líneas)
+- `get_relevant_tools()` con 27 keywords hardcoded (no escalable)
+- Agregar un tool nuevo = editar `main.py` en 4+ lugares
+
+### Ahora (v4.0)
+- 43 tools en 14 módulos de `dexter/tools/` (registry limpia)
+- `get_relevant_tools()` data-driven (KEYWORDS en cada módulo, cobertura 100%)
+- Agregar un tool = crear/editar un módulo (1-2 lugares)
+- `dexter/tools/__init__.py` es el registry agregador (`ALL_SCHEMAS`, `ALL_FUNCTIONS`, `KEYWORDS_BY_MODULE`)
+- **0 líneas removidas de main.py** — backward compat 100%
+
+### Mapeo: tools anteriores → módulos
+
+| Categoría v3.7 | Módulo v4.0 |
+|----------------|-------------|
+| Búsquedas (4) + Transacciones (4) + Reportes (3+2) | `search` + `transactions` + `reports` |
+| Web Search (2) + API Explorer (5) + Code (1) | `api_explorer` (5) + `web_code` (1) + `journal` (2) |
+| Bank Feed Intelligence (4) + Procesar CSV (1) | `bank_feed` (5) |
+| User Behavior Learning (4) | `behavior` (4) |
+| Dynamic Report Generator (2) | `report_custom` (2) |
+| Multi-empresa (1) | `admin` (2, incluye `refrescar_chart_accounts`) |
+| *(nuevo)* | `batch` (3) — `procesar_csv_depositos`, `crear_template_csv`, `depositar_lote_csv` |
+| *(nuevo)* | `reconciliation` (3) — BNK-RECON tag-only |
+| *(nuevo)* | `ocr` (1) — `procesar_lote_bills` |
+| *(nuevo)* | `tokens` (2) — `obtener_estadisticas_tokens`, `generar_informe_tokens` |
+
+**Para más detalles técnicos, ver [`dexter/tools/README.md`](../dexter/tools/README.md)**.
