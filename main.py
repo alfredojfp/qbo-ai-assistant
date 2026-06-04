@@ -64,6 +64,10 @@ from company_manager import (
     save_company_meta,
     get_company_meta
 )
+
+# Sistema centralizado de logging de errores (dexter.error_log)
+from dexter.error_log import log_error as _log_error
+
 import pandas as pd
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment
@@ -244,6 +248,14 @@ def refresh_qb_token():
         return True
     else:
         print(f"❌ Error al refrescar token: {response.text}")
+        _log_error(
+            f"Refresh token failed: HTTP {response.status_code}",
+            category="auth",
+            extra={
+                "status_code": response.status_code,
+                "response_preview": response.text[:500],
+            },
+        )
         return False
 
 def qbo_request(method: str, endpoint: str, data: dict = None, params: dict = None) -> requests.Response:
@@ -274,6 +286,20 @@ def qbo_request(method: str, endpoint: str, data: dict = None, params: dict = No
                 response = requests.get(url, headers=headers, params=params)
             else:
                 response = requests.post(url, headers=headers, json=data)
+
+    # Si la respuesta final no es 2xx, persistir en el log para diagnóstico
+    if response.status_code >= 400:
+        _log_error(
+            f"QBO API {method} /{endpoint} → HTTP {response.status_code}: {response.text[:200]}",
+            category="api_call",
+            extra={
+                "method": method,
+                "endpoint": endpoint,
+                "status_code": response.status_code,
+                "response_preview": response.text[:500],
+                "request_data_preview": (json.dumps(data)[:200] if data else None),
+            },
+        )
 
     return response
 
@@ -686,6 +712,40 @@ def create_invoice(customer_id: str, line_items: List[dict], txn_date: str = Non
             "success": False,
             "error": response.text
         }
+
+def create_customer(display_name: str, email: str = None, phone: str = None,
+                    address: str = None, company_name: str = None) -> dict:
+    """Crea un cliente (Customer) en QuickBooks."""
+    log_operation("customers_created")
+
+    customer_data: Dict[str, Any] = {"DisplayName": display_name}
+
+    if company_name:
+        customer_data["CompanyName"] = company_name
+    if email:
+        customer_data["PrimaryEmailAddr"] = {"Address": email}
+    if phone:
+        customer_data["PrimaryPhone"] = {"FreeFormNumber": phone}
+    if address:
+        customer_data["BillAddr"] = {"Line1": address}
+
+    response = qbo_request("POST", "customer", data=customer_data)
+
+    if response.status_code == 200:
+        customer = response.json()["Customer"]
+        return {
+            "success": True,
+            "customer_id": customer["Id"],
+            "display_name": customer.get("DisplayName"),
+            "company_name": customer.get("CompanyName"),
+            "balance": customer.get("Balance", 0),
+            "active": customer.get("Active", True),
+        }
+    return {
+        "success": False,
+        "error": response.text,
+        "status_code": response.status_code,
+    }
 
 def create_bill(vendor_id: str, line_items: List[dict], txn_date: str = None,
                due_date: str = None, memo: str = None) -> dict:
@@ -1592,8 +1652,20 @@ def call_llm(user_message: str, tools: List[dict] = None, max_iterations: int = 
                     result_str = json.dumps(result_data, ensure_ascii=False)
                 except Exception as e:
                     result_str = json.dumps({"error": str(e)})
+                    _log_error(
+                        e,
+                        category="tool_dispatch",
+                        tool_name=function_name,
+                        extra={"arguments": arguments, "user_message": user_message},
+                    )
             else:
                 result_str = json.dumps({"error": f"Tool '{function_name}' no encontrado"})
+                _log_error(
+                    f"Tool '{function_name}' no encontrado en TOOL_FUNCTIONS",
+                    category="tool_dispatch",
+                    tool_name=function_name,
+                    extra={"user_message": user_message},
+                )
 
             # Agregar resultado al historial
             conversation_history.append({
@@ -2482,6 +2554,11 @@ def tool_crear_pago(customer_id: str, amount: float, cuenta_id: str, fecha: str 
     """Tool: Crea payment"""
     return create_payment(customer_id, amount, cuenta_id, fecha, aplicar_a_invoices)
 
+def tool_crear_cliente(nombre: str, email: str = None, telefono: str = None,
+                       direccion: str = None, empresa: str = None) -> dict:
+    """Tool: Crea un cliente (Customer) en QuickBooks."""
+    return create_customer(nombre, email, telefono, direccion, empresa)
+
 def tool_generar_reporte_pl(fecha_inicio: str, fecha_fin: str, metodo: str = "Accrual") -> dict:
     """Tool: Genera P&L"""
     df = generate_pl_report(fecha_inicio, fecha_fin, metodo)
@@ -2748,6 +2825,33 @@ def tool_gestionar_empresas(accion: str, nombre: str = None, link_o_id: str = No
         }
     
     return {"success": False, "message": "Acción no reconocida."}
+
+def tool_ver_log_errores(n: int = 20, categoria: str = None) -> dict:
+    """Tool: Muestra las últimas N entradas del log de errores persistido.
+
+    Args:
+        n:        Número de entradas recientes a retornar (default 20).
+        categoria: Filtrar por categoría (api_call, tool_dispatch, user_input,
+                   auth, unknown). Si es None, retorna todas.
+    """
+    from dexter.error_log import get_recent_errors
+    entries = get_recent_errors(n=max(1, min(n, 200)))
+    if categoria:
+        entries = [e for e in entries if e.get("category") == categoria]
+    return {
+        "total": len(entries),
+        "log_file": str(_LOG_FILE_FOR_TOOLS),
+        "entries": entries,
+    }
+
+def tool_limpiar_log_errores() -> dict:
+    """Tool: Borra el archivo de log de errores."""
+    from dexter.error_log import clear_log
+    clear_log()
+    return {"success": True, "message": "Log de errores borrado."}
+
+# Resolver el path del log una vez para tool_ver_log_errores
+from dexter.error_log import LOG_FILE as _LOG_FILE_FOR_TOOLS
 
 def tool_procesar_bank_feed_csv(archivo_csv: str) -> dict:
     """Tool: Procesa CSV de Bank Feed con splits"""
@@ -3382,6 +3486,12 @@ def main_loop():
                 break
             except Exception as e:
                 print(f"\n❌ Error: {e}\n")
+                _log_error(
+                    e,
+                    category="user_input",
+                    user_input=user_input,
+                    company=(CURRENT_COMPANY or {}).get("name"),
+                )
                 import traceback
                 traceback.print_exc()
 
@@ -3390,6 +3500,12 @@ def main_loop():
             break
         except Exception as e:
             print(f"\n❌ Error: {e}\n")
+            _log_error(
+                e,
+                category="user_input",
+                user_input=user_input if "user_input" in locals() else None,
+                company=(CURRENT_COMPANY or {}).get("name"),
+            )
             import traceback
             traceback.print_exc()
 

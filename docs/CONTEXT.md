@@ -1,12 +1,12 @@
 # QuickBooks AI Assistant - Context Documentation
 
 **Versión:** 4.0.0-dev 🆕  
-**Fecha:** Junio 2026 (Refactor modular Fases 0-7)  
+**Fecha:** Junio 2026 (Refactor modular Fases 0-7 + sistema de logging)  
 **Asistente:** Dexter (IA Experto)  
 **Desarrollador:** Alfredo  
 **LLM:** DeepSeek V3 + Llama 3 (Hybrid Routing vía OpenRouter)  
 
-> **Nota (2026-06-04):** Refactor monolítico → registry modular completado. 43 tools en 14 módulos de `dexter/tools/`. Para el catálogo exhaustivo de tools, ver [`CAPACIDADES.md`](CAPACIDADES.md). Para arquitectura técnica, ver [`ARCHITECTURE.md`](ARCHITECTURE.md) y [`dexter/tools/README.md`](../dexter/tools/README.md). Para multi-empresa, ver [`MULTI_EMPRESA.md`](MULTI_EMPRESA.md). Para cambios recientes, ver [`CHANGELOG.md`](CHANGELOG.md). Para el log de desarrollo técnico, ver [`roadmap/DEVELOPMENT_LOG.md`](roadmap/DEVELOPMENT_LOG.md).
+> **Nota (2026-06-04):** Refactor monolítico → registry modular completado. 46 tools en 14 módulos de `dexter/tools/` + sistema de logging de errores en `dexter/error_log.py`. Para el catálogo exhaustivo de tools, ver [`CAPACIDADES.md`](CAPACIDADES.md). Para arquitectura técnica, ver [`ARCHITECTURE.md`](ARCHITECTURE.md) y [`dexter/tools/README.md`](../dexter/tools/README.md). Para multi-empresa, ver [`MULTI_EMPRESA.md`](MULTI_EMPRESA.md). Para cambios recientes, ver [`CHANGELOG.md`](CHANGELOG.md). Para el log de desarrollo técnico, ver [`roadmap/DEVELOPMENT_LOG.md`](roadmap/DEVELOPMENT_LOG.md).
 
 ---
 
@@ -23,7 +23,8 @@ Eliminar la necesidad de navegar la interfaz de QuickBooks Online para tareas re
 - ✅ **Guía Interactiva (v3.7)**: Onboarding paso a paso + Matching Engine Bank Feed + Manual de Usuario vivo
 - ✅ **Dexter**: Identidad y personalidad refinada del asistente
 - ✅ **6 Módulos de Autonomía** con 18 funciones avanzadas
-- ✅ **43 Function Tools** totales en **14 módulos de dominio** (`dexter/tools/`, v4.0)
+- ✅ **46 Function Tools** totales en **14 módulos de dominio** (`dexter/tools/`, v4.0)
+- ✅ **Sistema de logging de errores** (`dexter/error_log.py`, v4.0) — JSONL persistido en `logs/dexter_errors.log` con categorías (api_call, tool_dispatch, user_input, auth)
 - ✅ **Registry modular data-driven** (v4.0: `get_relevant_tools` itera `KEYWORDS_BY_MODULE`)
 - ✅ **Optimización de tokens 57%** (ahorro masivo de costos)
 - ✅ **OCR de facturas PDF** con extracción inteligente
@@ -44,12 +45,12 @@ QuickBooks AI Assistant
 │   ├── Carga/Guardado de contextos aislados
 │   └── Menú interactivo de selección al inicio
 │
-├── main.py (~3,551 líneas) ⬆️ ACTUALIZADO v4.0 (shim de dexter.tools)
+├── main.py (~3,608 líneas) ⬆️ ACTUALIZADO v4.0 (shim de dexter.tools + log integration)
 │   ├── Identidad: **Dexter** (Personalidad profesional/amigable)
 │   ├── Autenticación QuickBooks OAuth 2.0 (Multi-token)
 │   ├── Chart of Accounts dinámico por empresa
-│   ├── 24 tool_xxx wrappers (backward compat shim)
-│   ├── TOOLS + TOOL_FUNCTIONS dicts (43 entradas)
+│   ├── 26 tool_xxx wrappers (backward compat shim)
+│   ├── TOOLS + TOOL_FUNCTIONS dicts (46 entradas)
 │   ├── get_relevant_tools() data-driven (KEYWORDS_BY_MODULE)
 │   ├── Model Routing híbrido: Llama 3 ↔ DeepSeek V3 (v3.6)
 │   ├── Bilingüe ES/EN con persistencia por empresa (v3.6)
@@ -1027,15 +1028,15 @@ Proyecto privado desarrollado por Alfredo para automatización contable interna.
 
 **Cambios en v4.0 (2026-06-04) — Refactor modular completo:**
 
-> **El monolito `main.py` (3,551 líneas) se mantiene 100% intacto por backward compat, pero ahora delega a `dexter/tools/` (registry modular de 43 tools en 14 dominios).**
+> **El monolito `main.py` (3,608 líneas) se mantiene 100% intacto por backward compat, pero ahora delega a `dexter/tools/` (registry modular de 46 tools en 14 dominios) y `dexter/error_log.py` (sistema de logging de errores).**
 
 - ✅ **Registry modular:** `dexter/tools/` con 14 módulos de dominio + `_schema_utils.py` + `__init__.py` agregador. Cada módulo declara `SCHEMA` + `FUNCTIONS` + `KEYWORDS` (data-driven routing).
-- ✅ **Data-driven tool routing:** `get_relevant_tools()` itera `KEYWORDS_BY_MODULE` en vez de 27 keywords hardcoded. Cobertura: 43/43 tools pueden activarse.
-- ✅ **Investigación "stubs fantasma":** empíricamente demostrado que NO HAY STUBS — los 43 tools son reales. El análisis previo usó regex malo. `dexter/tools/` ahora los cubre todos.
+- ✅ **Data-driven tool routing:** `get_relevant_tools()` itera `KEYWORDS_BY_MODULE` en vez de 27 keywords hardcoded. Cobertura: 46/46 tools pueden activarse.
+- ✅ **Investigación "stubs fantasma":** empíricamente demostrado que NO HAY STUBS — los 46 tools son reales. El análisis previo usó regex malo. `dexter/tools/` ahora los cubre todos.
 - ✅ **Backward compat total:** 0 líneas removidas de main.py. `from main import tool_xxx` sigue funcionando (24 tool_xxx wrappers).
 - ✅ **Tests:** 287/287 pasando (+25 nuevos: 11 aggregator + 2 shim + 3 parametrizados de los 14 dominios + 9 verificados).
-- ✅ **Documentación:** `dexter/tools/README.md` nuevo, `CHANGELOG.md` actualizado con métricas, `CAPACIDADES.md` reescrito (43 tools en 14 módulos), `ARCHITECTURE.md` extendido con diagrama v4.0.
-- 📦 **Distribuciones de tools por dominio:** `bank_feed` (5), `search` (4), `transactions` (4), `reports` (5), `tokens` (2), `admin` (2), `batch` (3), `reconciliation` (3), `ocr` (1), `behavior` (4), `report_custom` (2), `api_explorer` (5), `journal` (2), `web_code` (1) = **43 totales**.
+- ✅ **Documentación:** `dexter/tools/README.md` nuevo, `CHANGELOG.md` actualizado con métricas, `CAPACIDADES.md` reescrito (46 tools en 14 módulos), `ARCHITECTURE.md` extendido con diagrama v4.0.
+- 📦 **Distribuciones de tools por dominio:** `bank_feed` (5), `search` (4), `transactions` (5)⬆️, `reports` (5), `tokens` (2), `admin` (4)⬆️, `batch` (3), `reconciliation` (3), `ocr` (1), `behavior` (4), `report_custom` (2), `api_explorer` (5), `journal` (2), `web_code` (1) = **46 totales**.
 
 **Cambios en v3.7:**
 - ✅ **Guía Interactiva:** Dexter detecta el estado de las carpetas y guía al usuario paso a paso (Onboarding).

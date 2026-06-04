@@ -4,6 +4,7 @@ Documento técnico de referencia para desarrolladores que necesiten entender, ma
 
 > **Versión:** 4.0.0-dev
 > **Refactor:** Fases 0-7 completadas 2026-06-04 — ver [`dexter/tools/README.md`](../dexter/tools/README.md) y [`CHANGELOG.md`](CHANGELOG.md)
+> **Última actualización:** 2026-06-04 — agregado `crear_cliente`, `ver_log_errores`, `limpiar_log_errores`, `dexter/error_log.py`
 
 ---
 
@@ -14,8 +15,9 @@ Dexter es un agente conversacional en Python que conecta un LLM (DeepSeek V3) co
 - **Aislamiento de contexto por empresa** (v3.5+)
 - **Optimización agresiva de tokens** (57% reducción vs v2.0)
 - **Extensibilidad mediante módulos de autonomía** (6 módulos en `autonomia/`)
-- **Registry modular de tools** (v4.0: 14 módulos en `dexter/tools/`)
+- **Registry modular de tools** (v4.0: 14 módulos en `dexter/tools/`, 46 tools totales)
 - **Data-driven tool routing** (v4.0: `get_relevant_tools` itera `KEYWORDS_BY_MODULE`)
+- **Sistema de logging de errores** (v4.0: `dexter/error_log.py` persiste errores en `logs/dexter_errors.log`)
 
 ---
 
@@ -29,13 +31,14 @@ Dexter es un agente conversacional en Python que conecta un LLM (DeepSeek V3) co
                              │
                              ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                       main.py (3,551 líneas)                    │
+│                       main.py (3,608 líneas)                    │
 │  ┌──────────────────────────────────────────────────────────┐  │
 │  │ • Loop conversacional (main_loop)                         │  │
 │  │ • System prompt dinámico                                  │  │
-│  │ • 24 tool_xxx wrappers (backward compat shim)            │  │
+│  │ • 26 tool_xxx wrappers (backward compat shim)            │  │
 │  │ • Tracking de tokens (CSV + Excel)                        │  │
 │  │ • get_relevant_tools() data-driven                        │  │
+│  │ • Integración con dexter.error_log (persiste errores)    │  │
 │  └──────────────────────────────────────────────────────────┘  │
 └────────────┬──────────────────────────┬─────────────────────────┘
              │                          │
@@ -44,13 +47,13 @@ Dexter es un agente conversacional en Python que conecta un LLM (DeepSeek V3) co
 │  company_manager.py    │   │  dexter/tools/ (v4.0 — 14 módulos)│
 │  • Multi-empresa       │   │  ┌──────────────────────────┐    │
 │  • meta.json aislado   │   │  │ Registry agregador       │    │
-│  • Hot-swap            │   │  │ • ALL_SCHEMAS (43)       │    │
-│                        │   │  │ • ALL_FUNCTIONS (43)     │    │
+│  • Hot-swap            │   │  │ • ALL_SCHEMAS (46)       │    │
+│                        │   │  │ • ALL_FUNCTIONS (46)     │    │
 │                        │   │  │ • KEYWORDS_BY_MODULE     │    │
 │                        │   │  └──────────────────────────┘    │
 │                        │   │  • bank_feed  (5)   • search (4) │
-│                        │   │  • transactions (4) • reports (5)│
-│                        │   │  • tokens (2)      • admin   (2) │
+│                        │   │  • transactions (5⬆)• reports (5)│
+│                        │   │  • tokens (2)      • admin   (4⬆)│
 │                        │   │  • batch (3)       • recon   (3) │
 │                        │   │  • ocr (1)         • behavior(4) │
 │                        │   │  • report_custom (2)• api_exp(5)│
@@ -58,6 +61,14 @@ Dexter es un agente conversacional en Python que conecta un LLM (DeepSeek V3) co
 └────────────┬───────────┘   └──────────────┬───────────────────┘
              │                               │
              ▼                               ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              dexter/error_log.py (v4.0 — cross-cutting)         │
+│  • logs/dexter_errors.log (JSONL rotado 5 MB × 3 backups)       │
+│  • Categorías: api_call, tool_dispatch, user_input, auth        │
+│  • API: log_error, get_recent_errors, tail_log, clear_log       │
+└─────────────────────────────────────────────────────────────────┘
+             │
+             ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │         autonomia/ (6 módulos — funciones core)                │
 │  • nivel1_websearch         • bank_feed_intelligence            │

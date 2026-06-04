@@ -149,6 +149,7 @@ yarn-error.log*
 # BACKUPS
 # =================================================================
 backups/
+Backup/
 *.backup
 *.bak
 *.old
@@ -160,6 +161,22 @@ tmp/
 temp/
 *.tmp
 *.temp
+
+# =================================================================
+# WORKSPACES DE PRUEBA (carpetas con scripts manuales previos)
+# =================================================================
+Test/
+
+# PDFs de bills pendientes (datos reales del cliente, sensibles)
+Pending bills/*.pdf
+"Bills"/*.pdf
+"Bills "/*.pdf
+
+# Archivos generados por tests manuales (no parte de la suite oficial)
+test_results.json
+
+# Documentación interna en carpetas de trabajo (notas personales, drafts)
+Bank\ Reconciliation/*.txt
 
 # =================================================================
 # DOCKER (si se usa en el futuro)
@@ -183,6 +200,23 @@ sample_data/
 # Archivos de configuración local
 config.local.json
 settings.local.json
+
+# =================================================================
+# DEXTER (v4.0+) — multi-empresa + sistema de logs
+# =================================================================
+# Estado runtime de empresa actual (single source of truth en .current_company)
+.current_company
+
+# Empresas registradas (per-company data, regenerable vía gestionar_empresas)
+companies/
+
+# Outputs generados (reportes, exports)
+outputs/
+
+# Logs persistidos (dexter.error_log — JSONL rotado, regenerable)
+logs/
+*.log
+!install.sh  # el .sh install puede loggear pero no es log per se
 
 # =================================================================
 # DEXTER (v4.0+) — motor batch + reconciliación

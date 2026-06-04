@@ -1,12 +1,13 @@
 # 🔧 Catálogo de Capacidades
 
-Catálogo exhaustivo de las **43 function tools** organizadas en **14 módulos de dominio** que componen QuickBooks AI Assistant (Dexter).
+Catálogo exhaustivo de las **46 function tools** organizadas en **14 módulos de dominio** que componen QuickBooks AI Assistant (Dexter), más el sistema de **logging de errores** (`dexter/error_log.py`).
 
 > **Versión del proyecto:** 4.0.0-dev
-> **Total de tools:** 43
+> **Total de tools:** 46
 > **Total de módulos de dominio:** 14
 > **Organización:** `dexter/tools/` (refactor Fases 0-7, 2026-06-04)
-> **Novedades v4.0:** Registry modular, data-driven tool routing, BNK-RECON tag-only, batch genérico, multi-empresa persistencia
+> **Sistema de log:** `dexter/error_log.py` (cross-cutting, no es un tool del LLM)
+> **Novedades v4.0:** Registry modular, data-driven tool routing, BNK-RECON tag-only, batch genérico, multi-empresa persistencia, `crear_cliente`, log de errores
 > **Documentación técnica:** `dexter/tools/README.md`
 
 ---
@@ -16,10 +17,10 @@ Catálogo exhaustivo de las **43 function tools** organizadas en **14 módulos d
 | Módulo | Tools | Categoría | Descripción |
 |--------|---:|---|-------------|
 | `search` | 4 | Búsqueda | Localizar clientes, vendors, cuentas, items |
-| `transactions` | 4 | Crear | Crear invoices, bills, deposits, payments |
+| `transactions` | 5 ⬆️ | Crear | Invoices, bills, deposits, payments, **crear_cliente** (NEW) |
 | `reports` | 5 | Reportes | P&L, balance sheet, guardar/cargar/listar configs |
 | `tokens` | 2 | Tracking | Estadísticas de uso + informe Excel |
-| `admin` | 2 | Administración | Refrescar chart, multi-empresa |
+| `admin` | 4 ⬆️ | Administración | Refrescar chart, multi-empresa, **ver/limpiar log errores** (NEW) |
 | `batch` | 3 | Lote | CSV depósitos, template, batch engine |
 | `reconciliation` | 3 | Reconciliación | BNK-RECON tag-only (no crea txns) |
 | `ocr` | 1 | OCR | Procesar PDFs de `Pending bills/` |
@@ -29,7 +30,33 @@ Catálogo exhaustivo de las **43 function tools** organizadas en **14 módulos d
 | `journal` | 2 | Asientos | Journal entry, transferencia |
 | `web_code` | 1 | Ejecución | Ejecutar Python dinámicamente |
 | `bank_feed` | 5 | Bank Feed | Clasificación inteligente + CSV processor |
-| **TOTAL** | **43** | | |
+| **TOTAL** | **46** | | |
+
+---
+
+## 🆕 Cambios v4.0 (2026-06-04)
+
+### Tools nuevos
+- **`crear_cliente`** (en `transactions`): crea un Customer en QBO. Solo requiere `nombre`; opcionales `email`, `telefono`, `direccion`, `empresa`.
+- **`ver_log_errores`** (en `admin`): retorna las últimas N entradas del log de errores persistido. Útil para diagnóstico post-mortem.
+- **`limpiar_log_errores`** (en `admin`): borra el archivo `logs/dexter_errors.log`.
+
+### Sistema de logging de errores (`dexter/error_log.py`)
+
+Módulo cross-cutting que persiste automáticamente todos los errores capturados por Dexter en `logs/dexter_errors.log` (formato JSON Lines, rotado a 5 MB × 3 backups).
+
+**API interna** (no son tools del LLM):
+- `log_error(error, category, user_input, tool_name, company, extra)` → dict
+- `get_recent_errors(n=20)` → List[dict]
+- `tail_log(n=50)` → str (formato legible)
+- `clear_log()` → None
+
+**Categorías**:
+- `api_call`: respuestas QBO API 4xx/5xx
+- `tool_dispatch`: excepciones lanzadas por tools durante function calling
+- `user_input`: excepciones no atrapadas en main_loop
+- `auth`: errores de refresh de OAuth tokens
+- `unknown`: fallback para categorías custom
 
 ---
 

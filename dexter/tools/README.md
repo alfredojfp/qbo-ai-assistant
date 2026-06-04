@@ -1,20 +1,20 @@
 # dexter/tools/ — Registry de Function Tools
 
 > **Versión:** 4.0.0-dev
-> **Última actualización:** 2026-06-04
-> **Total:** 43 function tools en 14 módulos de dominio
+> **Última actualización:** 2026-06-04 (46 tools)
+> **Total:** 46 function tools en 14 módulos de dominio
 
 ## 📋 Overview
 
-`dexter/tools/` es la **capa de abstracción sobre los function tools** que Dexter expone al LLM. Reemplaza el monolito de `main.py` (3,551 líneas) por una **registry modular orientada a dominios** donde cada módulo declara:
+`dexter/tools/` es la **capa de abstracción sobre los function tools** que Dexter expone al LLM. Reemplaza el monolito de `main.py` (3,608 líneas) por una **registry modular orientada a dominios** donde cada módulo declara:
 
 - `SCHEMA`: schemas en formato OpenAI (`{type:"function", function:{name, description, parameters}}`)
 - `FUNCTIONS`: dict `name → callable` para function calling dispatch
 - `KEYWORDS`: lista de keywords que activan el módulo (usado por `get_relevant_tools()`)
 
 El registry agregador (`__init__.py`) itera los 14 módulos y construye:
-- `ALL_SCHEMAS`: lista de 43 schemas para inyectar al LLM
-- `ALL_FUNCTIONS`: dict de 43 funciones para dispatch
+- `ALL_SCHEMAS`: lista de 46 schemas para inyectar al LLM
+- `ALL_FUNCTIONS`: dict de 46 funciones para dispatch
 - `KEYWORDS_BY_MODULE`: dict módulo → keywords (routing metadata)
 
 ## 🗂️ Estructura
@@ -26,10 +26,10 @@ dexter/tools/
 │
 ├── bank_feed.py            # 5 tools — clasificación bank feed + CSV
 ├── search.py               # 4 tools — buscar cliente/vendor/cuenta/item
-├── transactions.py         # 4 tools — crear invoice/bill/deposito/pago
+├── transactions.py         # 5 tools — crear invoice/bill/deposito/pago/cliente
 ├── reports.py              # 5 tools — P&L, BS, guardar/cargar/listar
 ├── tokens.py               # 2 tools — estadísticas + informe Excel
-├── admin.py                # 2 tools — refrescar chart, gestionar empresas
+├── admin.py                # 4 tools — refrescar chart, gestionar empresas, ver/limpiar log errores
 ├── batch.py                # 3 tools — CSV depósitos, template, lote
 ├── reconciliation.py       # 3 tools — BNK-RECON tag-only
 ├── ocr.py                  # 1 tool  — procesar lote de PDFs
@@ -51,7 +51,7 @@ dexter/tools/
 | `transactions` | 4 | Crear transacciones | Invoice, bill, deposit, payment |
 | `reports` | 5 | Reportes predefinidos | P&L, Balance Sheet, guardar/cargar configs |
 | `tokens` | 2 | Tracking de costos | Estadísticas por período, Excel de informe |
-| `admin` | 2 | Administración | Refrescar chart, multi-empresa |
+| `admin` | 4 | Administración | Refrescar chart, multi-empresa, ver/limpiar log errores |
 | `batch` | 3 | Procesamiento en lote | CSV depósitos con state machine |
 | `reconciliation` | 3 | Reconciliación | BNK-RECON tag-only (no crea txns) |
 | `ocr` | 1 | OCR de PDFs | Extraer bills de carpeta `Pending bills/` |

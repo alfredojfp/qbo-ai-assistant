@@ -11,7 +11,7 @@
 
 **Asistente conversacional inteligente para automatizar tareas contables en QuickBooks Online**
 
-Habla con tu contabilidad en español natural. 43 function tools en 14 módulos. Multi-empresa. OCR. Optimizado al 57% en tokens.
+Habla con tu contabilidad en español natural. 46 function tools en 14 módulos. Multi-empresa. OCR. Optimizado al 57% en tokens. Log de errores persistente.
 
 [Instalación](#-instalación-rápida) • [Características](#-características-principales) • [Documentación](#-documentación) • [Ejemplos](#-uso-básico)
 
@@ -75,7 +75,7 @@ python main.py
 | 🏢 **Multi-empresa (v3.5)** | Gestiona múltiples empresas QBO con tokens aislados y cambio en caliente |
 | 🌐 **Bilingüe ES/EN (v3.6)** | Model Routing (Llama 3 / DeepSeek V3) + traducción dinámica con persistencia por empresa |
 | 🎯 **Guía interactiva (v3.7)** | Onboarding paso a paso, Matching Engine para conciliación bancaria, Manual de Usuario vivo |
-| 🆕 **43 function tools en 14 módulos (v4.0)** | [`dexter/tools/`](dexter/tools/) — registry modular, data-driven routing |
+| 🆕 **46 function tools en 14 módulos (v4.0)** | [`dexter/tools/`](dexter/tools/) — registry modular, data-driven routing |
 | 🧠 **6 módulos de autonomía** | Web search, API explorer, code execution, bank feed ML, user learning, dynamic reports |
 | 📄 **OCR de facturas PDF** | Extrae datos de PDFs y crea bills automáticamente (Gemini Flash 2.0) |
 | 🏦 **Reconciliación bancaria** | BNK-RECON tag-only (no crea txns) + matching exacto+fuzzy |
@@ -158,7 +158,7 @@ python main.py
 | 📕 [**docs/TROUBLESHOOTING.md**](docs/TROUBLESHOOTING.md) | 👥 Todos | Solución de problemas comunes |
 | 📙 [**docs/CONTEXT.md**](docs/CONTEXT.md) | 🛠️ Devs / LLMs | Contexto completo del proyecto (32 KB) |
 | 🏗️ [**docs/ARCHITECTURE.md**](docs/ARCHITECTURE.md) | 🛠️ Devs | Diagramas, dataflow, patrones de diseño |
-| 🔧 [**docs/CAPACIDADES.md**](docs/CAPACIDADES.md) | 🛠️ Devs | Catálogo de los 43 tools y 14 módulos |
+| 🔧 [**docs/CAPACIDADES.md**](docs/CAPACIDADES.md) | 🛠️ Devs | Catálogo de los 46 tools y 14 módulos |
 | 🏢 [**docs/MULTI_EMPRESA.md**](docs/MULTI_EMPRESA.md) | 👥 Todos | Guía específica multi-empresa (v3.5) |
 | 🚀 [**docs/INSTALL.md**](docs/INSTALL.md) | 🛠️ Devs | Instalación detallada paso a paso |
 | 📜 [**docs/CHANGELOG.md**](docs/CHANGELOG.md) | 👥 Todos | Historial versionado v1.0 → v3.7 |
@@ -279,7 +279,7 @@ python main.py
 
 ## 🔧 Catálogo de capacidades
 
-**43 function tools** distribuidos en 14 módulos de dominio. Ver [`docs/CAPACIDADES.md`](docs/CAPACIDADES.md) para el catálogo completo, o [`dexter/tools/README.md`](dexter/tools/README.md) para la arquitectura modular (v4.0).
+**46 function tools** distribuidos en 14 módulos de dominio. Ver [`docs/CAPACIDADES.md`](docs/CAPACIDADES.md) para el catálogo completo, o [`dexter/tools/README.md`](dexter/tools/README.md) para la arquitectura modular (v4.0).
 
 | Categoría | Tools | Ejemplos |
 |-----------|-------|----------|

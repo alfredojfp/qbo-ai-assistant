@@ -8,10 +8,47 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 ## [Unreleased] - 2026-06-04
 
 ### 🆕 Agregado
+- **`crear_cliente` (tool)**: crea clientes (Customers) en QBO vía API. Antes el LLM tenía que decir "no tengo esa función" — ahora es first-class. Solo requiere `nombre` (DisplayName); opcionales `email`, `telefono`, `direccion`, `empresa`. Agregado a `dexter/tools/transactions.py` (módulo pasa de 4 → 5 tools).
+- **`ver_log_errores` y `limpiar_log_errores` (tools)**: permiten inspeccionar y limpiar el log de errores persistido desde dentro de Dexter. Agregados a `dexter/tools/admin.py` (módulo pasa de 2 → 4 tools).
+- **`dexter/error_log.py`**: sistema centralizado de logging de errores. Persiste cada error en `logs/dexter_errors.log` (formato JSON Lines rotado a 5 MB × 3 backups). API: `log_error(error, category, user_input, tool_name, company, extra)`, `get_recent_errors(n)`, `tail_log(n)`, `clear_log()`. Categorías: `api_call`, `tool_dispatch`, `user_input`, `auth`, `unknown`.
+- **Integración automática del log en main.py**:
+  - `qbo_request()` loggea cada respuesta 4xx/5xx con `category="api_call"` + extra `endpoint`, `status_code`, `response_preview`, `request_data_preview`
+  - `refresh_qb_token()` loggea fallos de refresh con `category="auth"`
+  - Tool dispatch (call_llm inner loop) loggea excepciones de tools con `category="tool_dispatch"`, `tool_name`, `arguments`, `user_message`
+  - `main_loop()` loggea excepciones no atrapadas con `category="user_input"`, `user_input`, `company`
+- **`scripts/oauth_flow.py`**: script para hacer el OAuth flow INICIAL (no solo refresh). Spawnea HTTP server en puerto 8000, abre el navegador, captura el callback, intercambia code por tokens, guarda en `.env` con `QB_ACCESS_TOKEN` + `QB_REFRESH_TOKEN` + `QB_REALM_ID`. Imprime resumen sin echo de tokens. Necesario para conectar empresas nuevas (sandbox, producción) que aún no tienen tokens.
+- **Tests**: nuevo `tests/test_error_log.py` con 13 tests (JSONL format, append, ISO 8601, get_recent, tail, clear, extra, etc.) + 6 tests en `test_tools_aggregator.py` para los nuevos tools. **Total: 311/311 pasando** (era 287).
+- **Setup multi-empresa documentado**: ahora `.env` puede apuntar a sandbox O producción, y `oauth_flow.py` regenera tokens sin perder configuración. `companies/<nombre>/meta.json` guarda tokens por empresa con aislamiento.
+
+### 🔄 Cambiado
+- `.gitignore` actualizado: agregados `companies/`, `secrets/`, `logs/`, `outputs/`, `.current_company`, `Backup/`, `Test/`, `Pending bills/*.pdf`, `Bank Reconciliation/*.txt`, `test_results.json`. Reduce ruido de untracked files.
+- Routing keywords de `transactions.py`: agregados `"cliente"`, `"customer"`, `"nuevo cliente"` para que el LLM active `crear_cliente` cuando el usuario lo pida.
+- Routing keywords de `admin.py`: agregados `"log"`, `"error"`, `"errores"`, `"diagnóstico"` para activar las nuevas tools de log.
+- `_schema_utils.py` se mantiene sin cambios (no se usó para esta entrega pero está disponible).
+
+### 🐛 Fixed
+- **LXM: el LLM reportaba "no tengo acceso a la función agregar_cliente"** porque la tool no existía. Ahora existe (`crear_cliente`) y está expuesta correctamente. Cliente `AlfredoTPM` creado en sandbox como verificación end-to-end (ID 61).
+- **Loop de errores silenciosos**: antes, los errores en tool_dispatch solo se imprimían a stdout (`traceback.print_exc()`) y se perdían al cerrar la sesión. Ahora se persisten en disco y pueden revisarse post-mortem con `tail_log()`.
+- **Tokens stale en `.env`**: cuando el usuario cambia de empresa o re-autentica, ahora `oauth_flow.py` actualiza `.env` automáticamente (antes solo `refresh_token.py` actualizaba y solo funcionaba si ya había tokens).
+
+### ⚠️ Backward compatibility
+- **main.py: 3,608 líneas (era 3,551 — +57 líneas por las 2 nuevas tool wrappers + integración del log).** 0 funciones removidas. Shim de dexter.tools intacto.
+- `from main import tool_xxx` sigue funcionando para los 26 tool_xxx definidos (24 previos + 2 nuevos).
+- `get_relevant_tools()` y `TOOL_FUNCTIONS` se actualizan automáticamente vía el registry agregador.
+
+### 📊 Métricas
+- **main.py**: 3,608 líneas (era 3,551 — +57)
+- **dexter/**: 17 archivos (era 15 — +2: `error_log.py` + `scripts/oauth_flow.py`)
+- **Tests**: 311/311 pasando (era 287) — **+24 tests** (13 error_log + 6 aggregator + 5 admin/log)
+- **Tools**: 46 totales (era 43 — +3: `crear_cliente`, `ver_log_errores`, `limpiar_log_errores`)
+- **Dominios de tools**: 14 (sin cambios — `dexter/error_log.py` es cross-cutting, no un tool del LLM)
+- **Categorías de error**: 5 (`api_call`, `tool_dispatch`, `user_input`, `auth`, `unknown`)
+- **Capacidad de log**: 5 MB × 3 backups = 20 MB máximo de logs en disco
+
 - **Refactor monolítico → arquitectura modular (Fases 0-7 completadas)**: 14 módulos en `dexter/tools/` con registry agregador
   - `dexter/tools/_schema_utils.py` — helpers `make_schema`, `prop_str`/`prop_num`/`prop_bool`/`prop_list`
   - `dexter/tools/__init__.py` — registry agregador con `ALL_SCHEMAS`, `ALL_FUNCTIONS`, `KEYWORDS_BY_MODULE` (data-driven routing)
-  - `dexter/tools/bank_feed.py` (5 tools), `search.py` (4), `transactions.py` (4), `reports.py` (5), `tokens.py` (2), `admin.py` (2), `batch.py` (3), `reconciliation.py` (3), `ocr.py` (1), `behavior.py` (4), `report_custom.py` (2), `api_explorer.py` (5), `journal.py` (2), `web_code.py` (1)
+  - `dexter/tools/bank_feed.py` (5 tools), `search.py` (4), `transactions.py` (5) ⬆️, `reports.py` (5), `tokens.py` (2), `admin.py` (4) ⬆️, `batch.py` (3), `reconciliation.py` (3), `ocr.py` (1), `behavior.py` (4), `report_custom.py` (2), `api_explorer.py` (5), `journal.py` (2), `web_code.py` (1)
 - **Data-driven tool routing**: cada módulo declara sus `KEYWORDS`, `get_relevant_tools()` en main.py itera los 14 módulos para activar tools relevantes
 - **Shim de backward compat**: `from main import tool_xxx` sigue funcionando (24 tool_xxx en main.py, 19 tool_xxx via dexter.tools)
 - **Tests del agregador**: 11 tests de wiring + 3 tests parametrizados de los 14 dominios + 2 tests de shim. **287 tests pasando** (era 262)

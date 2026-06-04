@@ -79,10 +79,10 @@ class TestToolsAggregator(unittest.TestCase):
         self.assertIsInstance(ALL_SCHEMAS, list)
         self.assertIsInstance(ALL_FUNCTIONS, dict)
 
-    def test_count_is_43(self):
+    def test_count_is_46(self):
         from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
-        self.assertEqual(len(ALL_SCHEMAS), 43)
-        self.assertEqual(len(ALL_FUNCTIONS), 43)
+        self.assertEqual(len(ALL_SCHEMAS), 46)
+        self.assertEqual(len(ALL_FUNCTIONS), 46)
 
     def test_no_duplicate_names(self):
         from dexter.tools import ALL_SCHEMAS
@@ -113,10 +113,10 @@ class TestAllDomainModules(unittest.TestCase):
 
     EXPECTED_DOMAINS = [
         ("search", 4),
-        ("transactions", 4),
+        ("transactions", 5),
         ("reports", 5),
         ("tokens", 2),
-        ("admin", 2),
+        ("admin", 4),
         ("batch", 3),
         ("reconciliation", 3),
         ("ocr", 1),
@@ -143,6 +143,89 @@ class TestAllDomainModules(unittest.TestCase):
                 m = importlib.import_module(f"dexter.tools.{domain}")
                 self.assertEqual(len(m.SCHEMA), expected, f"{domain}.SCHEMA")
                 self.assertEqual(len(m.FUNCTIONS), expected, f"{domain}.FUNCTIONS")
+
+
+class TestCreateCustomerTool(unittest.TestCase):
+    """Tests para crear_cliente (agregado en transactions module)."""
+
+    def test_crear_cliente_in_transactions_module(self):
+        from dexter.tools.transactions import SCHEMA, FUNCTIONS
+        names = {_schema_name(s) for s in SCHEMA}
+        self.assertIn("crear_cliente", names)
+        self.assertIn("crear_cliente", FUNCTIONS)
+
+    def test_crear_cliente_in_global_registry(self):
+        from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
+        names = {_schema_name(s) for s in ALL_SCHEMAS}
+        self.assertIn("crear_cliente", names)
+        self.assertIn("crear_cliente", ALL_FUNCTIONS)
+
+    def test_crear_cliente_has_required_nombre_param(self):
+        from dexter.tools.transactions import SCHEMA
+        target = next(
+            s for s in SCHEMA
+            if _schema_name(s) == "crear_cliente"
+        )
+        inner = target["function"]
+        params = inner["parameters"]
+        self.assertIn("nombre", params["properties"])
+        self.assertIn("nombre", params["required"])
+
+    def test_crear_cliente_function_callable(self):
+        from dexter.tools import ALL_FUNCTIONS
+        from main import tool_crear_cliente
+        self.assertIs(ALL_FUNCTIONS["crear_cliente"], tool_crear_cliente)
+        self.assertTrue(callable(tool_crear_cliente))
+
+    def test_keywords_include_cliente(self):
+        """El routing debe activarse cuando el usuario menciona cliente/customer."""
+        from dexter.tools import KEYWORDS_BY_MODULE
+        from dexter.tools import transactions
+        kw = KEYWORDS_BY_MODULE["dexter.tools.transactions"]
+        joined = " ".join(kw).lower()
+        self.assertIn("cliente", joined)
+
+
+class TestErrorLogTools(unittest.TestCase):
+    """Tests para ver_log_errores y limpiar_log_errores (admin module)."""
+
+    def test_ver_log_errores_in_admin_module(self):
+        from dexter.tools.admin import SCHEMA, FUNCTIONS
+        names = {_schema_name(s) for s in SCHEMA}
+        self.assertIn("ver_log_errores", names)
+        self.assertIn("ver_log_errores", FUNCTIONS)
+
+    def test_limpiar_log_errores_in_admin_module(self):
+        from dexter.tools.admin import SCHEMA, FUNCTIONS
+        names = {_schema_name(s) for s in SCHEMA}
+        self.assertIn("limpiar_log_errores", names)
+        self.assertIn("limpiar_log_errores", FUNCTIONS)
+
+    def test_ver_log_errores_in_global_registry(self):
+        from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
+        names = {_schema_name(s) for s in ALL_SCHEMAS}
+        self.assertIn("ver_log_errores", names)
+        self.assertIn("ver_log_errores", ALL_FUNCTIONS)
+        self.assertIn("limpiar_log_errores", names)
+        self.assertIn("limpiar_log_errores", ALL_FUNCTIONS)
+
+    def test_admin_module_has_4_tools(self):
+        from dexter.tools.admin import SCHEMA, FUNCTIONS
+        self.assertEqual(len(SCHEMA), 4)
+        self.assertEqual(len(FUNCTIONS), 4)
+
+    def test_ver_log_errores_callable(self):
+        from dexter.tools import ALL_FUNCTIONS
+        from main import tool_ver_log_errores
+        self.assertIs(ALL_FUNCTIONS["ver_log_errores"], tool_ver_log_errores)
+        self.assertTrue(callable(tool_ver_log_errores))
+
+    def test_admin_keywords_include_log(self):
+        from dexter.tools import KEYWORDS_BY_MODULE
+        kw = KEYWORDS_BY_MODULE["dexter.tools.admin"]
+        joined = " ".join(kw).lower()
+        self.assertIn("log", joined)
+        self.assertIn("error", joined)
 
 
 if __name__ == "__main__":
