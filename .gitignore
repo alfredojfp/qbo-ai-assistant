@@ -206,7 +206,22 @@ manual-completo-final.pdf
 manual-completo-final.tex
 
 # =================================================================
+# GIT WORKTREES (refactors aislados)
+# =================================================================
+.worktrees/
+
+# =================================================================
 # NOTAS
+# =================================================================
+# Este .gitignore protege:
+# 1. Credenciales sensibles (.env)
+# 2. Archivos generados automáticamente (JSON, CSV, Excel)
+# 3. Entornos virtuales de Python
+# 4. Archivos de IDEs
+# 5. Logs y archivos temporales
+# 
+# Asegúrate de hacer commit que no subes
+# información sensible o archivos innecesarios.
 # =================================================================
 # Este .gitignore protege:
 # 1. Credenciales sensibles (.env)
