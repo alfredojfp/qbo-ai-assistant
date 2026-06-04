@@ -111,7 +111,8 @@ Dexter es un agente conversacional en Python que conecta un LLM (DeepSeek V3) co
 | `dexter/tools/web_code.py` | ~15 | 1 tool (ejecutar_codigo) |
 | `company_manager.py` | ~200 | Multi-empresa, `meta.json`, hot-swap |
 | `ocr_bills.py` | ~150 | Extracción de datos de PDFs de facturas |
-| `gitmanager.py` | 449 | Utilidad de versionado (commits, status, log) |
+| `scripts/gitmanager.py` | 449 | Utilidad de versionado (commits, status, log) |
+| `scripts/test_suite_legacy.py` | ~400 | Suite de tests manual con colorama (legacy, reemplazado por `tests/`) |
 | `install.sh` | ~400 | Script de instalación automatizada |
 | `autonomia/__init__.py` | <10 | Marca el directorio como paquete |
 | `autonomia/nivel1_websearch.py` | ~80 | `search_web`, `search_qbo_docs` |
@@ -122,6 +123,7 @@ Dexter es un agente conversacional en Python que conecta un LLM (DeepSeek V3) co
 | `autonomia/dynamic_report_generator.py` | ~70 | `generate_custom_report`, `parse_date_expression` |
 | `scripts/verify_setup.py` | ~300 | Verificación pre-arranque |
 | `scripts/refresh_token.py` | ~50 | Refresh manual de token OAuth |
+| `scripts/oauth_flow.py` | ~200 | OAuth flow INICIAL (code → tokens) |
 
 ---
 

@@ -67,22 +67,24 @@ Qbo Scripts/
 │   ├── CHANGELOG.md
 │   ├── requirements.txt
 │   ├── roadmap/              ← Roadmap y docs estratégicos
+│   ├── historical/           ← Auditorías y análisis históricos
+│   ├── manual/               ← Manual PDF + LaTeX
 │   └── superpowers/
 │       └── specs/            ← Specs de diseño
 ├── main.py                   ← Aplicación principal
 ├── company_manager.py        ← Multi-empresa (v3.5)
 ├── ocr_bills.py              ← OCR de facturas
-├── gitmanager.py             ← Utilidad de versionado
 ├── install.sh                ← Instalación automatizada
 ├── autonomia/                ← 6 módulos de autonomía
-├── scripts/                  ← Scripts auxiliares
+├── scripts/                  ← Scripts auxiliares (oauth_flow, refresh_token, gitmanager, verify_setup, test_suite_legacy)
 ├── Pending bills/            ← PDFs a procesar (OCR)
 ├── Processed bills/          ← PDFs ya procesados
 ├── Bank Reconciliation/      ← CSVs de reconciliación
 ├── Backup/                   ← Respaldos
 ├── outputs/                  ← Archivos generados
 ├── templates/                ← Plantillas
-└── Test/                     ← Pruebas
+├── tests/                    ← Suite de tests (unittest)
+└── Test/                     ← Pruebas manuales (legacy, gitignored)
 ```
 
 ---
