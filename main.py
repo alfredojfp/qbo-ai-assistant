@@ -3418,14 +3418,6 @@ def main_loop():
     print("\n✅ Sesión guardada exitosamente")
     print("="*70)
 
-# ==================== SHIM: dexter.tools aggregator ====================
-# Mantiene compatibilidad con tests/scripts que importan desde dexter.tools
-# sin pasar por main.py. Si los 43 schemas/funcs ya están en main.TOOLS y
-# main.TOOL_FUNCTIONS, este alias sólo expone la vista agregada.
-from dexter.tools import ALL_SCHEMAS as _DEXTER_ALL_SCHEMAS, ALL_FUNCTIONS as _DEXTER_ALL_FUNCTIONS
-ALL_SCHEMAS_DEXTER = _DEXTER_ALL_SCHEMAS
-ALL_FUNCTIONS_DEXTER = _DEXTER_ALL_FUNCTIONS
-
 # ==================== ENTRY POINT ====================
 
 
