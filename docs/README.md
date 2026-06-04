@@ -62,6 +62,8 @@ Qbo Scripts/
 │   ├── CONTEXT.md
 │   ├── ARCHITECTURE.md
 │   ├── CAPACIDADES.md
+│   ├── qbo_api_research.md  ← Investigación exhaustiva de la QBO API
+│   ├── qbo_api_gaps.md      ← Gaps priorizados y plan de implementación
 │   ├── MULTI_EMPRESA.md
 │   ├── INSTALL.md
 │   ├── CHANGELOG.md
