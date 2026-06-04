@@ -15,7 +15,7 @@ SCHEMA: List[Dict[str, Any]] = [
 
 
 # Routing keywords — usadas por get_relevant_tools()
-KEYWORDS: List[str] = ["lote", "batch", "depositar csv", "csv depositos", "multiple deposit", "template"]
+KEYWORDS: List[str] = ["lote", "batch", "csv", "deposito", "depósito", "depositar", "template", "dry-run"]
 FUNCTIONS: Dict[str, Any] = {
     "procesar_csv_depositos": tool_procesar_csv_depositos,
     "crear_template_csv": tool_crear_template_csv,
