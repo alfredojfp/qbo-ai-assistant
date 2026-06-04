@@ -1,17 +1,14 @@
 # QuickBooks AI Assistant - Git Ignore File
 
 # =================================================================
-# CREDENCIALES Y ARCHIVOS SENSIBLES (MÁXIMA PRIORIDAD)
+# CREDENCIALES Y ARCHIVOS SENSIBLES
 # =================================================================
 .env
-.env.*
 .env.local
 .env.*.local
 *.key
 *.pem
 credentials.json
-*token*.json
-*secret*.json
 
 # =================================================================
 # ARCHIVOS GENERADOS AUTOMÁTICAMENTE
@@ -26,35 +23,14 @@ saved_reports.json
 token_usage.csv
 token_usage_report.xlsx
 
-# Templates CSV generados (permitir solo el template vacío si es necesario)
+# Templates CSV generados
 deposits_template.csv
+*_template.csv
 
-# Archivos CSV con datos reales de clientes/transacciones
-bank_*.csv
-reconciliation_*.csv
-preview_bills*.csv
-*_processed.csv
-outputs/*.csv
-Backups/*.csv
-
-# Reportes Excel generados
-outputs/*.xlsx
-reports/*.xlsx
-
-# =================================================================
-# PDFS Y FACTURAS (INFORMACIÓN SENSIBLE DE CLIENTES)
-# =================================================================
-# Carpetas con facturas procesadas/pendientes
-Pending bills/
-Processed bills/
-bills/*.pdf
-facturas/*.pdf
-
-# Bloquear todos los PDFs excepto documentación
-*.pdf
-# Excepciones (documentación que SÍ se versiona)
-!docs/*.pdf
-!manual-completo-final.pdf
+# Otros archivos generados
+*.xlsx
+*.csv
+!requirements.txt
 
 # =================================================================
 # PYTHON
@@ -172,8 +148,6 @@ yarn-error.log*
 # =================================================================
 # BACKUPS
 # =================================================================
-Backups/
-Backup/
 backups/
 *.backup
 *.bak
@@ -202,92 +176,45 @@ docker-compose.override.yml
 # =================================================================
 # ARCHIVOS ESPECÍFICOS DEL PROYECTO
 # =================================================================
-# Archivos de datos de prueba con información real
+# Archivos de datos de prueba
 test_data/
 sample_data/
-Test/
-test_results.json
 
 # Archivos de configuración local
 config.local.json
 settings.local.json
 
-# Carpetas de output con datos sensibles
-outputs/
-reports/
+# =================================================================
+# DEXTER (v4.0+) — motor batch + reconciliación
+# =================================================================
+# Base de datos del motor batch (SQLite, regenerable)
+data/*.db
+data/dexter.db
+data/dexter.db-journal
+data/dexter.db-wal
+data/dexter.db-shm
 
-# Carpetas con datos de reconciliación bancaria
-Bank Reconciliation/
+# Reportes CSV de reconciliación (se regeneran al re-correr)
+data/recon_*.csv
+data/bills_preview_*.csv
+
+# Historial de clasificaciones bank feed (test artifact)
+bank_feed_classification_history.json
+
+# Manuales pre-existentes (no se versionan, regenerables)
+manual-completo-final.pdf
+manual-completo-final.tex
 
 # =================================================================
-# AUTONOMÍA - Archivos generados por módulos de aprendizaje
-# =================================================================
-autonomia/learned_patterns.json
-autonomia/user_preferences.json
-autonomia/classification_history.db
-autonomia/*.db
-autonomia/*.sqlite
-
-# =================================================================
-
-# =================================================================
-# ESTRUCTURA DE CARPETAS - Mantener carpetas pero ignorar contenido
-# =================================================================
-# Estas reglas mantienen las carpetas vacías con .gitkeep
-# pero ignoran todo el contenido sensible
-
-# Backup folder
-Backup/*
-!Backup/.gitkeep
-
-# Bank Reconciliation
-Bank Reconciliation/*
-!Bank Reconciliation/.gitkeep
-
-# Bills folders
-Pending bills/*
-!Pending bills/.gitkeep
-
-Processed bills/*
-!Processed bills/.gitkeep
-
-# Test folder
-Test/*
-!Test/.gitkeep
-
-# Outputs folder
-outputs/*
-!outputs/.gitkeep
-
-# NOTAS IMPORTANTES
+# NOTAS
 # =================================================================
 # Este .gitignore protege:
-# 1. ✅ Credenciales sensibles (.env, tokens, keys)
-# 2. ✅ Archivos generados automáticamente (JSON, CSV, Excel)
-# 3. ✅ PDFs con facturas de clientes
-# 4. ✅ Entornos virtuales de Python
-# 5. ✅ Archivos de IDEs y sistema operativo
-# 6. ✅ Logs y archivos temporales
-# 7. ✅ Datos de aprendizaje de módulos de autonomía
-# 8. ✅ Carpetas de backup y reconciliación bancaria
-# 9. ✅ Carpetas de testing con datos reales
+# 1. Credenciales sensibles (.env)
+# 2. Archivos generados automáticamente (JSON, CSV, Excel)
+# 3. Entornos virtuales de Python
+# 4. Archivos de IDEs
+# 5. Logs y archivos temporales
 # 
-# ⚠️ VERIFICACIÓN OBLIGATORIA ANTES DE CADA COMMIT:
-#    git status
-#    git diff --cached
-# 
-# Asegúrate de que NO aparecen:
-# - Archivos .env
-# - CSVs con datos reales de clientes
-# - PDFs de facturas
-# - Archivos token_usage.csv
-# - Archivos chart_of_accounts.json con datos reales
-# - Carpetas: Backup/, Bank Reconciliation/, Test/
+# Asegúrate de revisar antes de hacer commit que no subes
+# información sensible o archivos innecesarios.
 # =================================================================
-
-
-# =================================================================
-# MULTI-COMPANY DATA (company-specific files)
-# =================================================================
-companies/
-.current_company.json
