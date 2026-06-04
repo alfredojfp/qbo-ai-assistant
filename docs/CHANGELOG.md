@@ -5,6 +5,25 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
+## [Unreleased] - 2026-06-03
+
+### 🆕 Agregado
+- **Motor batch genérico** (`dexter/core/batch/`) con state machine, persistencia SQLite, audit log completo
+- **Skill de bank deposits multi-cliente** con desambiguación interactiva (resuelve clientes nuevos en QBO)
+- **Documentación**: `docs/BATCH_ENGINE.md` con guía completa del nuevo sistema
+- **128 tests unitarios** (`unittest` stdlib, sin dependencias)
+
+### 🔄 Cambiado
+- `autonomia/bank_feed_intelligence.py`: reescrito con motor de matching en cascada (exacto → regex → fuzzy → default), confidence 0-100%. Las 3 funciones `tool_*` que eran stubs ahora funcionan end-to-end
+- `ocr_bills.py`: nueva función `procesar_lote_ocr()` itera sobre todos los PDFs de una carpeta. Import de Gemini ahora es lazy (módulo importable sin la dependencia)
+- `ocr_bills.py`: nueva función `validar_bill_minimo()` descarta extracciones inválidas
+
+### 🐛 Fixed
+- **Stub crítico**: `tool_find_pattern_for_transaction` retornaba `match_found: False` siempre. Ahora sí matchea con confidence
+- **OCR subutilizado**: `extraer_bills_de_pdf` solo procesaba 1 PDF. Ahora hay `procesar_lote_ocr` que itera sobre toda la carpeta
+- **Módulo `autonomia` no testeable**: agregados 27 tests para `bank_feed_intelligence`
+- **Módulo `ocr_bills` no testeable**: agregados 19 tests con mock de Gemini
+
 ## [3.7.0] - 2026-01-23 — Guía Interactiva y Matching Engine
 
 ### 🆕 Agregado
