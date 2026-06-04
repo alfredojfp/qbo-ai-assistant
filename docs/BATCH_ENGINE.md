@@ -2,7 +2,7 @@
 
 **Versión:** v4.0.0-dev
 **Fecha:** 2026-06-03
-**Estado:** Sprint 1 + 2 completados, 128 tests pasando
+**Estado:** Sprint 1 + 2 + 3 completados, 176 tests pasando
 
 ---
 
@@ -26,14 +26,15 @@ dexter/core/batch/
 ├── storage.py          # SQLite (batches, items, audit_log)
 ├── engine.py           # State machine + transiciones validadas
 ├── disambiguator.py    # Preguntas al usuario (input/output inyectables)
-└── deposits.py         # Skill de bank deposits multi-cliente
+├── deposits.py         # Skill de bank deposits multi-cliente
+└── recon_tagger.py     # Skill BNK-RECON (tag-only, no crea transactions)
 ```
 
 ### Capas
 
 ```
 ┌─────────────────────────────────────────┐
-│  Skill (deposits, bills, reclassify)    │  ← Lógica de dominio
+│  Skill (deposits, recon_tagger, ...)    │  ← Lógica de dominio
 ├─────────────────────────────────────────┤
 │  Engine (state machine)                 │  ← Ciclo de vida
 ├─────────────────────────────────────────┤
@@ -211,12 +212,73 @@ Cada uno sigue el mismo patrón:
 
 ---
 
+## Skills Disponibles
+
+### `DepositBatchSkill` (Sprint 2)
+Crea un Deposit multi-cliente en QBO. Disambigua clientes
+nuevos (crea si hace falta) y cuentas contables. Crea UN deposit
+con múltiples líneas.
+
+```
+skill = DepositBatchSkill(engine, disambiguator, qbo_client,
+                          bank_account_id, income_account_id)
+batch_id = skill.from_csv(ruta)
+# ... user confirma ...
+summary = skill.execute(batch_id)
+```
+
+### `ReconciliationTaggerSkill` (Sprint 3 — BNK-RECON)
+NO crea transactions. Solo taggea las existentes con
+`BNK-RECON-YYYY-MM-xxxxx` en `Deposit.Memo` o `Bill/Purchase.PrivateNote`.
+El usuario decide después en QBO UI.
+
+```
+skill = ReconciliationTaggerSkill(
+    engine, qbo_client, period_start, period_end, account_id,
+    fuzzy_days=2, fuzzy_amount=0.50,
+)
+batch_id = skill.from_csv(ruta)
+summary = skill.run(batch_id)  # match + tag
+# Más tarde, si te arrepientes:
+skill.cleanup_tags(batch_id)
+```
+
+**Matching:**
+- Exacto: misma fecha + mismo monto (confidence 100)
+- Fuzzy: ±2 días, ±$0.50 (confidence 90 → 75 → ...)
+- Sin match: no se modifica nada (preserva QBO intacto)
+
+**Reporte CSV** (auto-generado en `data/recon_<id>_<ts>.csv`):
+- Columnas: csv_date, csv_amount, csv_description, tag,
+  qbo_id, qbo_type, field_updated, match_type, confidence
+- 3 secciones: matched, unmatched, errors
+
+---
+
+## Integración con main.py
+
+El motor batch se expone al LLM via 4 tools en main.py:
+
+| Tool | Skill | Tipo |
+|------|-------|------|
+| `depositar_lote_csv` | `DepositBatchSkill` | Crea deposit |
+| `taggear_reconciliacion` | `ReconciliationTaggerSkill` | Solo taggea |
+| `limpiar_tags_reconciliacion` | `ReconciliationTaggerSkill` | Borra tags |
+| `procesar_csv_depositos` | (legacy) | Wrapper viejo, intacto |
+
+Ambos tools nuevos (BNK-RECON) están en main.py:2567+ y son
+opt-in: el LLM los elige solo si la conversación lo amerita
+(via `get_relevant_tools` con keywords `recon`/`tag`/`marcar`).
+
+---
+
 ## Convenciones
 
 - **Inyección de dependencias**: `QBOClientProtocol`, `input_func`, `output_func`
 - **Errores explícitos**: `InvalidStateTransition`, `FileNotFoundError`, `ValueError`
 - **Auditoría automática**: nunca hacer cambios sin `storage.log_event()`
 - **Tests primero**: TDD red-green-refactor
+- **Backward compatibility**: tools nuevos se AÑADEN, no se reemplazan
 
 ---
 
