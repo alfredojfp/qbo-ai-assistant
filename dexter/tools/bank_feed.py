@@ -1,9 +1,4 @@
-"""dexter.tools.bank_feed — 4 tools para análisis y clasificación de bank feeds.
-
-Delega a autonomia.bank_feed_intelligence (motor de matching en cascada).
-Los schemas aquí son los mismos que estaban en main.py TOOLS (preservamos
-contrato externo con el LLM).
-"""
+"""dexter.tools.bank_feed — 5 tools (4 bank feed intelligence + 1 CSV processor)."""
 from typing import Any, Dict, List
 
 from autonomia.bank_feed_intelligence import (
@@ -12,6 +7,7 @@ from autonomia.bank_feed_intelligence import (
     tool_get_classification_history_stats,
     tool_record_bank_feed_classification,
 )
+from main import tool_procesar_bank_feed_csv
 from dexter.tools._schema_utils import (
     make_schema,
     prop_list,
@@ -83,6 +79,19 @@ SCHEMA: List[Dict[str, Any]] = [
         },
         required=["description"],
     ),
+    make_schema(
+        name="procesar_bank_feed_csv",
+        description=(
+            "Procesa archivo CSV de Bank Feed y clasifica depósitos con "
+            "splits múltiples (income + fees). Formato CSV: "
+            "bank_feed_date,bank_feed_amount,deposit_id,line_type,"
+            "customer_name,amount,account,memo"
+        ),
+        properties={
+            "archivo_csv": prop_str("Ruta del archivo CSV de Bank Feed"),
+        },
+        required=["archivo_csv"],
+    ),
 ]
 
 FUNCTIONS: Dict[str, Any] = {
@@ -90,4 +99,5 @@ FUNCTIONS: Dict[str, Any] = {
     "registrarclasificacion": tool_record_bank_feed_classification,
     "estadisticasclasificacion": tool_get_classification_history_stats,
     "buscarpatron": tool_find_pattern_for_transaction,
+    "procesar_bank_feed_csv": tool_procesar_bank_feed_csv,
 }
