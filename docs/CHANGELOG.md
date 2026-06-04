@@ -14,26 +14,35 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - **QBO Client Adapter** (`dexter/core/qbo_client.py`): conecta `QBOClientProtocol` a las funciones `qbo_query`/`qbo_request` de main.py. Hace `get_transactions` (Deposit, Purchase, Transfer) y `update_transaction` con sparse update
 - **Tools nuevos en main.py**: `taggear_reconciliacion` y `limpiar_tags_reconciliacion` — los 2 tools BNK-RECON visibles al LLM
 - **Documentación**: `docs/BATCH_ENGINE.md` con guía completa del nuevo sistema, `docs/TOOLS_ANALYSIS.md` con 24 tools analizados y gaps
-- **166 tests unitarios** (`unittest` stdlib, sin dependencias)
+- **262 tests unitarios** (`unittest` stdlib, sin dependencias)
 
 ### 🔄 Cambiado
 - `autonomia/bank_feed_intelligence.py`: reescrito con motor de matching en cascada (exacto → regex → fuzzy → default), confidence 0-100%. Las 3 funciones `tool_*` que eran stubs ahora funcionan end-to-end
+- `autonomia/user_behavior_learning.py`: motor completo de aprendizaje con learn_account/vendor/report_preference, record_correction (con threshold), get_suggestions, active_tasks. Singleton reseteable para tests
+- `autonomia/dynamic_report_generator.py`: parse_date_expression con 14+ patrones (meses, trimestres, Q1-Q4, últimos N días, ISO, es/en). detect_report_type para 4 tipos de reporte (orden importa: TrialBalance antes de BalanceSheet). generate_custom_report llama QBO API real
+- `autonomia/autonomia_nivel2_api_explorer.py`: registry de 26 endpoints QBO con description + methods + category. tool_list_qbo_endpoints soporta filtro por categoría
 - `ocr_bills.py`: nueva función `procesar_lote_ocr()` itera sobre todos los PDFs de una carpeta. Import de Gemini ahora es lazy (módulo importable sin la dependencia)
 - `ocr_bills.py`: nueva función `validar_bill_minimo()` descarta extracciones inválidas
 - `main.py`: `tool_obtener_estadisticas_tokens` ahora soporta `"sesion"`, `"dia"`, `"mes"`, `"YYYY-MM-DD"`, `"YYYY-MM"` (antes solo "sesion")
-- `main.py`: `get_relevant_tools` añade keywords `recon`/`tag`/`marcar`/`reconcili`/`bnk-recon` que activan los tools BNK-RECON
-- `main.py`: `process_quick_command` detecta "recon tag" / "marcar" / "BNK-RECON" e imprime guía paso-a-paso del tagger
+- `main.py`: `tool_generar_informe_tokens` ahora retorna summary estructurado (totales, promedios) además de generar el Excel
+- `main.py`: `get_relevant_tools` añade keywords `recon`/`tag`/`marcar`/`lote`/`batch`/`depositar csv`
+- `main.py`: `process_quick_command` detecta "recon tag" / "lote csv" / "depositar batch" e imprime guía
 
 ### 🐛 Fixed
 - **Stub crítico**: `tool_find_pattern_for_transaction` retornaba `match_found: False` siempre. Ahora sí matchea con confidence
+- **Stub user_behavior_learning**: `tool_get_user_suggestions` retornaba `suggestion: None`. Ahora retorna sugerencias reales ordenadas por count
+- **Stub user_behavior_learning**: `tool_record_user_correction` no persistía nada. Ahora guarda en JSON con threshold
+- **Stub dynamic_report_generator**: solo soportaba 3 expresiones ("este mes", "mes pasado", "este año"). Ahora 14+ patrones
+- **Stub api_explorer**: `tool_list_qbo_endpoints` solo tenía 6 endpoints sin info de métodos. Ahora 26 con description + methods + category
 - **OCR subutilizado**: `extraer_bills_de_pdf` solo procesaba 1 PDF. Ahora hay `procesar_lote_ocr` que itera sobre toda la carpeta
-- **Módulo `autonomia` no testeable**: agregados 27 tests para `bank_feed_intelligence`
+- **Módulo `autonomia` no testeable**: agregados tests para los 3 archivos de autonomía
 - **Módulo `ocr_bills` no testeable**: agregados 19 tests con mock de Gemini
 - **`tool_obtener_estadisticas_tokens` mentía**: prometía varios períodos pero solo soportaba `"sesion"`. Ahora sí lee del CSV histórico
+- **`.gitignore` no se aplicaba**: estaba nombrado `gitignore` (sin punto). Renombrado a `.gitignore` + patterns nuevos para Dexter v4.0
 
 ### ⚠️ Backward compatibility
 - **0 líneas removidas de main.py**. Todos los tools viejos siguen funcionando.
-- Los nuevos tools BNK-RECON son **opt-in**: el LLM los elige si la conversación lo amerita.
+- Los nuevos tools BNK-RECON y batch deposits son **opt-in**: el LLM los elige si la conversación lo amerita.
 
 ## [3.7.0] - 2026-01-23 — Guía Interactiva y Matching Engine
 
