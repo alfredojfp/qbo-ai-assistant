@@ -3270,52 +3270,32 @@ def process_quick_command(user_input: str) -> Optional[str]:
 # ==================== OPTIMIZACIONES ====================
 
 def get_relevant_tools(user_message: str) -> list:
-    """Retorna lista de definiciones de tools (schemas) relevantes."""
+    """Retorna lista de definiciones de tools (schemas) relevantes.
+
+    Data-driven: itera los 14 módulos de dexter.tools y activa los tools
+    de cada módulo si el user_message contiene alguna de sus KEYWORDS.
+    """
+    from dexter.tools import KEYWORDS_BY_MODULE
+    import dexter.tools as dexter_tools
+
     msg = user_message.lower()
     relevant_names = set()
 
-    # Mapeo de keywords a nombres de tools
-    if any(kw in msg for kw in ["clasificar", "bank", "banco", "feed"]):
-        relevant_names.update(["analizarbankfeed", "registrarclasificacion", "buscarpatron", "procesar_bank_feed_csv"])
+    # Iterar cada módulo de dexter.tools y activar sus tools si match keyword
+    for module_name, keywords in KEYWORDS_BY_MODULE.items():
+        if not keywords:
+            continue
+        module = getattr(dexter_tools, module_name.split(".")[-1], None)
+        if module is None:
+            continue
+        if any(kw in msg for kw in keywords):
+            relevant_names.update(module.FUNCTIONS.keys())
 
-    if any(kw in msg for kw in ["recon", "reconcili", "bnk-recon", "tag", "marcar"]):
-        relevant_names.update(["taggear_reconciliacion", "limpiar_tags_reconciliacion", "procesar_reconciliacion_bancaria"])
-
-    if any(kw in msg for kw in ["lote", "batch", "depositar csv", "csv depositos", "multiples deposit"]):
-        relevant_names.update(["depositar_lote_csv", "crear_template_csv", "procesar_csv_depositos"])
-
-    if any(kw in msg for kw in ["reporte", "p&l", "balance", "estado"]):
-        relevant_names.update(["generar_reporte_pl", "generar_balance_sheet", "generarreportecustom", "parsearfecha"])
-    
-    if any(kw in msg for kw in ["busca", "search", "cliente", "vendor", "cuenta"]):
-        relevant_names.update(["buscar_cliente", "buscar_vendor", "buscar_cuenta", "buscar_item"])
-    
-    if any(kw in msg for kw in ["bill", "factura", "ocr", "pdf"]):
-        relevant_names.update(["procesar_lote_bills", "crear_bill"])
-    
-    if any(kw in msg for kw in ["invoice", "pago", "cobro"]):
-        relevant_names.update(["crear_invoice", "crear_pago"])
-
-    if any(kw in msg for kw in ["asiento", "journal", "transferencia", "mover"]):
-        relevant_names.update(["crearasientodiario", "creartransferencia"])
-
-    if any(kw in msg for kw in ["web", "internet", "google", "api", "endpoint"]):
-        relevant_names.update(["buscarenweb", "buscardocsqbo", "listarendpointsqbo", "infoendpointqbo"])
-
-    if any(kw in msg for kw in ["codigo", "python", "calcula", "analiza"]):
-        relevant_names.update(["ejecutarcodigo"])
-
-    # Always include a few basics if no match
+    # Always include a few basics if no match (safe defaults)
     if not relevant_names:
-        relevant_names.update(["buscar_cliente", "buscar_cuenta", "generar_reporte_pl"])
-
-    # Multi-company
-    if any(k in msg for k in ["empresa", "compañía", "cliente", "registrar", "cambiar", "listar"]):
-        relevant_names.add("gestionar_empresas")
-
-    # Refrescar siempre disponible si se pide
-    if "refrescar" in msg:
-        relevant_names.add("refrescar_chart_accounts")
+        relevant_names.update([
+            "buscar_cliente", "buscar_cuenta", "generar_reporte_pl",
+        ])
 
     # Filtrar la lista global TOOLS
     return [t for t in TOOLS if t["function"]["name"] in relevant_names]
@@ -3359,7 +3339,7 @@ def show_main_menu() -> str:
         "  • 'salir' / 'exit'    - Termina la sesión\n"
         "\n"
         "💡 Habla con naturalidad para todo lo demás. El LLM interpreta\n"
-        "   y llama el tool correcto (27 tools disponibles).\n"
+        "   y llama el tool correcto (43 tools disponibles en 14 dominios).\n"
     )
 
 
@@ -3437,6 +3417,14 @@ def main_loop():
     save_session_to_csv()
     print("\n✅ Sesión guardada exitosamente")
     print("="*70)
+
+# ==================== SHIM: dexter.tools aggregator ====================
+# Mantiene compatibilidad con tests/scripts que importan desde dexter.tools
+# sin pasar por main.py. Si los 43 schemas/funcs ya están en main.TOOLS y
+# main.TOOL_FUNCTIONS, este alias sólo expone la vista agregada.
+from dexter.tools import ALL_SCHEMAS as _DEXTER_ALL_SCHEMAS, ALL_FUNCTIONS as _DEXTER_ALL_FUNCTIONS
+ALL_SCHEMAS_DEXTER = _DEXTER_ALL_SCHEMAS
+ALL_FUNCTIONS_DEXTER = _DEXTER_ALL_FUNCTIONS
 
 # ==================== ENTRY POINT ====================
 

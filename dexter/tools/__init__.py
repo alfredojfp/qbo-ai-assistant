@@ -36,6 +36,14 @@ _MODULES = [
     journal, web_code, bank_feed,
 ]
 
+# Routing keywords: mapea cada módulo → keywords que activan sus tools.
+# Usado por get_relevant_tools() en main.py para reducir el schema payload
+# enviado al LLM (data-driven, no hardcoded).
+KEYWORDS_BY_MODULE: Dict[str, List[str]] = {
+    mod.__name__: getattr(mod, "KEYWORDS", [])
+    for mod in _MODULES
+}
+
 
 def _extract_name(schema: Dict[str, Any]) -> str:
     """Extrae el nombre de un schema en formato OpenAI ({type:function, function:{name,...}})."""
@@ -60,6 +68,7 @@ for _module in _MODULES:
 __all__ = [
     "ALL_SCHEMAS",
     "ALL_FUNCTIONS",
+    "KEYWORDS_BY_MODULE",
     "search", "transactions", "reports", "tokens", "admin", "batch",
     "reconciliation", "ocr", "behavior", "report_custom", "api_explorer",
     "journal", "web_code", "bank_feed",

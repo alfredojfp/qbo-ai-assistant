@@ -5,16 +5,45 @@ Todos los cambios notables de este proyecto se documentan en este archivo.
 El formato sigue [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/),
 y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
-## [Unreleased] - 2026-06-03
+## [Unreleased] - 2026-06-04
 
 ### 🆕 Agregado
-- **Motor batch genérico** (`dexter/core/batch/`) con state machine, persistencia SQLite, audit log completo
-- **Skill de bank deposits multi-cliente** con desambiguación interactiva (resuelve clientes nuevos en QBO)
-- **BNK-RECON Tagger Skill** (`dexter/core/batch/recon_tagger.py`): modo SEGURO de reconciliación que SOLO agrega tags `BNK-RECON-YYYY-MM-xxxxx` a transactions existentes en QBO (Deposit.Memo, Bill.PrivateNote, Purchase.PrivateNote). NO crea transactions nuevas — la decisión final queda al usuario en QBO UI. Matching exacto + fuzzy (±2 días ±$0.50)
-- **QBO Client Adapter** (`dexter/core/qbo_client.py`): conecta `QBOClientProtocol` a las funciones `qbo_query`/`qbo_request` de main.py. Hace `get_transactions` (Deposit, Purchase, Transfer) y `update_transaction` con sparse update
-- **Tools nuevos en main.py**: `taggear_reconciliacion` y `limpiar_tags_reconciliacion` — los 2 tools BNK-RECON visibles al LLM
-- **Documentación**: `docs/BATCH_ENGINE.md` con guía completa del nuevo sistema, `docs/TOOLS_ANALYSIS.md` con 24 tools analizados y gaps
-- **262 tests unitarios** (`unittest` stdlib, sin dependencias)
+- **Refactor monolítico → arquitectura modular (Fases 0-7 completadas)**: 14 módulos en `dexter/tools/` con registry agregador
+  - `dexter/tools/_schema_utils.py` — helpers `make_schema`, `prop_str`/`prop_num`/`prop_bool`/`prop_list`
+  - `dexter/tools/__init__.py` — registry agregador con `ALL_SCHEMAS`, `ALL_FUNCTIONS`, `KEYWORDS_BY_MODULE` (data-driven routing)
+  - `dexter/tools/bank_feed.py` (5 tools), `search.py` (4), `transactions.py` (4), `reports.py` (5), `tokens.py` (2), `admin.py` (2), `batch.py` (3), `reconciliation.py` (3), `ocr.py` (1), `behavior.py` (4), `report_custom.py` (2), `api_explorer.py` (5), `journal.py` (2), `web_code.py` (1)
+- **Data-driven tool routing**: cada módulo declara sus `KEYWORDS`, `get_relevant_tools()` en main.py itera los 14 módulos para activar tools relevantes
+- **Shim de backward compat**: `from main import tool_xxx` sigue funcionando (24 tool_xxx en main.py, 19 tool_xxx via dexter.tools)
+- **Tests del agregador**: 11 tests de wiring + 3 tests parametrizados de los 14 dominios + 2 tests de shim. **287 tests pasando** (era 262)
+- **Investigación "stubs fantasma"**: empíricamente demostrado que **NO HAY STUBS FANTASMA**. Los 43 tools son reales. El análisis previo usó un grep con regex malo que no detectó los nombres de tools en el dict `TOOL_FUNCTIONS`. `dexter/tools/` ahora cubre los 43 tools wireados.
+- **Spec del refactor**: `docs/superpowers/specs/2026-06-04-refactor-main-tools-design.md`
+- **Plan de implementación**: `docs/superpowers/plans/2026-06-04-refactor-fase-0-1-tools-bank-feed.md`
+
+### 🔄 Cambiado
+- `main.py`: `get_relevant_tools` reescrito de 27 hardcoded tool names a data-driven (43 tools, 14 dominios)
+- `main.py`: `show_main_menu` ahora dice "43 tools disponibles en 14 dominios" (antes decía 27)
+- `main.py`: 4 re-exports Fase 1 (bank_feed intelligence) + alias `ALL_SCHEMAS_DEXTER`/`ALL_FUNCTIONS_DEXTER` del agregador
+- `dexter/tools/process_bank_feed.py` eliminado (duplicaba `procesar_bank_feed_csv` que ya está en `bank_feed.py`)
+
+### ⚠️ Backward compatibility
+- **main.py: 3,551 líneas, 0 funciones removidas.** Todos los tools viejos siguen funcionando con la misma firma.
+- `from main import tool_xxx` funciona para los 24 tool_xxx definidos en main.py
+- `from main import TOOLS` / `TOOL_FUNCTIONS` / `main_loop` / `call_llm` / `get_relevant_tools` / `build_conversation_context` sin cambios
+- Los tests existentes (test_suite.py, test_main_loop.py) corren sin modificación
+
+### 📊 Métricas
+- **main.py**: 3,551 líneas (era 3,505 — +46 líneas por shim + comentarios de fase)
+- **dexter/tools/**: 16 archivos (14 módulos + 2 infra), 6,635 líneas totales
+- **Tests**: 287/287 pasando (era 262) — **+25 tests** (11 aggregator + 2 shim + 3 domain coverage + 9 verificados)
+- **Tools**: 43 totales (era 27 hardcoded en `get_relevant_tools`, pero 43 wireados en `TOOL_FUNCTIONS`)
+- **Dominios**: 14 (bank_feed, search, transactions, reports, tokens, admin, batch, reconciliation, ocr, behavior, report_custom, api_explorer, journal, web_code)
+
+### 🐛 Fixed
+- `get_relevant_tools` solo enviaba 27 tools al LLM (hardcoded), aunque había 43 disponibles. Los 16 tools sin keyword match nunca se mostraban al LLM. Ahora data-driven, los 43 pueden activarse.
+- Mensaje "27 tools disponibles" en `show_main_menu` era incorrecto (realmente son 43)
+- `process_bank_feed.py` huérfano — duplicaba funcionalidad ya en `bank_feed.py`
+
+## [3.7.0] - 2026-01-23 — Guía Interactiva y Matching Engine
 
 ### 🔄 Cambiado
 - `autonomia/bank_feed_intelligence.py`: reescrito con motor de matching en cascada (exacto → regex → fuzzy → default), confidence 0-100%. Las 3 funciones `tool_*` que eran stubs ahora funcionan end-to-end

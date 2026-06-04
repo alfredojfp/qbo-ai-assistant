@@ -15,6 +15,9 @@ SCHEMA: List[Dict[str, Any]] = [
         {'type': 'function', 'function': {'name': 'obtenercontexto', 'description': 'Obtiene un resumen del contexto reciente de la conversación y tareas activas.', 'parameters': {'type': 'object', 'properties': {}}}},
 ]
 
+
+# Routing keywords — usadas por get_relevant_tools()
+KEYWORDS: List[str] = ["sugerencia", "corrección", "aprender", "contexto", "interacción"]
 FUNCTIONS: Dict[str, Any] = {
     "aprenderinteraccion": tool_learn_from_interaction,
     "obtenersugerencias": tool_get_user_suggestions,

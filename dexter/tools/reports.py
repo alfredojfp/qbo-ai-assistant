@@ -17,6 +17,9 @@ SCHEMA: List[Dict[str, Any]] = [
         {'type': 'function', 'function': {'name': 'listar_reportes_guardados', 'description': 'Lista todos los reportes guardados por el usuario.', 'parameters': {'type': 'object', 'properties': {}}}},
 ]
 
+
+# Routing keywords — usadas por get_relevant_tools()
+KEYWORDS: List[str] = ["reporte", "p&l", "balance", "estado", "guardar reporte", "cargar reporte"]
 FUNCTIONS: Dict[str, Any] = {
     "generar_reporte_pl": tool_generar_reporte_pl,
     "generar_balance_sheet": tool_generar_balance_sheet,

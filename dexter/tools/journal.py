@@ -11,6 +11,9 @@ SCHEMA: List[Dict[str, Any]] = [
         {'type': 'function', 'function': {'name': 'creartransferencia', 'description': 'Crea una transferencia de fondos entre dos cuentas bancarias en QuickBooks.', 'parameters': {'type': 'object', 'properties': {'from_account_id': {'type': 'string'}, 'to_account_id': {'type': 'string'}, 'amount': {'type': 'number'}, 'txn_date': {'type': 'string'}, 'memo': {'type': 'string'}}, 'required': ['from_account_id', 'to_account_id', 'amount', 'txn_date']}}},
 ]
 
+
+# Routing keywords — usadas por get_relevant_tools()
+KEYWORDS: List[str] = ["asiento", "journal", "transferencia", "mover entre cuentas"]
 FUNCTIONS: Dict[str, Any] = {
     "crearasientodiario": tool_create_journal_entry,
     "creartransferencia": tool_create_transfer,

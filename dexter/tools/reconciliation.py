@@ -13,6 +13,9 @@ SCHEMA: List[Dict[str, Any]] = [
         {'type': 'function', 'function': {'name': 'limpiar_tags_reconciliacion', 'description': 'Limpia los tags BNK-RECON aplicados por un batch previo. Lee el reporte del batch y borra los Memo/PrivateNote. Útil para deshacer una reconciliación de prueba.', 'parameters': {'type': 'object', 'properties': {'batch_id': {'type': 'string', 'description': 'ID del batch cuyos tags se quieren limpiar'}}, 'required': ['batch_id']}}},
 ]
 
+
+# Routing keywords — usadas por get_relevant_tools()
+KEYWORDS: List[str] = ["recon", "reconcili", "bnk-recon", "tag", "marcar", "limpiar tag"]
 FUNCTIONS: Dict[str, Any] = {
     "procesar_reconciliacion_bancaria": tool_procesar_reconciliacion_bancaria,
     "taggear_reconciliacion": tool_taggear_reconciliacion,

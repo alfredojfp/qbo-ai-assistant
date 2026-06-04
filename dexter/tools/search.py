@@ -15,6 +15,9 @@ SCHEMA: List[Dict[str, Any]] = [
         {'type': 'function', 'function': {'name': 'buscar_item', 'description': 'Busca items/servicios en QuickBooks por nombre.', 'parameters': {'type': 'object', 'properties': {'nombre': {'type': 'string', 'description': 'Nombre del item/servicio'}}, 'required': ['nombre']}}},
 ]
 
+
+# Routing keywords — usadas por get_relevant_tools()
+KEYWORDS: List[str] = ["busca", "search", "cliente", "vendor", "cuenta", "item", "encontrar"]
 FUNCTIONS: Dict[str, Any] = {
     "buscar_cliente": tool_buscar_cliente,
     "buscar_vendor": tool_buscar_vendor,

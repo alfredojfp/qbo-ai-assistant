@@ -17,6 +17,9 @@ SCHEMA: List[Dict[str, Any]] = [
         {'type': 'function', 'function': {'name': 'buscarenweb', 'description': 'Busca información actualizada en internet (vía DuckDuckGo).', 'parameters': {'type': 'object', 'properties': {'query': {'type': 'string', 'description': 'Consulta de búsqueda'}}, 'required': ['query']}}},
 ]
 
+
+# Routing keywords — usadas por get_relevant_tools()
+KEYWORDS: List[str] = ["web", "internet", "google", "api", "endpoint", "documentación", "qbo api"]
 FUNCTIONS: Dict[str, Any] = {
     "listarendpointsqbo": tool_list_qbo_endpoints,
     "infoendpointqbo": tool_get_endpoint_info,

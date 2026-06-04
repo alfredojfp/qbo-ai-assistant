@@ -11,6 +11,9 @@ SCHEMA: List[Dict[str, Any]] = [
         {'type': 'function', 'function': {'name': 'generar_informe_tokens', 'description': 'Genera informe Excel con estadísticas detalladas de consumo (sobrescribe archivo).', 'parameters': {'type': 'object', 'properties': {}}}},
 ]
 
+
+# Routing keywords — usadas por get_relevant_tools()
+KEYWORDS: List[str] = ["token", "estadística", "costo", "gasto", "informe tokens"]
 FUNCTIONS: Dict[str, Any] = {
     "obtener_estadisticas_tokens": tool_obtener_estadisticas_tokens,
     "generar_informe_tokens": tool_generar_informe_tokens,

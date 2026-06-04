@@ -15,6 +15,9 @@ SCHEMA: List[Dict[str, Any]] = [
         {'type': 'function', 'function': {'name': 'crear_pago', 'description': 'Registra un pago recibido de un cliente en QuickBooks.', 'parameters': {'type': 'object', 'properties': {'customer_id': {'type': 'string'}, 'amount': {'type': 'number'}, 'cuenta_id': {'type': 'string', 'description': 'Cuenta donde se deposita el pago'}, 'fecha': {'type': 'string'}, 'aplicar_a_invoices': {'type': 'array', 'description': 'Lista de invoices a los que aplicar el pago', 'items': {'type': 'object', 'properties': {'invoice_id': {'type': 'string'}, 'amount': {'type': 'number'}}}}}, 'required': ['customer_id', 'amount', 'cuenta_id']}}},
 ]
 
+
+# Routing keywords — usadas por get_relevant_tools()
+KEYWORDS: List[str] = ["invoice", "pago", "cobro", "bill", "factura", "crear txn", "transaccion"]
 FUNCTIONS: Dict[str, Any] = {
     "crear_invoice": tool_crear_invoice,
     "crear_bill": tool_crear_bill,

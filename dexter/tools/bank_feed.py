@@ -94,6 +94,9 @@ SCHEMA: List[Dict[str, Any]] = [
     ),
 ]
 
+
+# Routing keywords — usadas por get_relevant_tools()
+KEYWORDS: List[str] = ["clasificar", "bank", "banco", "feed"]
 FUNCTIONS: Dict[str, Any] = {
     "analizarbankfeed": tool_analyze_bank_feed_for_classification,
     "registrarclasificacion": tool_record_bank_feed_classification,
