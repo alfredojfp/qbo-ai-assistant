@@ -12,17 +12,24 @@ from typing import Any, Callable, Dict, List
 
 from dexter.tools import (
     admin,
+    advanced,
     api_explorer,
     bank_feed,
     batch,
     behavior,
     journal,
+    master_data,
     ocr,
+    operations,
+    read,
     reconciliation,
+    recurring,
     report_custom,
     reports,
+    reports_extra,
     search,
     tokens,
+    transaction_extra,
     transactions,
     web_code,
 )
@@ -31,7 +38,9 @@ ALL_SCHEMAS: List[Dict[str, Any]] = []
 ALL_FUNCTIONS: Dict[str, Callable[..., Any]] = {}
 
 _MODULES = [
-    search, transactions, reports, tokens, admin, batch,
+    search, transactions, transaction_extra, master_data, operations,
+    reports, reports_extra, read, recurring, advanced,
+    tokens, admin, batch,
     reconciliation, ocr, behavior, report_custom, api_explorer,
     journal, web_code, bank_feed,
 ]
@@ -69,7 +78,9 @@ __all__ = [
     "ALL_SCHEMAS",
     "ALL_FUNCTIONS",
     "KEYWORDS_BY_MODULE",
-    "search", "transactions", "reports", "tokens", "admin", "batch",
+    "search", "transactions", "transaction_extra", "master_data", "operations",
+    "reports", "reports_extra", "read", "recurring", "advanced",
+    "tokens", "admin", "batch",
     "reconciliation", "ocr", "behavior", "report_custom", "api_explorer",
     "journal", "web_code", "bank_feed",
 ]

@@ -270,6 +270,12 @@ def qbo_request(method: str, endpoint: str, data: dict = None, params: dict = No
 
     url = f"{QB_BASE_URL}/{endpoint}"
 
+    # Pinear minorversion para usar una versión específica de la API (default 70, configurable)
+    minor_version = os.getenv("QB_MINOR_VERSION", "70")
+    if params is None:
+        params = {}
+    params.setdefault("minorversion", minor_version)
+
     if method == "GET":
         response = requests.get(url, headers=headers, params=params)
     elif method == "POST":
@@ -746,6 +752,1106 @@ def create_customer(display_name: str, email: str = None, phone: str = None,
         "error": response.text,
         "status_code": response.status_code,
     }
+
+
+# ========================================================================
+# Master Data Create helpers (Sprint 1A: 8 tools)
+# ========================================================================
+
+def create_vendor(display_name: str, company_name: str = None, email: str = None,
+                  phone: str = None, address: str = None, vendor_1099: bool = False,
+                  bill_rate: float = None, term_id: str = None) -> dict:
+    """Crea un vendor (proveedor) en QuickBooks."""
+    log_operation("vendors_created")
+    vendor_data: Dict[str, Any] = {"DisplayName": display_name}
+    if company_name:
+        vendor_data["CompanyName"] = company_name
+    if email:
+        vendor_data["PrimaryEmailAddr"] = {"Address": email}
+    if phone:
+        vendor_data["PrimaryPhone"] = {"FreeFormNumber": phone}
+    if address:
+        vendor_data["BillAddr"] = {"Line1": address}
+    if vendor_1099:
+        vendor_data["Vendor1099"] = True
+    if bill_rate is not None:
+        vendor_data["BillRate"] = bill_rate
+    if term_id:
+        vendor_data["TermRef"] = {"value": term_id}
+    response = qbo_request("POST", "vendor", data=vendor_data)
+    if response.status_code == 200:
+        v = response.json()["Vendor"]
+        return {
+            "success": True,
+            "vendor_id": v["Id"],
+            "display_name": v.get("DisplayName"),
+            "company_name": v.get("CompanyName"),
+            "vendor_1099": v.get("Vendor1099", False),
+            "balance": v.get("Balance", 0),
+            "active": v.get("Active", True),
+        }
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+def create_account(name: str, account_type: str, account_sub_type: str = None,
+                   description: str = None, opening_balance: float = None,
+                   opening_balance_date: str = None) -> dict:
+    """Crea una cuenta (Account) en el Chart of Accounts.
+
+    account_type: Bank, AccountsReceivable, OtherCurrentAsset, FixedAsset,
+                  OtherAsset, AccountsPayable, CreditCard, OtherCurrentLiability,
+                  LongTermLiability, Equity, Income, CostOfGoodsSold, Expense,
+                  OtherIncome, OtherExpense
+    """
+    log_operation("accounts_created")
+    account_data: Dict[str, Any] = {"Name": name, "AccountType": account_type}
+    if account_sub_type:
+        account_data["AccountSubType"] = account_sub_type
+    if description:
+        account_data["Description"] = description
+    if opening_balance is not None:
+        account_data["OpeningBalance"] = opening_balance
+        account_data["OpeningBalanceDate"] = opening_balance_date or datetime.now().strftime("%Y-%m-%d")
+    response = qbo_request("POST", "account", data=account_data)
+    if response.status_code == 200:
+        a = response.json()["Account"]
+        return {
+            "success": True,
+            "account_id": a["Id"],
+            "name": a.get("Name"),
+            "account_type": a.get("AccountType"),
+            "current_balance": a.get("CurrentBalance", 0),
+            "active": a.get("Active", True),
+        }
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+def create_item(name: str, item_type: str = "Service", unit_price: float = 0.0,
+                income_account_id: str = None, expense_account_id: str = None,
+                asset_account_id: str = None, sku: str = None,
+                track_quantity: bool = False, qty_on_hand: float = 0.0,
+                inv_start_date: str = None, description: str = None) -> dict:
+    """Crea un item (producto o servicio) en QuickBooks.
+
+    item_type: Service, Inventory, NonInventory
+    """
+    log_operation("items_created")
+    item_data: Dict[str, Any] = {
+        "Name": name,
+        "Type": item_type,
+        "UnitPrice": unit_price,
+    }
+    if income_account_id:
+        item_data["IncomeAccountRef"] = {"value": income_account_id}
+    if expense_account_id:
+        item_data["ExpenseAccountRef"] = {"value": expense_account_id}
+    if asset_account_id:
+        item_data["AssetAccountRef"] = {"value": asset_account_id}
+    if sku:
+        item_data["Sku"] = sku
+    if description:
+        item_data["Description"] = description
+    if item_type == "Inventory" and track_quantity:
+        item_data["TrackQuantityOnHand"] = True
+        item_data["QtyOnHand"] = qty_on_hand
+        item_data["InvStartDate"] = inv_start_date or datetime.now().strftime("%Y-%m-%d")
+    response = qbo_request("POST", "item", data=item_data)
+    if response.status_code == 200:
+        i = response.json()["Item"]
+        return {
+            "success": True,
+            "item_id": i["Id"],
+            "name": i.get("Name"),
+            "type": i.get("Type"),
+            "unit_price": i.get("UnitPrice", 0),
+            "active": i.get("Active", True),
+        }
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+def create_employee(display_name: str, given_name: str = None, family_name: str = None,
+                    email: str = None, phone: str = None, address: str = None,
+                    hired_date: str = None, bill_rate: float = None) -> dict:
+    """Crea un empleado (Employee) en QuickBooks."""
+    log_operation("employees_created")
+    emp_data: Dict[str, Any] = {"DisplayName": display_name}
+    if given_name:
+        emp_data["GivenName"] = given_name
+    if family_name:
+        emp_data["FamilyName"] = family_name
+    if email:
+        emp_data["PrimaryEmailAddr"] = {"Address": email}
+    if phone:
+        emp_data["PrimaryPhone"] = {"FreeFormNumber": phone}
+    if address:
+        emp_data["PrimaryAddr"] = {"Line1": address}
+    if hired_date:
+        emp_data["HiredDate"] = hired_date
+    if bill_rate is not None:
+        emp_data["BillRate"] = bill_rate
+    response = qbo_request("POST", "employee", data=emp_data)
+    if response.status_code == 200:
+        e = response.json()["Employee"]
+        return {
+            "success": True,
+            "employee_id": e["Id"],
+            "display_name": e.get("DisplayName"),
+            "active": e.get("Active", True),
+        }
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+def create_class(name: str, parent_class_id: str = None, active: bool = True) -> dict:
+    """Crea una clase (Class) en QuickBooks para segmentación P&L."""
+    log_operation("classes_created")
+    class_data: Dict[str, Any] = {"Name": name, "Active": active}
+    if parent_class_id:
+        class_data["SubClass"] = True
+        class_data["ParentRef"] = {"value": parent_class_id}
+    response = qbo_request("POST", "class", data=class_data)
+    if response.status_code == 200:
+        c = response.json()["Class"]
+        return {
+            "success": True,
+            "class_id": c["Id"],
+            "name": c.get("Name"),
+            "active": c.get("Active", True),
+        }
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+def create_department(name: str, parent_dept_id: str = None, active: bool = True) -> dict:
+    """Crea un departamento en QuickBooks para segmentación P&L."""
+    log_operation("departments_created")
+    dept_data: Dict[str, Any] = {"Name": name, "Active": active}
+    if parent_dept_id:
+        dept_data["SubDepartment"] = True
+        dept_data["ParentRef"] = {"value": parent_dept_id}
+    response = qbo_request("POST", "department", data=dept_data)
+    if response.status_code == 200:
+        d = response.json()["Department"]
+        return {
+            "success": True,
+            "department_id": d["Id"],
+            "name": d.get("Name"),
+            "active": d.get("Active", True),
+        }
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+def create_term(name: str, due_days: int = 30, discount_days: int = 0,
+                discount_pct: float = 0.0, active: bool = True) -> dict:
+    """Crea un plazo de pago (Term) en QuickBooks (ej: Net 30, 2/10 Net 30)."""
+    log_operation("terms_created")
+    term_data: Dict[str, Any] = {
+        "Name": name,
+        "DueDays": due_days,
+        "Active": active,
+    }
+    if discount_days > 0:
+        term_data["DiscountDays"] = discount_days
+        term_data["DiscountPct"] = discount_pct
+    response = qbo_request("POST", "term", data=term_data)
+    if response.status_code == 200:
+        t = response.json()["Term"]
+        return {
+            "success": True,
+            "term_id": t["Id"],
+            "name": t.get("Name"),
+            "due_days": t.get("DueDays"),
+            "active": t.get("Active", True),
+        }
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+def create_payment_method(name: str, payment_type: str = "Other", active: bool = True) -> dict:
+    """Crea un método de pago (PaymentMethod) en QuickBooks.
+
+    payment_type: CreditCard, Check, Cash, BankTransfer, Other
+    """
+    log_operation("payment_methods_created")
+    pm_data: Dict[str, Any] = {"Name": name, "Type": payment_type, "Active": active}
+    response = qbo_request("POST", "paymentmethod", data=pm_data)
+    if response.status_code == 200:
+        pm = response.json()["PaymentMethod"]
+        return {
+            "success": True,
+            "payment_method_id": pm["Id"],
+            "name": pm.get("Name"),
+            "type": pm.get("Type"),
+            "active": pm.get("Active", True),
+        }
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+# ========================================================================
+# Transaction Create helpers (Sprint 1B: 9 tools)
+# ========================================================================
+
+def create_billpayment(vendor_id: str, total_amt: float, pay_type: str = "Check",
+                       txn_date: str = None, bank_account_id: str = None,
+                       cc_account_id: str = None, line_payments: List[dict] = None,
+                       memo: str = None) -> dict:
+    """Crea un pago de bill (BillPayment) en QuickBooks.
+
+    pay_type: Check, CreditCard
+    line_payments: lista de {bill_id, amount} para aplicar a bills específicas
+    """
+    log_operation("billpayments_created")
+    if not txn_date:
+        txn_date = datetime.now().strftime("%Y-%m-%d")
+    bp_data: Dict[str, Any] = {
+        "VendorRef": {"value": vendor_id},
+        "TotalAmt": total_amt,
+        "PayType": pay_type,
+        "TxnDate": txn_date,
+    }
+    if pay_type == "Check" and bank_account_id:
+        bp_data["CheckPayment"] = {"BankAccountRef": {"value": bank_account_id}}
+    elif pay_type == "CreditCard" and cc_account_id:
+        bp_data["CreditCardPayment"] = {"CCAccountRef": {"value": cc_account_id}}
+    if line_payments:
+        bp_data["Line"] = [
+            {
+                "Amount": lp["amount"],
+                "LinkedTxn": [{"TxnId": lp["bill_id"], "TxnType": "Bill"}]
+            }
+            for lp in line_payments
+        ]
+    if memo:
+        bp_data["PrivateNote"] = memo
+    response = qbo_request("POST", "billpayment", data=bp_data)
+    if response.status_code == 200:
+        bp = response.json()["BillPayment"]
+        return {
+            "success": True,
+            "bill_payment_id": bp["Id"],
+            "total": bp.get("TotalAmt"),
+            "vendor_id": vendor_id,
+        }
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+def create_estimate(customer_id: str, line_items: List[dict], txn_date: str = None,
+                    expiration_date: str = None, memo: str = None) -> dict:
+    """Crea un estimate (cotización) en QuickBooks."""
+    log_operation("estimates_created")
+    if not txn_date:
+        txn_date = datetime.now().strftime("%Y-%m-%d")
+    est_data: Dict[str, Any] = {
+        "CustomerRef": {"value": customer_id},
+        "TxnDate": txn_date,
+        "Line": [],
+    }
+    if expiration_date:
+        est_data["ExpirationDate"] = expiration_date
+    if memo:
+        est_data["PrivateNote"] = memo
+    for item in line_items:
+        line: Dict[str, Any] = {
+            "DetailType": "SalesItemLineDetail",
+            "Amount": item["amount"],
+            "SalesItemLineDetail": {"ItemRef": {"value": item["item_id"]}},
+        }
+        if "quantity" in item:
+            line["SalesItemLineDetail"]["Qty"] = item["quantity"]
+        if "description" in item:
+            line["Description"] = item["description"]
+        est_data["Line"].append(line)
+    response = qbo_request("POST", "estimate", data=est_data)
+    if response.status_code == 200:
+        e = response.json()["Estimate"]
+        return {
+            "success": True,
+            "estimate_id": e["Id"],
+            "doc_number": e.get("DocNumber"),
+            "total": e.get("TotalAmt"),
+        }
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+def create_salesreceipt(customer_id: str = None, line_items: List[dict] = None,
+                        txn_date: str = None, deposit_to_account_id: str = None,
+                        payment_method_id: str = None, total_amt: float = None,
+                        memo: str = None) -> dict:
+    """Crea un sales receipt (recibo de venta inmediata) en QuickBooks.
+
+    customer_id opcional (puede ser venta sin cliente asignado).
+    Si se pasa total_amt sin line_items, crea un recibo simple.
+    """
+    log_operation("salesreceipts_created")
+    if not txn_date:
+        txn_date = datetime.now().strftime("%Y-%m-%d")
+    sr_data: Dict[str, Any] = {"TxnDate": txn_date}
+    if customer_id:
+        sr_data["CustomerRef"] = {"value": customer_id}
+    if deposit_to_account_id:
+        sr_data["DepositToAccountRef"] = {"value": deposit_to_account_id}
+    if payment_method_id:
+        sr_data["PaymentRefNum"] = ""
+    if memo:
+        sr_data["PrivateNote"] = memo
+    if line_items:
+        sr_data["Line"] = []
+        for item in line_items:
+            line: Dict[str, Any] = {
+                "DetailType": "SalesItemLineDetail",
+                "Amount": item["amount"],
+                "SalesItemLineDetail": {"ItemRef": {"value": item["item_id"]}},
+            }
+            if "quantity" in item:
+                line["SalesItemLineDetail"]["Qty"] = item["quantity"]
+            if "description" in item:
+                line["Description"] = item["description"]
+            sr_data["Line"].append(line)
+    response = qbo_request("POST", "salesreceipt", data=sr_data)
+    if response.status_code == 200:
+        sr = response.json()["SalesReceipt"]
+        return {
+            "success": True,
+            "sales_receipt_id": sr["Id"],
+            "doc_number": sr.get("DocNumber"),
+            "total": sr.get("TotalAmt"),
+        }
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+def create_creditmemo(customer_id: str, line_items: List[dict], txn_date: str = None,
+                      memo: str = None) -> dict:
+    """Crea un credit memo (nota de crédito) en QuickBooks."""
+    log_operation("creditmemos_created")
+    if not txn_date:
+        txn_date = datetime.now().strftime("%Y-%m-%d")
+    cm_data: Dict[str, Any] = {
+        "CustomerRef": {"value": customer_id},
+        "TxnDate": txn_date,
+        "Line": [],
+    }
+    if memo:
+        cm_data["PrivateNote"] = memo
+    for item in line_items:
+        line: Dict[str, Any] = {
+            "DetailType": "SalesItemLineDetail",
+            "Amount": item["amount"],
+            "SalesItemLineDetail": {"ItemRef": {"value": item["item_id"]}},
+        }
+        if "quantity" in item:
+            line["SalesItemLineDetail"]["Qty"] = item["quantity"]
+        if "description" in item:
+            line["Description"] = item["description"]
+        cm_data["Line"].append(line)
+    response = qbo_request("POST", "creditmemo", data=cm_data)
+    if response.status_code == 200:
+        cm = response.json()["CreditMemo"]
+        return {
+            "success": True,
+            "credit_memo_id": cm["Id"],
+            "doc_number": cm.get("DocNumber"),
+            "total": cm.get("TotalAmt"),
+        }
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+def create_purchase(vendor_id: str, account_id: str, total_amt: float,
+                    payment_type: str = "Cash", txn_date: str = None,
+                    description: str = None, memo: str = None) -> dict:
+    """Crea una purchase genérica (gasto via check/CC/cash) en QuickBooks.
+
+    payment_type: Cash, Check, CreditCard
+    """
+    log_operation("purchases_created")
+    if not txn_date:
+        txn_date = datetime.now().strftime("%Y-%m-%d")
+    pur_data: Dict[str, Any] = {
+        "VendorRef": {"value": vendor_id},
+        "PaymentType": payment_type,
+        "TxnDate": txn_date,
+        "Line": [{
+            "DetailType": "AccountBasedExpenseLineDetail",
+            "Amount": total_amt,
+            "AccountBasedExpenseLineDetail": {"AccountRef": {"value": account_id}},
+        }],
+    }
+    if description:
+        pur_data["Line"][0]["Description"] = description
+    if memo:
+        pur_data["PrivateNote"] = memo
+    response = qbo_request("POST", "purchase", data=pur_data)
+    if response.status_code == 200:
+        p = response.json()["Purchase"]
+        return {
+            "success": True,
+            "purchase_id": p["Id"],
+            "doc_number": p.get("DocNumber"),
+            "total": p.get("TotalAmt"),
+        }
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+def create_purchaseorder(vendor_id: str, line_items: List[dict], txn_date: str = None,
+                         ship_to_addr: str = None, memo: str = None,
+                         po_email: str = None) -> dict:
+    """Crea una purchase order (orden de compra) en QuickBooks."""
+    log_operation("purchaseorders_created")
+    if not txn_date:
+        txn_date = datetime.now().strftime("%Y-%m-%d")
+    po_data: Dict[str, Any] = {
+        "VendorRef": {"value": vendor_id},
+        "TxnDate": txn_date,
+        "Line": [],
+    }
+    if ship_to_addr:
+        po_data["ShipAddr"] = {"Line1": ship_to_addr}
+    if po_email:
+        po_data["POEmail"] = {"Address": po_email}
+    if memo:
+        po_data["PrivateNote"] = memo
+    for item in line_items:
+        line: Dict[str, Any] = {
+            "DetailType": "ItemBasedExpenseLineDetail",
+            "Amount": item["amount"],
+            "ItemBasedExpenseLineDetail": {"ItemRef": {"value": item["item_id"]}},
+        }
+        if "quantity" in item:
+            line["ItemBasedExpenseLineDetail"]["Qty"] = item["quantity"]
+        if "description" in item:
+            line["Description"] = item["description"]
+        po_data["Line"].append(line)
+    response = qbo_request("POST", "purchaseorder", data=po_data)
+    if response.status_code == 200:
+        po = response.json()["PurchaseOrder"]
+        return {
+            "success": True,
+            "purchase_order_id": po["Id"],
+            "doc_number": po.get("DocNumber"),
+            "total": po.get("TotalAmt"),
+        }
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+def create_refundreceipt(customer_id: str, line_items: List[dict], refund_account_id: str,
+                         txn_date: str = None, memo: str = None) -> dict:
+    """Crea un refund receipt (recibo de reembolso) en QuickBooks."""
+    log_operation("refundreceipts_created")
+    if not txn_date:
+        txn_date = datetime.now().strftime("%Y-%m-%d")
+    rr_data: Dict[str, Any] = {
+        "CustomerRef": {"value": customer_id},
+        "DepositToAccountRef": {"value": refund_account_id},
+        "TxnDate": txn_date,
+        "Line": [],
+    }
+    if memo:
+        rr_data["PrivateNote"] = memo
+    for item in line_items:
+        line: Dict[str, Any] = {
+            "DetailType": "SalesItemLineDetail",
+            "Amount": item["amount"],
+            "SalesItemLineDetail": {"ItemRef": {"value": item["item_id"]}},
+        }
+        if "quantity" in item:
+            line["SalesItemLineDetail"]["Qty"] = item["quantity"]
+        if "description" in item:
+            line["Description"] = item["description"]
+        rr_data["Line"].append(line)
+    response = qbo_request("POST", "refundreceipt", data=rr_data)
+    if response.status_code == 200:
+        rr = response.json()["RefundReceipt"]
+        return {
+            "success": True,
+            "refund_receipt_id": rr["Id"],
+            "doc_number": rr.get("DocNumber"),
+            "total": rr.get("TotalAmt"),
+        }
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+def create_vendorcredit(vendor_id: str, line_items: List[dict], txn_date: str = None,
+                        memo: str = None) -> dict:
+    """Crea un vendor credit (crédito de proveedor) en QuickBooks."""
+    log_operation("vendorcredits_created")
+    if not txn_date:
+        txn_date = datetime.now().strftime("%Y-%m-%d")
+    vc_data: Dict[str, Any] = {
+        "VendorRef": {"value": vendor_id},
+        "TxnDate": txn_date,
+        "Line": [],
+    }
+    if memo:
+        vc_data["PrivateNote"] = memo
+    for item in line_items:
+        line: Dict[str, Any] = {
+            "DetailType": "AccountBasedExpenseLineDetail",
+            "Amount": item["amount"],
+            "AccountBasedExpenseLineDetail": {"AccountRef": {"value": item["account_id"]}},
+        }
+        if "description" in item:
+            line["Description"] = item["description"]
+        vc_data["Line"].append(line)
+    response = qbo_request("POST", "vendorcredit", data=vc_data)
+    if response.status_code == 200:
+        vc = response.json()["VendorCredit"]
+        return {
+            "success": True,
+            "vendor_credit_id": vc["Id"],
+            "doc_number": vc.get("DocNumber"),
+            "total": vc.get("TotalAmt"),
+        }
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+def create_timeactivity(employee_id: str, hours: int = 0, minutes: int = 0,
+                        txn_date: str = None, customer_id: str = None,
+                        item_id: str = None, billable: bool = True,
+                        description: str = None) -> dict:
+    """Crea un time activity (registro de horas) en QuickBooks.
+
+    hours+minutes: tiempo total (ej: 1h 30min = 1*60+30=90 min en qbo, pero aquí lo pasamos directo)
+    """
+    log_operation("timeactivities_created")
+    if not txn_date:
+        txn_date = datetime.now().strftime("%Y-%m-%d")
+    total_minutes = hours * 60 + minutes
+    ta_data: Dict[str, Any] = {
+        "EmployeeRef": {"value": employee_id},
+        "TxnDate": txn_date,
+        "Hours": total_minutes / 60.0,
+        "BillableStatus": "Billable" if billable else "NotBillable",
+    }
+    if customer_id:
+        ta_data["CustomerRef"] = {"value": customer_id}
+    if item_id:
+        ta_data["ItemRef"] = {"value": item_id}
+    if description:
+        ta_data["Description"] = description
+    response = qbo_request("POST", "timeactivity", data=ta_data)
+    if response.status_code == 200:
+        ta = response.json()["TimeActivity"]
+        return {
+            "success": True,
+            "time_activity_id": ta["Id"],
+            "hours": ta.get("Hours"),
+            "txn_date": ta.get("TxnDate"),
+        }
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+# ========================================================================
+# Update/Void/Delete operations (Sprint 1C)
+# ========================================================================
+
+def update_entity(entity_name: str, entity_id: str, updates: dict,
+                  sync_token: str = None, sparse: bool = True) -> dict:
+    """Actualiza una entidad vía POST con sparse update por defecto.
+
+    Si sparse=True, solo se actualizan los campos en `updates` (más eficiente).
+    Si sparse=False, se debe pasar la entidad completa en `updates`.
+    Si sync_token es None, primero hace un read para obtenerlo.
+    """
+    if not sync_token:
+        # Read para obtener sync token
+        read_resp = qbo_request("GET", f"{entity_name}/{entity_id}")
+        if read_resp.status_code != 200:
+            return {"success": False, "error": f"Cannot read {entity_name}: {read_resp.text}",
+                    "status_code": read_resp.status_code}
+        current = read_resp.json().get(entity_name.capitalize(), {})
+        sync_token = str(current.get("SyncToken", "0"))
+    if sparse:
+        # En sparse update, NO se puede cambiar Id ni SyncToken, se pasan como sparse field
+        # Y solo se mandan los campos a cambiar
+        payload = {"Id": entity_id, "SyncToken": sync_token, **updates}
+    else:
+        # Full update: la entidad completa
+        payload = updates
+    params = {"operation": "sparseUpdate"} if sparse else None
+    response = qbo_request("POST", entity_name, data=payload, params=params)
+    if response.status_code == 200:
+        data_key = entity_name[0].upper() + entity_name[1:]
+        updated = response.json().get(data_key, {})
+        return {
+            "success": True,
+            f"{entity_name}_id": updated.get("Id"),
+            "sync_token": updated.get("SyncToken"),
+        }
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+def delete_transaction(entity_name: str, entity_id: str, sync_token: str) -> dict:
+    """Elimina una transacción (hard delete). Para entidades con simplified delete,
+    solo se manda Id + SyncToken."""
+    log_operation(f"{entity_name}_deleted")
+    response = qbo_request(
+        "POST",
+        f"{entity_name}?operation=delete",
+        data={"Id": entity_id, "SyncToken": sync_token},
+    )
+    if response.status_code == 200:
+        return {
+            "success": True,
+            f"{entity_name}_id": entity_id,
+            "deleted": True,
+        }
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+def void_transaction(entity_name: str, entity_id: str, sync_token: str) -> dict:
+    """Anula (void) una transacción. Aplica a Payment, BillPayment, Invoice, SalesReceipt."""
+    log_operation(f"{entity_name}_voided")
+    response = qbo_request(
+        "POST",
+        entity_name,
+        params={"operation": "sparseUpdate"},
+        data={
+            "Id": entity_id,
+            "SyncToken": sync_token,
+            "PrivateNote": "[VOIDED]",
+        },
+    )
+    if response.status_code == 200:
+        data_key = entity_name[0].upper() + entity_name[1:]
+        return {
+            "success": True,
+            f"{entity_name}_id": entity_id,
+            "voided": True,
+        }
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+def deactivate_entity(entity_name: str, entity_id: str, sync_token: str = None) -> dict:
+    """Desactiva una entidad de master data (soft delete via Active=false)."""
+    log_operation(f"{entity_name}_deactivated")
+    if not sync_token:
+        read_resp = qbo_request("GET", f"{entity_name}/{entity_id}")
+        if read_resp.status_code != 200:
+            return {"success": False, "error": f"Cannot read {entity_name}: {read_resp.text}"}
+        current = read_resp.json().get(entity_name.capitalize(), {})
+        sync_token = str(current.get("SyncToken", "0"))
+    response = qbo_request(
+        "POST",
+        f"{entity_name}?operation=delete",
+        data={"Id": entity_id, "SyncToken": sync_token, "Active": False},
+    )
+    if response.status_code == 200:
+        return {
+            "success": True,
+            f"{entity_name}_id": entity_id,
+            "active": False,
+        }
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+def send_transaction_email(entity_name: str, entity_id: str, send_to: str = None) -> dict:
+    """Envía una transacción por email (Invoice o PurchaseOrder)."""
+    log_operation(f"{entity_name}_emailed")
+    endpoint = f"{entity_name}/{entity_id}/send"
+    if send_to:
+        endpoint += f"?sendTo={send_to}"
+    response = qbo_request("POST", endpoint, data={})
+    if response.status_code == 200:
+        return {
+            "success": True,
+            f"{entity_name}_id": entity_id,
+            "sent_to": send_to or "default",
+        }
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+# ========================================================================
+# Report helpers (Sprint 1E: 10+ tools)
+# ========================================================================
+
+def _fetch_report(report_name: str, params: dict) -> dict:
+    """Helper genérico para fetch de reportes. Retorna JSON parseado o error."""
+    response = qbo_request("GET", f"reports/{report_name}", params=params)
+    if response.status_code == 200:
+        return {"success": True, "data": response.json()}
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+def generate_trial_balance_report(start_date: str, end_date: str,
+                                   accounting_method: str = "Accrual") -> dict:
+    """Genera reporte de Trial Balance (balance de comprobación)."""
+    log_operation("reports")
+    return _fetch_report("TrialBalance", {
+        "start_date": start_date,
+        "end_date": end_date,
+        "accounting_method": accounting_method,
+    })
+
+
+def generate_general_ledger_report(start_date: str, end_date: str,
+                                   accounting_method: str = "Accrual",
+                                   account_id: str = None) -> dict:
+    """Genera reporte de General Ledger para una cuenta o todas."""
+    log_operation("reports")
+    params: Dict[str, Any] = {
+        "start_date": start_date,
+        "end_date": end_date,
+        "accounting_method": accounting_method,
+    }
+    if account_id:
+        params["account"] = account_id
+    return _fetch_report("GeneralLedger", params)
+
+
+def generate_cash_flow_report(start_date: str, end_date: str,
+                              accounting_method: str = "Accrual") -> dict:
+    """Genera reporte de Statement of Cash Flows."""
+    log_operation("reports")
+    return _fetch_report("CashFlow", {
+        "start_date": start_date,
+        "end_date": end_date,
+        "accounting_method": accounting_method,
+    })
+
+
+def generate_ar_aging_report(report_date: str, aging_method: str = "ReportDate",
+                              num_periods: int = 4) -> dict:
+    """Genera A/R Aging Summary (reporte de cobranzas)."""
+    log_operation("reports")
+    return _fetch_report("AgedReceivables", {
+        "report_date": report_date,
+        "aging_method": aging_method,
+        "aging_period": num_periods,
+    })
+
+
+def generate_ap_aging_report(report_date: str, aging_method: str = "ReportDate",
+                              num_periods: int = 4) -> dict:
+    """Genera A/P Aging Summary (reporte de pagos pendientes)."""
+    log_operation("reports")
+    return _fetch_report("AgedPayables", {
+        "report_date": report_date,
+        "aging_method": aging_method,
+        "aging_period": num_periods,
+    })
+
+
+def generate_customer_balance_report(report_date: str = None,
+                                      customer_id: str = None) -> dict:
+    """Genera Customer Balance Summary."""
+    log_operation("reports")
+    params: Dict[str, Any] = {}
+    if report_date:
+        params["report_date"] = report_date
+    if customer_id:
+        params["customer"] = customer_id
+    return _fetch_report("CustomerBalance", params)
+
+
+def generate_vendor_balance_report(report_date: str = None,
+                                    vendor_id: str = None) -> dict:
+    """Genera Vendor Balance Summary."""
+    log_operation("reports")
+    params: Dict[str, Any] = {}
+    if report_date:
+        params["report_date"] = report_date
+    if vendor_id:
+        params["vendor"] = vendor_id
+    return _fetch_report("VendorBalance", params)
+
+
+def generate_pl_detail_report(start_date: str, end_date: str,
+                               accounting_method: str = "Accrual") -> dict:
+    """Genera Profit and Loss Detail (más granular que P&L normal)."""
+    log_operation("reports")
+    return _fetch_report("ProfitAndLossDetail", {
+        "start_date": start_date,
+        "end_date": end_date,
+        "accounting_method": accounting_method,
+    })
+
+
+def generate_journal_report(start_date: str, end_date: str) -> dict:
+    """Genera Journal Report (todos los journal entries en un período)."""
+    log_operation("reports")
+    return _fetch_report("JournalReport", {
+        "start_date": start_date,
+        "end_date": end_date,
+    })
+
+
+def generate_account_list_report() -> dict:
+    """Genera Account List (lista de cuentas contables)."""
+    log_operation("reports")
+    return _fetch_report("AccountListDetail", {})
+
+
+# ========================================================================
+# Read operations (Sprint 1F: 3 tools)
+# ========================================================================
+
+def get_company_info() -> dict:
+    """Lee información de la empresa (CompanyInfo)."""
+    log_operation("companyinfo_read")
+    response = qbo_request("GET", f"companyinfo/{QB_REALM_ID}")
+    if response.status_code == 200:
+        ci = response.json().get("CompanyInfo", {})
+        return {
+            "success": True,
+            "company_name": ci.get("CompanyName"),
+            "legal_name": ci.get("LegalName"),
+            "country": ci.get("Country"),
+            "fiscal_year_start": ci.get("FiscalYearStartMonth"),
+            "email": ci.get("Email", {}).get("Address") if ci.get("Email") else None,
+            "address": ci.get("CompanyAddr", {}),
+            "phone": ci.get("PrimaryPhone", {}).get("FreeFormNumber") if ci.get("PrimaryPhone") else None,
+        }
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+def get_preferences() -> dict:
+    """Lee preferencias de la empresa (Preferences)."""
+    log_operation("preferences_read")
+    response = qbo_request("GET", "preferences")
+    if response.status_code == 200:
+        return {"success": True, "data": response.json().get("Preferences", {})}
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+def advanced_query(sql: str, start_position: int = 1, max_results: int = 100) -> dict:
+    """Ejecuta una query SQL-like en QuickBooks (QBO query language).
+
+    Soporta SELECT, WHERE, ORDERBY, STARTPOSITION, MAXRESULTS, COUNT.
+    Limitaciones: no OR, no DROP/DELETE/UPDATE, max 1000 max_results.
+    """
+    log_operation("queries")
+    # Validaciones de seguridad
+    sql_upper = sql.upper().strip()
+    forbidden = ["DROP", "DELETE ", "UPDATE ", "INSERT ", "ALTER ", "CREATE "]
+    for kw in forbidden:
+        if kw in sql_upper:
+            return {"success": False, "error": f"Operación no permitida: {kw.strip()}"}
+    if "MAXRESULTS" not in sql_upper:
+        sql += f" MAXRESULTS {min(max_results, 1000)}"
+    if "STARTPOSITION" not in sql_upper:
+        sql = sql.rstrip() + f" STARTPOSITION {start_position}"
+    response = qbo_request("GET", "query", params={"query": sql})
+    if response.status_code == 200:
+        return {"success": True, "data": response.json()}
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+# ========================================================================
+# Sprint 2: Recurring + Attachments
+# ========================================================================
+
+def create_recurring_transaction(base_txn: dict, name: str, recur_type: str = "Automated",
+                                   interval_type: str = "Monthly", num_interval: int = 1,
+                                   start_date: str = None, max_occurrences: int = None,
+                                   day_of_month: int = None, days_before: int = 2,
+                                   active: bool = True) -> dict:
+    """Crea una transacción recurrente (plantilla que se autogenera).
+
+    base_txn: el cuerpo de la transacción base (Invoice, Bill, etc.) SIN Id ni SyncToken
+    recur_type: "Automated" o "Reminder"
+    interval_type: "Daily", "Weekly", "Monthly", "Yearly"
+    """
+    log_operation("recurring_created")
+    if not start_date:
+        start_date = datetime.now().strftime("%Y-%m-%d")
+    schedule_info: Dict[str, Any] = {
+        "StartDate": start_date,
+        "IntervalType": interval_type,
+        "NumInterval": num_interval,
+        "DaysBefore": days_before,
+    }
+    if max_occurrences is not None:
+        schedule_info["MaxOccurrences"] = max_occurrences
+    if day_of_month is not None:
+        schedule_info["DayOfMonth"] = day_of_month
+    recurring_info = {
+        "Name": name,
+        "RecurType": recur_type,
+        "Active": active,
+        "ScheduleInfo": schedule_info,
+    }
+    payload = {**base_txn, "RecurringInfo": recurring_info}
+    response = qbo_request("POST", "recurringtransaction", data=payload)
+    if response.status_code == 200:
+        r = response.json().get("RecurringTransaction", {})
+        return {
+            "success": True,
+            "recurring_id": r.get("Id"),
+            "name": name,
+            "recur_type": recur_type,
+        }
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+# ========================================================================
+# Sprint 3: P2 tools
+# ========================================================================
+
+def create_taxcode(name: str, tax_rate_id: str = None, description: str = None,
+                   active: bool = True) -> dict:
+    """Crea un TaxCode (NON o TAX) en QuickBooks."""
+    log_operation("taxcodes_created")
+    tc_data: Dict[str, Any] = {"Name": name, "Active": active}
+    if tax_rate_id:
+        tc_data["TaxRateRef"] = {"value": tax_rate_id}
+    if description:
+        tc_data["Description"] = description
+    response = qbo_request("POST", "taxcode", data=tc_data)
+    if response.status_code == 200:
+        t = response.json()["TaxCode"]
+        return {"success": True, "tax_code_id": t["Id"], "name": t.get("Name")}
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+def create_taxrate(name: str, rate_value: float, agency_id: str = None,
+                   description: str = None, active: bool = True) -> dict:
+    """Crea un TaxRate en QuickBooks."""
+    log_operation("taxrates_created")
+    tr_data: Dict[str, Any] = {
+        "Name": name,
+        "RateValue": rate_value,
+        "Active": active,
+    }
+    if agency_id:
+        tr_data["AgencyRef"] = {"value": agency_id}
+    if description:
+        tr_data["Description"] = description
+    response = qbo_request("POST", "taxrate", data=tr_data)
+    if response.status_code == 200:
+        t = response.json()["TaxRate"]
+        return {"success": True, "tax_rate_id": t["Id"], "name": t.get("Name"), "rate": rate_value}
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+def get_exchange_rate(source_currency: str, target_currency: str = "USD",
+                      as_of_date: str = None) -> dict:
+    """Lee tasa de cambio de moneda en una fecha dada."""
+    log_operation("exchange_rate_read")
+    if not as_of_date:
+        as_of_date = datetime.now().strftime("%Y-%m-%d")
+    sql = f"SELECT * FROM ExchangeRate WHERE SourceCurrencyCode = '{source_currency}' AND AsOfDate = '{as_of_date}'"
+    response = qbo_request("GET", "query", params={"query": sql})
+    if response.status_code == 200:
+        return {"success": True, "data": response.json()}
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+def execute_batch(operations: List[dict]) -> dict:
+    """Ejecuta hasta 30 operaciones en una sola llamada (batch).
+
+    operations: lista de dicts con {bId, operation, Entity/Query}
+    """
+    log_operation("batch_executed")
+    if len(operations) > 30:
+        return {"success": False, "error": "Max 30 operaciones por batch"}
+    batch_data = {"BatchItemRequest": operations}
+    response = qbo_request("POST", "batch", data=batch_data)
+    if response.status_code == 200:
+        return {"success": True, "data": response.json()}
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+def cdc_query(entities: List[str], since: str) -> dict:
+    """Change Data Capture: retorna entidades modificadas desde `since`.
+
+    entities: lista de nombres de entidades (e.g., ['Customer', 'Invoice'])
+    since: timestamp ISO (e.g., '2026-06-01T00:00:00Z')
+    """
+    log_operation("cdc_query")
+    payload = {"entities": entities, "since": since}
+    response = qbo_request("POST", "cdc", data=payload)
+    if response.status_code == 200:
+        return {"success": True, "data": response.json()}
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+def create_budget(name: str, start_date: str, end_date: str,
+                  budget_lines: List[dict]) -> dict:
+    """Crea un Budget (presupuesto) en QuickBooks.
+
+    budget_lines: lista de {account_id, amount, period (mes)}
+    """
+    log_operation("budgets_created")
+    budget_data: Dict[str, Any] = {
+        "Name": name,
+        "StartDate": start_date,
+        "EndDate": end_date,
+        "BudgetDetail": {"BudgetLine": []},
+    }
+    for line in budget_lines:
+        budget_data["BudgetDetail"]["BudgetLine"].append({
+            "AccountRef": {"value": line["account_id"]},
+            "Amount": line["amount"],
+            "Period": line.get("period", "Monthly"),
+        })
+    response = qbo_request("POST", "budget", data=budget_data)
+    if response.status_code == 200:
+        b = response.json().get("Budget", {})
+        return {"success": True, "budget_id": b.get("Id"), "name": name}
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+# ========================================================================
+# Attachments (Attachable) - Sprint 2
+# ========================================================================
+
+def upload_attachment(file_content: bytes, file_name: str, content_type: str,
+                      entity_type: str, entity_id: str, note: str = None) -> dict:
+    """Sube un archivo como attachment y lo vincula a una entidad (Bill, Invoice, etc.).
+
+    file_content: bytes del archivo
+    file_name: nombre del archivo (e.g., 'factura.pdf')
+    content_type: MIME type (e.g., 'application/pdf', 'image/jpeg')
+    entity_type: 'Bill', 'Invoice', 'Purchase', etc.
+    entity_id: ID de la entidad a la que se vincula
+    """
+    import base64
+    log_operation("attachments_uploaded")
+    b64_content = base64.b64encode(file_content).decode("utf-8")
+    metadata = {
+        "AttachableRef": [{"EntityRef": {"type": entity_type, "value": entity_id}}],
+        "FileName": file_name,
+        "ContentType": "Document" if content_type == "application/pdf" else "Image",
+    }
+    if note:
+        metadata["Note"] = note
+    # Construir multipart manualmente
+    boundary = "----DexterFormBoundary" + str(hash(file_name))[:10]
+    body = (
+        f"--{boundary}\r\n"
+        f'Content-Disposition: form-data; name="file_metadata_01"; filename="meta.json"\r\n'
+        f"Content-Type: application/json; charset=UTF-8\r\n\r\n"
+        f"{json.dumps(metadata)}\r\n"
+        f"--{boundary}\r\n"
+        f'Content-Disposition: form-data; name="file_content_0"; filename="{file_name}"\r\n'
+        f"Content-Type: {content_type}\r\n"
+        f"Content-Transfer-Encoding: base64\r\n\r\n"
+        f"{b64_content}\r\n"
+        f"--{boundary}--\r\n"
+    ).encode("utf-8")
+    # POST custom con multipart
+    global QB_ACCESS_TOKEN
+    headers = {
+        "Authorization": f"Bearer {QB_ACCESS_TOKEN}",
+        "Accept": "application/json",
+        "Content-Type": f"multipart/form-data; boundary={boundary}",
+    }
+    url = f"{QB_BASE_URL}/upload?minorversion=70"
+    response = requests.post(url, headers=headers, data=body)
+    if response.status_code == 200:
+        att_list = response.json().get("AttachableResponse", [])
+        if att_list:
+            att = att_list[0].get("Attachable", att_list[0])
+            return {
+                "success": True,
+                "attachable_id": att.get("Id"),
+                "file_name": file_name,
+                "linked_to": f"{entity_type}/{entity_id}",
+            }
+        return {"success": True, "uploaded": True, "response": response.json()}
+    return {"success": False, "error": response.text, "status_code": response.status_code}
+
+
+# ========================================================================
+# End of new helpers (Sprints 1+2+3)
+# ========================================================================
+
 
 def create_bill(vendor_id: str, line_items: List[dict], txn_date: str = None,
                due_date: str = None, memo: str = None) -> dict:
@@ -2558,6 +3664,344 @@ def tool_crear_cliente(nombre: str, email: str = None, telefono: str = None,
                        direccion: str = None, empresa: str = None) -> dict:
     """Tool: Crea un cliente (Customer) en QuickBooks."""
     return create_customer(nombre, email, telefono, direccion, empresa)
+
+
+# ========================================================================
+# Tool wrappers para Sprint 1A: Master Data creates
+# ========================================================================
+
+def tool_crear_vendor(nombre: str, empresa: str = None, email: str = None,
+                      telefono: str = None, direccion: str = None,
+                      es_1099: bool = False, tarifa_hora: float = None,
+                      term_id: str = None) -> dict:
+    """Tool: Crea un proveedor (Vendor) en QuickBooks."""
+    return create_vendor(nombre, empresa, email, telefono, direccion, es_1099, tarifa_hora, term_id)
+
+
+def tool_crear_cuenta(nombre: str, tipo_cuenta: str, subtipo: str = None,
+                      descripcion: str = None, saldo_apertura: float = None,
+                      fecha_saldo_apertura: str = None) -> dict:
+    """Tool: Crea una cuenta contable (Account) en QuickBooks."""
+    return create_account(nombre, tipo_cuenta, subtipo, descripcion,
+                          saldo_apertura, fecha_saldo_apertura)
+
+
+def tool_crear_item(nombre: str, tipo: str = "Service", precio_unitario: float = 0.0,
+                    cuenta_ingreso_id: str = None, cuenta_gasto_id: str = None,
+                    cuenta_activo_id: str = None, sku: str = None,
+                    rastrear_inventario: bool = False, cantidad_inicial: float = 0.0,
+                    fecha_inicio_inv: str = None, descripcion: str = None) -> dict:
+    """Tool: Crea un item (producto o servicio) en QuickBooks."""
+    return create_item(nombre, tipo, precio_unitario, cuenta_ingreso_id,
+                       cuenta_gasto_id, cuenta_activo_id, sku,
+                       rastrear_inventario, cantidad_inicial, fecha_inicio_inv,
+                       descripcion)
+
+
+def tool_crear_empleado(nombre: str, apellido: str = None, segundo_apellido: str = None,
+                        email: str = None, telefono: str = None, direccion: str = None,
+                        fecha_contratacion: str = None, tarifa_hora: float = None) -> dict:
+    """Tool: Crea un empleado (Employee) en QuickBooks."""
+    return create_employee(nombre, apellido, segundo_apellido, email, telefono,
+                          direccion, fecha_contratacion, tarifa_hora)
+
+
+def tool_crear_clase(nombre: str, clase_padre_id: str = None, activa: bool = True) -> dict:
+    """Tool: Crea una clase para segmentación P&L."""
+    return create_class(nombre, clase_padre_id, activa)
+
+
+def tool_crear_departamento(nombre: str, depto_padre_id: str = None, activo: bool = True) -> dict:
+    """Tool: Crea un departamento para segmentación P&L."""
+    return create_department(nombre, depto_padre_id, activo)
+
+
+def tool_crear_termino(nombre: str, dias_vencimiento: int = 30,
+                       dias_descuento: int = 0, pct_descuento: float = 0.0,
+                       activo: bool = True) -> dict:
+    """Tool: Crea un plazo de pago (ej: Net 30, 2/10 Net 30)."""
+    return create_term(nombre, dias_vencimiento, dias_descuento, pct_descuento, activo)
+
+
+def tool_crear_paymentmethod(nombre: str, tipo: str = "Other", activo: bool = True) -> dict:
+    """Tool: Crea un método de pago en QuickBooks."""
+    return create_payment_method(nombre, tipo, activo)
+
+
+# ========================================================================
+# Tool wrappers para Sprint 1B: Transaction creates
+# ========================================================================
+
+def tool_crear_billpayment(vendor_id: str, monto_total: float, tipo_pago: str = "Check",
+                           fecha: str = None, cuenta_banco_id: str = None,
+                           cuenta_cc_id: str = None, aplicar_a_bills: List[dict] = None,
+                           memo: str = None) -> dict:
+    """Tool: Paga uno o más bills (BillPayment) en QuickBooks."""
+    return create_billpayment(vendor_id, monto_total, tipo_pago, fecha, cuenta_banco_id,
+                              cuenta_cc_id, aplicar_a_bills, memo)
+
+
+def tool_crear_estimate(cliente_id: str, lineas: List[dict], fecha: str = None,
+                        fecha_expiracion: str = None, memo: str = None) -> dict:
+    """Tool: Crea una cotización (Estimate) en QuickBooks."""
+    return create_estimate(cliente_id, lineas, fecha, fecha_expiracion, memo)
+
+
+def tool_crear_salesreceipt(cliente_id: str = None, lineas: List[dict] = None,
+                            fecha: str = None, cuenta_deposito_id: str = None,
+                            metodo_pago_id: str = None, memo: str = None) -> dict:
+    """Tool: Crea un recibo de venta inmediata (SalesReceipt)."""
+    return create_salesreceipt(cliente_id, lineas, fecha, cuenta_deposito_id,
+                               metodo_pago_id, memo= memo)
+
+
+def tool_crear_creditmemo(cliente_id: str, lineas: List[dict], fecha: str = None,
+                          memo: str = None) -> dict:
+    """Tool: Crea una nota de crédito (CreditMemo) para un cliente."""
+    return create_creditmemo(cliente_id, lineas, fecha, memo)
+
+
+def tool_crear_purchase(vendor_id: str, cuenta_gasto_id: str, monto: float,
+                        tipo_pago: str = "Cash", fecha: str = None,
+                        descripcion: str = None, memo: str = None) -> dict:
+    """Tool: Crea una compra genérica (Purchase) por cash, check o tarjeta."""
+    return create_purchase(vendor_id, cuenta_gasto_id, monto, tipo_pago, fecha,
+                           descripcion, memo)
+
+
+def tool_crear_purchaseorder(vendor_id: str, lineas: List[dict], fecha: str = None,
+                             direccion_envio: str = None, memo: str = None,
+                             email_po: str = None) -> dict:
+    """Tool: Crea una orden de compra (PurchaseOrder) en QuickBooks."""
+    return create_purchaseorder(vendor_id, lineas, fecha, direccion_envio, memo, email_po)
+
+
+def tool_crear_refundreceipt(cliente_id: str, lineas: List[dict], cuenta_reembolso_id: str,
+                             fecha: str = None, memo: str = None) -> dict:
+    """Tool: Crea un recibo de reembolso (RefundReceipt) para un cliente."""
+    return create_refundreceipt(cliente_id, lineas, cuenta_reembolso_id, fecha, memo)
+
+
+def tool_crear_vendorcredit(vendor_id: str, lineas: List[dict], fecha: str = None,
+                            memo: str = None) -> dict:
+    """Tool: Crea un crédito de proveedor (VendorCredit)."""
+    return create_vendorcredit(vendor_id, lineas, fecha, memo)
+
+
+def tool_crear_timeactivity(empleado_id: str, horas: int = 0, minutos: int = 0,
+                            fecha: str = None, cliente_id: str = None,
+                            item_id: str = None, facturable: bool = True,
+                            descripcion: str = None) -> dict:
+    """Tool: Registra horas trabajadas (TimeActivity)."""
+    return create_timeactivity(empleado_id, horas, minutos, fecha, cliente_id,
+                               item_id, facturable, descripcion)
+
+
+# ========================================================================
+# Tool wrappers para Sprint 1C: Update/Void/Delete
+# ========================================================================
+
+def tool_actualizar_cliente(cliente_id: str, cambios: dict, sync_token: str = None) -> dict:
+    """Tool: Actualiza un cliente (Customer) en QuickBooks vía sparse update."""
+    return update_entity("customer", cliente_id, cambios, sync_token, sparse=True)
+
+
+def tool_actualizar_vendor(vendor_id: str, cambios: dict, sync_token: str = None) -> dict:
+    """Tool: Actualiza un vendor en QuickBooks vía sparse update."""
+    return update_entity("vendor", vendor_id, cambios, sync_token, sparse=True)
+
+
+def tool_actualizar_factura(invoice_id: str, cambios: dict, sync_token: str = None) -> dict:
+    """Tool: Actualiza una factura (Invoice) en QuickBooks."""
+    return update_entity("invoice", invoice_id, cambios, sync_token, sparse=True)
+
+
+def tool_actualizar_bill(bill_id: str, cambios: dict, sync_token: str = None) -> dict:
+    """Tool: Actualiza un bill en QuickBooks."""
+    return update_entity("bill", bill_id, cambios, sync_token, sparse=True)
+
+
+def tool_eliminar_transaccion(tipo: str, transaccion_id: str, sync_token: str) -> dict:
+    """Tool: Elimina una transacción (Invoice, Bill, Payment, etc.) vía hard delete."""
+    return delete_transaction(tipo, transaccion_id, sync_token)
+
+
+def tool_void_transaccion(tipo: str, transaccion_id: str, sync_token: str) -> dict:
+    """Tool: Anula (void) una transacción sin eliminarla del histórico."""
+    return void_transaction(tipo, transaccion_id, sync_token)
+
+
+def tool_desactivar_cliente(cliente_id: str, sync_token: str = None) -> dict:
+    """Tool: Desactiva un cliente (soft delete via Active=false)."""
+    return deactivate_entity("customer", cliente_id, sync_token)
+
+
+def tool_desactivar_vendor(vendor_id: str, sync_token: str = None) -> dict:
+    """Tool: Desactiva un vendor (soft delete)."""
+    return deactivate_entity("vendor", vendor_id, sync_token)
+
+
+# ========================================================================
+# Tool wrappers para Sprint 1D: Send
+# ========================================================================
+
+def tool_enviar_factura(invoice_id: str, email: str = None) -> dict:
+    """Tool: Envía una factura (Invoice) por email al cliente."""
+    return send_transaction_email("invoice", invoice_id, email)
+
+
+def tool_enviar_orden_compra(po_id: str, email: str = None) -> dict:
+    """Tool: Envía una orden de compra (PurchaseOrder) por email al vendor."""
+    return send_transaction_email("purchaseorder", po_id, email)
+
+
+# ========================================================================
+# Tool wrappers para Sprint 1E: Reportes adicionales
+# ========================================================================
+
+def tool_reporte_trial_balance(fecha_inicio: str, fecha_fin: str, metodo: str = "Accrual") -> dict:
+    """Tool: Genera el Trial Balance (balance de comprobación) de la empresa."""
+    return generate_trial_balance_report(fecha_inicio, fecha_fin, metodo)
+
+
+def tool_reporte_general_ledger(fecha_inicio: str, fecha_fin: str, cuenta_id: str = None,
+                                metodo: str = "Accrual") -> dict:
+    """Tool: Genera el General Ledger (libro mayor) de la empresa."""
+    return generate_general_ledger_report(fecha_inicio, fecha_fin, metodo, cuenta_id)
+
+
+def tool_reporte_cash_flow(fecha_inicio: str, fecha_fin: str, metodo: str = "Accrual") -> dict:
+    """Tool: Genera el Statement of Cash Flows."""
+    return generate_cash_flow_report(fecha_inicio, fecha_fin, metodo)
+
+
+def tool_reporte_ar_aging(fecha_corte: str, metodo_aging: str = "ReportDate",
+                          num_periodos: int = 4) -> dict:
+    """Tool: Genera A/R Aging Summary (reporte de cobranzas por antigüedad)."""
+    return generate_ar_aging_report(fecha_corte, metodo_aging, num_periodos)
+
+
+def tool_reporte_ap_aging(fecha_corte: str, metodo_aging: str = "ReportDate",
+                          num_periodos: int = 4) -> dict:
+    """Tool: Genera A/P Aging Summary (reporte de pagos pendientes por antigüedad)."""
+    return generate_ap_aging_report(fecha_corte, metodo_aging, num_periodos)
+
+
+def tool_reporte_customer_balance(fecha_corte: str = None, cliente_id: str = None) -> dict:
+    """Tool: Genera Customer Balance Summary."""
+    return generate_customer_balance_report(fecha_corte, cliente_id)
+
+
+def tool_reporte_vendor_balance(fecha_corte: str = None, vendor_id: str = None) -> dict:
+    """Tool: Genera Vendor Balance Summary."""
+    return generate_vendor_balance_report(fecha_corte, vendor_id)
+
+
+def tool_reporte_pl_detail(fecha_inicio: str, fecha_fin: str, metodo: str = "Accrual") -> dict:
+    """Tool: Genera Profit & Loss Detail (más granular que P&L)."""
+    return generate_pl_detail_report(fecha_inicio, fecha_fin, metodo)
+
+
+def tool_reporte_journal(fecha_inicio: str, fecha_fin: str) -> dict:
+    """Tool: Genera Journal Report (todos los asientos en un período)."""
+    return generate_journal_report(fecha_inicio, fecha_fin)
+
+
+def tool_reporte_account_list() -> dict:
+    """Tool: Genera Account List (lista de cuentas contables)."""
+    return generate_account_list_report()
+
+
+# ========================================================================
+# Tool wrappers para Sprint 1F: Read operations
+# ========================================================================
+
+def tool_leer_companyinfo() -> dict:
+    """Tool: Lee información de la empresa (nombre legal, fiscal year, dirección)."""
+    return get_company_info()
+
+
+def tool_leer_preferencias() -> dict:
+    """Tool: Lee las preferencias de configuración de la empresa."""
+    return get_preferences()
+
+
+def tool_consulta_avanzada(query: str, start_position: int = 1, max_results: int = 100) -> dict:
+    """Tool: Ejecuta una query SQL-like arbitraria en QuickBooks (SELECT only)."""
+    return advanced_query(query, start_position, max_results)
+
+
+# ========================================================================
+# Tool wrappers para Sprint 2: Recurring + Attachments
+# ========================================================================
+
+def tool_crear_recurringtransaction(transaccion_base: dict, nombre: str,
+                                     tipo_recur: str = "Automated",
+                                     intervalo: str = "Monthly", num_intervalo: int = 1,
+                                     fecha_inicio: str = None, max_ocurrencias: int = None,
+                                     dia_del_mes: int = None, dias_antes: int = 2,
+                                     activa: bool = True) -> dict:
+    """Tool: Crea una transacción recurrente (plantilla automática)."""
+    return create_recurring_transaction(transaccion_base, nombre, tipo_recur,
+                                        intervalo, num_intervalo, fecha_inicio,
+                                        max_ocurrencias, dia_del_mes, dias_antes, activa)
+
+
+def tool_adjuntar_archivo(ruta_archivo: str, tipo_entidad: str, id_entidad: str,
+                          nota: str = None) -> dict:
+    """Tool: Adjunta un archivo (PDF, imagen) a una transacción (Bill, Invoice, etc.).
+
+    ruta_archivo: path absoluto al archivo en disco
+    """
+    import mimetypes
+    from pathlib import Path
+    p = Path(ruta_archivo)
+    if not p.exists():
+        return {"success": False, "error": f"Archivo no encontrado: {ruta_archivo}"}
+    mime, _ = mimetypes.guess_type(str(p))
+    if not mime:
+        return {"success": False, "error": f"No se pudo determinar MIME type de {p.suffix}"}
+    content = p.read_bytes()
+    return upload_attachment(content, p.name, mime, tipo_entidad, id_entidad, nota)
+
+
+# ========================================================================
+# Tool wrappers para Sprint 3: P2 tools
+# ========================================================================
+
+def tool_crear_taxcode(nombre: str, tax_rate_id: str = None, descripcion: str = None,
+                        activo: bool = True) -> dict:
+    """Tool: Crea un código de impuesto (TaxCode: NON o TAX)."""
+    return create_taxcode(nombre, tax_rate_id, descripcion, activo)
+
+
+def tool_crear_taxrate(nombre: str, tasa: float, agencia_id: str = None,
+                       descripcion: str = None, activo: bool = True) -> dict:
+    """Tool: Crea una tasa de impuesto (TaxRate) en QuickBooks."""
+    return create_taxrate(nombre, tasa, agencia_id, descripcion, activo)
+
+
+def tool_leer_exchange_rate(moneda_origen: str, moneda_destino: str = "USD",
+                            fecha: str = None) -> dict:
+    """Tool: Lee la tasa de cambio entre dos monedas en una fecha."""
+    return get_exchange_rate(moneda_origen, moneda_destino, fecha)
+
+
+def tool_ejecutar_batch(operaciones: List[dict]) -> dict:
+    """Tool: Ejecuta hasta 30 operaciones en una sola llamada (batch API)."""
+    return execute_batch(operaciones)
+
+
+def tool_cdc_query(entidades: List[str], desde: str) -> dict:
+    """Tool: Change Data Capture — retorna entidades modificadas desde un timestamp."""
+    return cdc_query(entidades, desde)
+
+
+def tool_crear_budget(nombre: str, fecha_inicio: str, fecha_fin: str,
+                      lineas_presupuesto: List[dict]) -> dict:
+    """Tool: Crea un presupuesto (Budget) en QuickBooks."""
+    return create_budget(nombre, fecha_inicio, fecha_fin, lineas_presupuesto)
+
 
 def tool_generar_reporte_pl(fecha_inicio: str, fecha_fin: str, metodo: str = "Accrual") -> dict:
     """Tool: Genera P&L"""

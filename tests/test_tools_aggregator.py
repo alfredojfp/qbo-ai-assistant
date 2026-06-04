@@ -79,10 +79,10 @@ class TestToolsAggregator(unittest.TestCase):
         self.assertIsInstance(ALL_SCHEMAS, list)
         self.assertIsInstance(ALL_FUNCTIONS, dict)
 
-    def test_count_is_46(self):
+    def test_count_is_94(self):
         from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
-        self.assertEqual(len(ALL_SCHEMAS), 46)
-        self.assertEqual(len(ALL_FUNCTIONS), 46)
+        self.assertEqual(len(ALL_SCHEMAS), 94)
+        self.assertEqual(len(ALL_FUNCTIONS), 94)
 
     def test_no_duplicate_names(self):
         from dexter.tools import ALL_SCHEMAS
@@ -226,6 +226,282 @@ class TestErrorLogTools(unittest.TestCase):
         joined = " ".join(kw).lower()
         self.assertIn("log", joined)
         self.assertIn("error", joined)
+
+
+# ============================================================================
+# Tests para los 48 tools nuevos de Sprints 1+2+3 (gap analysis)
+# ============================================================================
+
+class TestSprint1AMasterData(unittest.TestCase):
+    """Sprint 1A: 8 tools de master data (vendor, account, item, employee, etc.)."""
+
+    def test_master_data_module_has_8_tools(self):
+        from dexter.tools.master_data import SCHEMA, FUNCTIONS
+        self.assertEqual(len(SCHEMA), 8)
+        self.assertEqual(len(FUNCTIONS), 8)
+
+    def test_master_data_all_registered(self):
+        expected = [
+            "crear_vendor", "crear_cuenta", "crear_item", "crear_empleado",
+            "crear_clase", "crear_departamento", "crear_termino", "crear_paymentmethod",
+        ]
+        from dexter.tools.master_data import SCHEMA, FUNCTIONS
+        names = {_schema_name(s) for s in SCHEMA}
+        for name in expected:
+            self.assertIn(name, names, f"master_data missing {name}")
+            self.assertIn(name, FUNCTIONS)
+
+    def test_master_data_in_global_registry(self):
+        from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
+        names = {_schema_name(s) for s in ALL_SCHEMAS}
+        for name in ["crear_vendor", "crear_cuenta", "crear_item", "crear_empleado"]:
+            self.assertIn(name, names)
+            self.assertIn(name, ALL_FUNCTIONS)
+
+
+class TestSprint1BTransactionExtra(unittest.TestCase):
+    """Sprint 1B: 9 tools de transacciones faltantes."""
+
+    def test_transaction_extra_module_has_9_tools(self):
+        from dexter.tools.transaction_extra import SCHEMA, FUNCTIONS
+        self.assertEqual(len(SCHEMA), 9)
+        self.assertEqual(len(FUNCTIONS), 9)
+
+    def test_transaction_extra_all_registered(self):
+        expected = [
+            "crear_billpayment", "crear_estimate", "crear_salesreceipt",
+            "crear_creditmemo", "crear_purchase", "crear_purchaseorder",
+            "crear_refundreceipt", "crear_vendorcredit", "crear_timeactivity",
+        ]
+        from dexter.tools.transaction_extra import SCHEMA, FUNCTIONS
+        names = {_schema_name(s) for s in SCHEMA}
+        for name in expected:
+            self.assertIn(name, names, f"transaction_extra missing {name}")
+            self.assertIn(name, FUNCTIONS)
+
+    def test_transaction_extra_in_global_registry(self):
+        from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
+        names = {_schema_name(s) for s in ALL_SCHEMAS}
+        for name in ["crear_billpayment", "crear_estimate", "crear_purchaseorder"]:
+            self.assertIn(name, names)
+            self.assertIn(name, ALL_FUNCTIONS)
+
+
+class TestSprint1COperations(unittest.TestCase):
+    """Sprint 1C: 10 tools de update/void/delete/deactivate/send."""
+
+    def test_operations_module_has_10_tools(self):
+        from dexter.tools.operations import SCHEMA, FUNCTIONS
+        self.assertEqual(len(SCHEMA), 10)
+        self.assertEqual(len(FUNCTIONS), 10)
+
+    def test_operations_all_registered(self):
+        expected = [
+            "actualizar_cliente", "actualizar_vendor", "actualizar_factura", "actualizar_bill",
+            "eliminar_transaccion", "void_transaccion",
+            "desactivar_cliente", "desactivar_vendor",
+            "enviar_factura", "enviar_orden_compra",
+        ]
+        from dexter.tools.operations import SCHEMA, FUNCTIONS
+        names = {_schema_name(s) for s in SCHEMA}
+        for name in expected:
+            self.assertIn(name, names, f"operations missing {name}")
+            self.assertIn(name, FUNCTIONS)
+
+    def test_operations_in_global_registry(self):
+        from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
+        names = {_schema_name(s) for s in ALL_SCHEMAS}
+        for name in ["actualizar_cliente", "eliminar_transaccion", "enviar_factura"]:
+            self.assertIn(name, names)
+            self.assertIn(name, ALL_FUNCTIONS)
+
+    def test_operations_callable(self):
+        from dexter.tools import ALL_FUNCTIONS
+        from main import tool_actualizar_cliente, tool_eliminar_transaccion
+        self.assertIs(ALL_FUNCTIONS["actualizar_cliente"], tool_actualizar_cliente)
+        self.assertIs(ALL_FUNCTIONS["eliminar_transaccion"], tool_eliminar_transaccion)
+
+
+class TestSprint1EReportsExtra(unittest.TestCase):
+    """Sprint 1E: 10 tools de reportes nativos QBO."""
+
+    def test_reports_extra_module_has_10_tools(self):
+        from dexter.tools.reports_extra import SCHEMA, FUNCTIONS
+        self.assertEqual(len(SCHEMA), 10)
+        self.assertEqual(len(FUNCTIONS), 10)
+
+    def test_reports_extra_all_registered(self):
+        expected = [
+            "reporte_trial_balance", "reporte_general_ledger", "reporte_cash_flow",
+            "reporte_ar_aging", "reporte_ap_aging",
+            "reporte_customer_balance", "reporte_vendor_balance",
+            "reporte_pl_detail", "reporte_journal", "reporte_account_list",
+        ]
+        from dexter.tools.reports_extra import SCHEMA, FUNCTIONS
+        names = {_schema_name(s) for s in SCHEMA}
+        for name in expected:
+            self.assertIn(name, names, f"reports_extra missing {name}")
+            self.assertIn(name, FUNCTIONS)
+
+    def test_reports_extra_in_global_registry(self):
+        from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
+        names = {_schema_name(s) for s in ALL_SCHEMAS}
+        for name in ["reporte_trial_balance", "reporte_ar_aging", "reporte_cash_flow"]:
+            self.assertIn(name, names)
+            self.assertIn(name, ALL_FUNCTIONS)
+
+
+class TestSprint1FRead(unittest.TestCase):
+    """Sprint 1F: 3 tools de lectura directa (CompanyInfo, Preferences, Query)."""
+
+    def test_read_module_has_3_tools(self):
+        from dexter.tools.read import SCHEMA, FUNCTIONS
+        self.assertEqual(len(SCHEMA), 3)
+        self.assertEqual(len(FUNCTIONS), 3)
+
+    def test_read_all_registered(self):
+        expected = ["leer_companyinfo", "leer_preferencias", "consulta_avanzada"]
+        from dexter.tools.read import SCHEMA, FUNCTIONS
+        names = {_schema_name(s) for s in SCHEMA}
+        for name in expected:
+            self.assertIn(name, names, f"read missing {name}")
+            self.assertIn(name, FUNCTIONS)
+
+    def test_consulta_avanzada_has_security_constraints(self):
+        from dexter.tools.read import SCHEMA
+        schema_names = {_schema_name(s) for s in SCHEMA}
+        self.assertIn("consulta_avanzada", schema_names)
+        for s in SCHEMA:
+            if _schema_name(s) == "consulta_avanzada":
+                props = s["function"]["parameters"]["properties"]
+                self.assertIn("max_results", props)
+                self.assertLessEqual(props["max_results"].get("maximum", 1000), 1000)
+
+    def test_read_in_global_registry(self):
+        from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
+        names = {_schema_name(s) for s in ALL_SCHEMAS}
+        for name in ["leer_companyinfo", "leer_preferencias", "consulta_avanzada"]:
+            self.assertIn(name, names)
+            self.assertIn(name, ALL_FUNCTIONS)
+
+
+class TestSprint2Recurring(unittest.TestCase):
+    """Sprint 2: 2 tools (recurring + attachments)."""
+
+    def test_recurring_module_has_2_tools(self):
+        from dexter.tools.recurring import SCHEMA, FUNCTIONS
+        self.assertEqual(len(SCHEMA), 2)
+        self.assertEqual(len(FUNCTIONS), 2)
+
+    def test_recurring_all_registered(self):
+        expected = ["crear_recurringtransaction", "adjuntar_archivo"]
+        from dexter.tools.recurring import SCHEMA, FUNCTIONS
+        names = {_schema_name(s) for s in SCHEMA}
+        for name in expected:
+            self.assertIn(name, names, f"recurring missing {name}")
+            self.assertIn(name, FUNCTIONS)
+
+    def test_recurring_in_global_registry(self):
+        from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
+        names = {_schema_name(s) for s in ALL_SCHEMAS}
+        for name in ["crear_recurringtransaction", "adjuntar_archivo"]:
+            self.assertIn(name, names)
+            self.assertIn(name, ALL_FUNCTIONS)
+
+    def test_crear_recurringtransaction_has_intervalo(self):
+        from dexter.tools.recurring import SCHEMA
+        for s in SCHEMA:
+            if _schema_name(s) == "crear_recurringtransaction":
+                props = s["function"]["parameters"]["properties"]
+                self.assertIn("intervalo", props)
+                self.assertIn("enum", props["intervalo"])
+
+    def test_adjuntar_archivo_required_params(self):
+        from dexter.tools.recurring import SCHEMA
+        for s in SCHEMA:
+            if _schema_name(s) == "adjuntar_archivo":
+                params = s["function"]["parameters"]
+                required = params.get("required", [])
+                self.assertIn("ruta_archivo", required)
+                self.assertIn("tipo_entidad", required)
+                self.assertIn("id_entidad", required)
+
+
+class TestSprint3Advanced(unittest.TestCase):
+    """Sprint 3: 6 tools P2 (TaxCode, TaxRate, ExchangeRate, Batch, CDC, Budget)."""
+
+    def test_advanced_module_has_6_tools(self):
+        from dexter.tools.advanced import SCHEMA, FUNCTIONS
+        self.assertEqual(len(SCHEMA), 6)
+        self.assertEqual(len(FUNCTIONS), 6)
+
+    def test_advanced_all_registered(self):
+        expected = [
+            "crear_taxcode", "crear_taxrate", "leer_exchange_rate",
+            "ejecutar_batch", "cdc_query", "crear_budget",
+        ]
+        from dexter.tools.advanced import SCHEMA, FUNCTIONS
+        names = {_schema_name(s) for s in SCHEMA}
+        for name in expected:
+            self.assertIn(name, names, f"advanced missing {name}")
+            self.assertIn(name, FUNCTIONS)
+
+    def test_advanced_in_global_registry(self):
+        from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
+        names = {_schema_name(s) for s in ALL_SCHEMAS}
+        for name in ["crear_taxcode", "ejecutar_batch", "cdc_query", "crear_budget"]:
+            self.assertIn(name, names)
+            self.assertIn(name, ALL_FUNCTIONS)
+
+    def test_ejecutar_batch_max_30_items(self):
+        from dexter.tools.advanced import SCHEMA
+        for s in SCHEMA:
+            if _schema_name(s) == "ejecutar_batch":
+                ops = s["function"]["parameters"]["properties"]["operaciones"]
+                self.assertEqual(ops.get("maxItems"), 30)
+
+    def test_crear_taxrate_required_tasa(self):
+        from dexter.tools.advanced import SCHEMA
+        for s in SCHEMA:
+            if _schema_name(s) == "crear_taxrate":
+                required = s["function"]["parameters"]["required"]
+                self.assertIn("nombre", required)
+                self.assertIn("tasa", required)
+
+
+class TestSprintTotalCoverage(unittest.TestCase):
+    """Tests de cobertura global: 94 tools, 21 módulos."""
+
+    def test_total_94_tools(self):
+        from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
+        self.assertEqual(len(ALL_SCHEMAS), 94)
+        self.assertEqual(len(ALL_FUNCTIONS), 94)
+
+    def test_total_21_modules(self):
+        from dexter.tools import KEYWORDS_BY_MODULE
+        self.assertEqual(len(KEYWORDS_BY_MODULE), 21)
+
+    def test_all_new_tools_have_descriptions(self):
+        from dexter.tools import ALL_SCHEMAS
+        new_tools = [
+            "crear_vendor", "crear_billpayment", "actualizar_cliente",
+            "eliminar_transaccion", "reporte_trial_balance", "leer_companyinfo",
+            "crear_recurringtransaction", "crear_taxcode", "ejecutar_batch",
+        ]
+        names = {_schema_name(s): s for s in ALL_SCHEMAS}
+        for name in new_tools:
+            self.assertIn(name, names, f"{name} missing from registry")
+            desc = names[name]["function"].get("description", "")
+            self.assertGreater(len(desc), 30, f"{name} has too-short description")
+
+    def test_all_new_tools_have_well_formed_params(self):
+        from dexter.tools import ALL_SCHEMAS
+        for s in ALL_SCHEMAS:
+            name = _schema_name(s)
+            if name.startswith("crear_") or name.startswith("actualizar_") or name.startswith("reporte_") or name.startswith("leer_") or name.startswith("eliminar_") or name.startswith("void_") or name.startswith("desactivar_") or name.startswith("enviar_") or name.startswith("consulta_") or name.startswith("adjuntar_") or name.startswith("cdc_") or name.startswith("ejecutar_"):
+                params = s["function"].get("parameters", {})
+                self.assertEqual(params.get("type"), "object", f"{name} parameters.type must be 'object'")
+                self.assertIsInstance(params.get("properties"), dict, f"{name} missing 'properties' dict")
 
 
 if __name__ == "__main__":
