@@ -2519,7 +2519,13 @@ def tool_crear_template_csv() -> dict:
     return {"success": True, "archivo": FILE_DEPOSITS_TEMPLATE}
 
 def tool_obtener_estadisticas_tokens(periodo: str) -> dict:
-    """Tool: Estadísticas de tokens"""
+    """Tool: Estadísticas de tokens.
+
+    Args:
+        periodo: "sesion" (sesión actual), "dia" (hoy desde CSV histórico),
+                 "mes" (mes actual desde CSV histórico),
+                 "YYYY-MM-DD" o "YYYY-MM" específicos.
+    """
     if periodo == "sesion":
         return {
             "periodo": "Sesión actual",
@@ -2529,8 +2535,81 @@ def tool_obtener_estadisticas_tokens(periodo: str) -> dict:
             "costo_usd": round(calculate_session_cost(), 4),
             "duracion_min": round((datetime.now() - session_state["start_time"]).total_seconds() / 60, 1)
         }
+
+    if not os.path.exists(FILE_TOKEN_USAGE):
+        return {
+            "error": f"No hay datos históricos en {FILE_TOKEN_USAGE}",
+            "sugerencia": "Usa periodo='sesion' para ver consumo de la sesión actual.",
+        }
+
+    try:
+        import pandas as pd
+        df = pd.read_csv(FILE_TOKEN_USAGE)
+    except Exception as e:
+        return {"error": f"Error leyendo {FILE_TOKEN_USAGE}: {e}"}
+
+    if df.empty or "fecha" not in df.columns:
+        return {
+            "error": f"{FILE_TOKEN_USAGE} está vacío o no tiene columna 'fecha'",
+        }
+
+    df["fecha"] = pd.to_datetime(df["fecha"], errors="coerce")
+    df = df.dropna(subset=["fecha"])
+    if df.empty:
+        return {"error": "No hay fechas válidas en el CSV."}
+
+    hoy = datetime.now().date()
+    if periodo == "dia":
+        mask = df["fecha"].dt.date == hoy
+        label = f"Día {hoy.isoformat()}"
+    elif periodo == "mes":
+        mask = (df["fecha"].dt.year == hoy.year) & (df["fecha"].dt.month == hoy.month)
+        label = f"Mes {hoy.year:04d}-{hoy.month:02d}"
+    elif len(periodo) == 10 and periodo[4] == "-" and periodo[7] == "-":
+        # YYYY-MM-DD específico
+        try:
+            target = datetime.strptime(periodo, "%Y-%m-%d").date()
+            mask = df["fecha"].dt.date == target
+            label = f"Día {periodo}"
+        except ValueError:
+            return {"error": f"Fecha inválida: {periodo}"}
+    elif len(periodo) == 7 and periodo[4] == "-":
+        # YYYY-MM específico
+        try:
+            y, m = periodo.split("-")
+            mask = (df["fecha"].dt.year == int(y)) & (df["fecha"].dt.month == int(m))
+            label = f"Mes {periodo}"
+        except (ValueError, IndexError):
+            return {"error": f"Mes inválido: {periodo}"}
     else:
-        return {"error": f"Periodo '{periodo}' no implementado todavía"}
+        return {
+            "error": f"Periodo '{periodo}' no reconocido. "
+                     f"Usa 'sesion', 'dia', 'mes', 'YYYY-MM-DD' o 'YYYY-MM'."
+        }
+
+    sub = df.loc[mask]
+    if sub.empty:
+        return {
+            "periodo": label,
+            "sesiones": 0,
+            "total_tokens": 0,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "costo_usd": 0.0,
+            "operaciones": 0,
+            "mensaje": f"Sin datos para {label}",
+        }
+
+    return {
+        "periodo": label,
+        "sesiones": int(len(sub)),
+        "input_tokens": int(sub["input_tokens"].sum()),
+        "output_tokens": int(sub["output_tokens"].sum()),
+        "total_tokens": int(sub["total_tokens"].sum()),
+        "costo_usd": round(float(sub["costo_usd"].sum()), 4),
+        "operaciones": int(sub["operaciones"].sum()),
+        "duracion_min": round(float(sub["duracion_min"].sum()), 1),
+    }
 
 def tool_generar_informe_tokens() -> dict:
     """Tool: Genera informe de tokens"""
@@ -2927,6 +3006,20 @@ def process_quick_command(user_input: str) -> Optional[str]:
         result = tool_refrescar_chart_accounts()
         return f"{result['mensaje']} ({result['cuentas_cargadas']} cuentas actualizadas)"
 
+    # BNK-RECON tagger (guía rápida)
+    if "recon" in input_lower and ("tag" in input_lower or "marcar" in input_lower or "bnk" in input_lower):
+        return (
+            "🏷️ **BNK-RECON TAGGER**\n"
+            "Esta opción solo AGREGA tags a transactions existentes de QBO (no crea nuevas).\n\n"
+            "Pasos:\n"
+            "1. Descarga el CSV de tu banco (formato: date, description, amount).\n"
+            "2. Colócalo en `/Bank Reconciliation/` o en cualquier ruta.\n"
+            "3. Dime: 'reconcilia el banco con [ruta al CSV]'.\n"
+            "4. Yo agregaré tags `BNK-RECON-YYYY-MM-xxxxx` a las transactions que matcheen.\n"
+            "5. Después entras a QBO UI a reconciliar manualmente con esos tags visibles.\n\n"
+            "Para limpiar tags de un batch: 'limpia los tags del batch [batch_id]'."
+        )
+
     # Template CSV
     if "template" in input_lower or "plantilla" in input_lower:
         result = tool_crear_template_csv()
@@ -2964,12 +3057,20 @@ def process_quick_command(user_input: str) -> Optional[str]:
             return "📖 **AYUDA OCR:**\n1. Coloca PDFs/imágenes en `/Pending bills/`.\n2. Dime: 'Procesa las facturas'.\n3. Yo extraeré los datos y te preguntaré si tengo dudas.\n4. Los archivos irán a `/Processed bills/`."
         
         if "banco" in input_lower or "reconcilia" in input_lower:
-            return "📖 **AYUDA BANCOS:**\n1. Descarga el CSV de tu banco.\n2. Colócalo en `/Bank Reconciliation/`.\n3. Dime: 'Reconcilia el banco con el archivo X'.\n4. Yo crearé los registros faltantes y validaré el balance."
+            return (
+                "📖 **AYUDA BANCOS:**\n"
+                "Tengo 2 modos de reconciliación:\n"
+                "1. **Agresivo** (crea transactions nuevas):\n"
+                "   'reconcilia el banco con [archivo CSV]'\n"
+                "2. **Seguro BNK-RECON** (solo taggea, no crea):\n"
+                "   'recon tag [archivo CSV]'\n\n"
+                "Usa el modo seguro si solo quieres marcadores visibles en QBO UI."
+            )
         
         if "reporte" in input_lower or "analiza" in input_lower:
             return "📖 **AYUDA REPORTES:**\n- Puedes pedir P&L, Balance Sheet o análisis comparativos.\n- Ejemplo: 'Haz un P&L de este mes vs el anterior'.\n- También puedo generar Excels complejos con gráficos."
             
-        return "📖 **DEXTER HELP:**\nPuedes pedir ayuda específica:\n- `ayuda ocr`\n- `ayuda bancos`\n- `ayuda reportes`"
+        return "📖 **DEXTER HELP:**\nPuedes pedir ayuda específica:\n- `ayuda ocr`\n- `ayuda bancos`\n- `ayuda reportes`\n- `ayuda recon`"
 
     return None
 
