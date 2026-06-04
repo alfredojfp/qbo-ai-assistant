@@ -3333,24 +3333,34 @@ def necesita_chart(msg: str) -> bool:
 
 # ==================== LOOP PRINCIPAL ====================
 
+def show_main_menu() -> str:
+    """Retorna el menú completo de referencia (callable a demanda)."""
+    return (
+        "=" * 70 + "\n"
+        "           🤖 DEXTER - QuickBooks AI Assistant\n"
+        "              Operando para: Alfredo\n"
+        + "=" * 70 + "\n"
+        "\n"
+        "Comandos rápidos:\n"
+        "  • 'ayuda ocr'         - Guía paso a paso para facturas (PDFs)\n"
+        "  • 'ayuda bancos'      - Guía para bank feeds / clasificación\n"
+        "  • 'ayuda recon'       - Guía BNK-RECON (tag-only, no crea txns)\n"
+        "  • 'ayuda reportes'    - Guía de reportes (P&L, Balance, custom)\n"
+        "  • '¿cuánto he gastado?' - Estadísticas de tokens (sesión/día/mes)\n"
+        "  • 'informe de tokens' - Genera Excel con estadísticas\n"
+        "  • 'template csv'      - Crea plantilla para depósitos en lote\n"
+        "  • 'lote csv [ruta]'   - Guía del motor batch de depósitos\n"
+        "  • 'menu' / '?'        - Muestra este menú\n"
+        "  • 'salir' / 'exit'    - Termina la sesión\n"
+        "\n"
+        "💡 Habla con naturalidad para todo lo demás. El LLM interpreta\n"
+        "   y llama el tool correcto (27 tools disponibles).\n"
+    )
+
+
 def main_loop():
-    """Loop principal conversacional"""
-    print("="*70)
-    print("           🤖 DEXTER - QuickBooks AI Assistant")
-    print("              Operando para: Alfredo")
-    print("="*70)
-    print()
-    print("Sistema listo 🚀")
-    print()
-    print("🤖 Hola Alfredo, ¿quieres que te guíe en algún proceso hoy (como OCR o Bancos)\no prefieres ir directo a tus consultas?")
-    print()
-    print("Comandos rápidos:")
-    print("  • 'ayuda ocr' - Guía paso a paso para facturas")
-    print("  • '¿cuánto he gastado?' - Estadísticas de tokens")
-    print("  • 'informe de tokens' - Genera Excel con estadísticas")
-    print("  • 'template csv' - Crea plantilla para depósitos")
-    print("  • 'salir' - Termina la sesión")
-    print()
+    """Loop principal conversacional (estilo Claude Code / opencode)."""
+    print("🤖 DEXTER listo. Escribe 'menu' o '?' para ver la ayuda. 'salir' para terminar.\n")
 
     while True:
         try:
@@ -3359,11 +3369,18 @@ def main_loop():
             if not user_input:
                 continue
 
+            lower = user_input.lower()
+
             # Comando de salida
-            if user_input.lower() in ["salir", "exit", "quit", "chao", "adiós"]:
+            if lower in ["salir", "exit", "quit", "chao", "adiós", "adios"]:
                 break
 
-            # Procesar comandos rápidos
+            # Menú a demanda (extraído a función para que se pueda testear)
+            if lower in ["menu", "?", "help", "ayuda"]:
+                print(f"\n{show_main_menu()}")
+                continue
+
+            # Procesar comandos rápidos (triggers NL como "informe de tokens", "lote csv")
             quick_response = process_quick_command(user_input)
             if quick_response:
                 print(f"\n{quick_response}\n")
@@ -3376,7 +3393,7 @@ def main_loop():
                 response = call_llm(user_input, tools=TOOLS)
                 print(f"{response}\n")
             except KeyboardInterrupt:
-                print("\n[Interrupciódetectada]\n")
+                print("\n[Interrupción detectada]\n")
                 break
             except Exception as e:
                 print(f"\n❌ Error: {e}\n")
