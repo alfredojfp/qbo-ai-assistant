@@ -6,12 +6,12 @@
 ![Python](https://img.shields.io/badge/python-3.9+-green.svg)
 ![License](https://img.shields.io/badge/license-Private-red.svg)
 ![Status](https://img.shields.io/badge/status-Active-success.svg)
-![Tools](https://img.shields.io/badge/tools-32-purple.svg)
+![Tools](https://img.shields.io/badge/tools-43-purple.svg)
 ![QBO API](https://img.shields.io/badge/QBO-v3-orange.svg)
 
 **Asistente conversacional inteligente para automatizar tareas contables en QuickBooks Online**
 
-Habla con tu contabilidad en español natural. 32 function tools. Multi-empresa. OCR. Optimizado al 57% en tokens.
+Habla con tu contabilidad en español natural. 43 function tools en 14 módulos. Multi-empresa. OCR. Optimizado al 57% en tokens.
 
 [Instalación](#-instalación-rápida) • [Características](#-características-principales) • [Documentación](#-documentación) • [Ejemplos](#-uso-básico)
 
@@ -75,10 +75,10 @@ python main.py
 | 🏢 **Multi-empresa (v3.5)** | Gestiona múltiples empresas QBO con tokens aislados y cambio en caliente |
 | 🌐 **Bilingüe ES/EN (v3.6)** | Model Routing (Llama 3 / DeepSeek V3) + traducción dinámica con persistencia por empresa |
 | 🎯 **Guía interactiva (v3.7)** | Onboarding paso a paso, Matching Engine para conciliación bancaria, Manual de Usuario vivo |
-| 🔧 **32 function tools** | Búsquedas, transacciones, reportes, herramientas de autonomía |
+| 🆕 **43 function tools en 14 módulos (v4.0)** | [`dexter/tools/`](dexter/tools/) — registry modular, data-driven routing |
 | 🧠 **6 módulos de autonomía** | Web search, API explorer, code execution, bank feed ML, user learning, dynamic reports |
 | 📄 **OCR de facturas PDF** | Extrae datos de PDFs y crea bills automáticamente (Gemini Flash 2.0) |
-| 🏦 **Reconciliación bancaria** | Automatiza conciliaciones por CSV con validación matemática |
+| 🏦 **Reconciliación bancaria** | BNK-RECON tag-only (no crea txns) + matching exacto+fuzzy |
 | 📊 **Reportes personalizados** | Lenguaje natural → queries (CFO Virtual) |
 | ⚡ **Optimización de tokens (57%)** | Tools dinámicos, sliding window, system prompt condicional |
 | 💰 **Tracking de costos** | CSV histórico + Excel con 4 hojas de análisis |
@@ -158,7 +158,7 @@ python main.py
 | 📕 [**docs/TROUBLESHOOTING.md**](docs/TROUBLESHOOTING.md) | 👥 Todos | Solución de problemas comunes |
 | 📙 [**docs/CONTEXT.md**](docs/CONTEXT.md) | 🛠️ Devs / LLMs | Contexto completo del proyecto (32 KB) |
 | 🏗️ [**docs/ARCHITECTURE.md**](docs/ARCHITECTURE.md) | 🛠️ Devs | Diagramas, dataflow, patrones de diseño |
-| 🔧 [**docs/CAPACIDADES.md**](docs/CAPACIDADES.md) | 🛠️ Devs | Catálogo de los 32 tools y 6 módulos |
+| 🔧 [**docs/CAPACIDADES.md**](docs/CAPACIDADES.md) | 🛠️ Devs | Catálogo de los 43 tools y 14 módulos |
 | 🏢 [**docs/MULTI_EMPRESA.md**](docs/MULTI_EMPRESA.md) | 👥 Todos | Guía específica multi-empresa (v3.5) |
 | 🚀 [**docs/INSTALL.md**](docs/INSTALL.md) | 🛠️ Devs | Instalación detallada paso a paso |
 | 📜 [**docs/CHANGELOG.md**](docs/CHANGELOG.md) | 👥 Todos | Historial versionado v1.0 → v3.7 |
@@ -279,7 +279,7 @@ python main.py
 
 ## 🔧 Catálogo de capacidades
 
-**32 function tools** distribuidos en 11 categorías. Ver [`docs/CAPACIDADES.md`](docs/CAPACIDADES.md) para el catálogo completo.
+**43 function tools** distribuidos en 14 módulos de dominio. Ver [`docs/CAPACIDADES.md`](docs/CAPACIDADES.md) para el catálogo completo, o [`dexter/tools/README.md`](dexter/tools/README.md) para la arquitectura modular (v4.0).
 
 | Categoría | Tools | Ejemplos |
 |-----------|-------|----------|
@@ -294,7 +294,8 @@ python main.py
 | Dynamic Report Generator | 2 | `generarreportecustom`, `parsearfecha` |
 | Gestión de reportes | 2 | `guardar_reporte`, `cargar_reporte` |
 | Multi-Empresa | 1 | `gestionar_empresas` |
-| **TOTAL** | **32** | — |
+| **TOTAL (v3.7)** | **32** | — |
+| **TOTAL (v4.0)** | **43** | Distribuidos en 14 módulos de `dexter/tools/` |
 
 **6 módulos de autonomía** en `autonomia/`:
 

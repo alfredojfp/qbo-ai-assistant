@@ -1,5 +1,12 @@
 # Análisis de Tools — main.py
 
+> ⚠️ **DOCUMENTO HISTÓRICO (Superseded).** Este análisis cubría el estado de `main.py` ANTES del refactor modular (Fases 0-7, 2026-06-04). Para el estado actual ver:
+> - **Catálogo actual:** [`dexter/tools/README.md`](../dexter/tools/README.md) — 43 tools en 14 módulos
+> - **Cambios:** [`CHANGELOG.md`](CHANGELOG.md) — entrada Unreleased 2026-06-04
+> - **Arquitectura:** [`ARCHITECTURE.md`](ARCHITECTURE.md) — diagrama v4.0
+
+---
+
 > Estado del monolito `main.py` (3,063 líneas) en la rama `main`,
 > basado en lectura directa del código. La numeración agrupa
 > por categoría funcional, no por orden de definición.
