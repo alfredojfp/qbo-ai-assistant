@@ -2642,9 +2642,33 @@ def tool_obtener_estadisticas_tokens(periodo: str) -> dict:
     }
 
 def tool_generar_informe_tokens() -> dict:
-    """Tool: Genera informe de tokens"""
+    """Tool: Genera informe de tokens (Excel + summary estructurado)."""
     generate_token_report()
-    return {"success": True, "archivo": FILE_TOKEN_REPORT}
+    # Calcula summary para que el LLM pueda mostrar totales sin re-leer
+    summary: Dict[str, Any] = {
+        "success": True,
+        "archivo": FILE_TOKEN_REPORT,
+    }
+    if os.path.exists(FILE_TOKEN_USAGE):
+        try:
+            import pandas as pd
+            df = pd.read_csv(FILE_TOKEN_USAGE)
+            if not df.empty:
+                summary["total_sesiones"] = int(len(df))
+                summary["total_input_tokens"] = int(df["input_tokens"].sum())
+                summary["total_output_tokens"] = int(df["output_tokens"].sum())
+                summary["total_tokens"] = int(df["total_tokens"].sum())
+                summary["costo_total_usd"] = round(float(df["costo_usd"].sum()), 4)
+                summary["operaciones_totales"] = int(df["operaciones"].sum())
+                summary["duracion_total_min"] = round(
+                    float(df["duracion_min"].sum()), 1
+                )
+                summary["costo_promedio_sesion"] = round(
+                    float(df["costo_usd"].mean()), 4
+                )
+        except Exception as e:
+            summary["warning"] = f"No se pudo calcular summary: {e}"
+    return summary
 
 def tool_refrescar_chart_accounts() -> dict:
     """Tool: Refresca Chart of Accounts"""
@@ -3161,6 +3185,28 @@ def process_quick_command(user_input: str) -> Optional[str]:
             "Para limpiar tags de un batch: 'limpia los tags del batch [batch_id]'."
         )
 
+    # Batch deposits (guía rápida)
+    if any(kw in input_lower for kw in [
+        "lote csv", "lote deposit", "depositar batch", "batch deposit",
+        "depositos lote", "depositos csv",
+    ]):
+        return (
+            "📦 **DEPOSITOS BATCH (motor con state machine)**\n"
+            "Procesa CSVs de líneas de deposit multi-cliente con:\n"
+            "- State machine: PENDING → VALIDATED → DRY-RUN → CONFIRMED → EXECUTED\n"
+            "- Disambiguación interactiva: pregunta si un cliente no existe\n"
+            "- Dry-run obligatorio antes de crear en QBO\n"
+            "- Audit log completo en SQLite\n\n"
+            "Pasos:\n"
+            "1. Prepara un CSV con columnas: date, client_name, amount.\n"
+            "   Opcionales: terms, memo.\n"
+            "2. Dime: 'procesa el lote [ruta al CSV]'.\n"
+            "3. Yo busco los clientes en QBO. Si falta alguno, te pregunto.\n"
+            "4. Te muestro el dry-run. Tú confirmas.\n"
+            "5. Creo el deposit en QBO y guardo el batch_id.\n\n"
+            "Para dry-run sin crear: 'procesa el lote [ruta] sin confirmar'."
+        )
+
     # Template CSV
     if "template" in input_lower or "plantilla" in input_lower:
         result = tool_crear_template_csv()
@@ -3229,6 +3275,9 @@ def get_relevant_tools(user_message: str) -> list:
 
     if any(kw in msg for kw in ["recon", "reconcili", "bnk-recon", "tag", "marcar"]):
         relevant_names.update(["taggear_reconciliacion", "limpiar_tags_reconciliacion", "procesar_reconciliacion_bancaria"])
+
+    if any(kw in msg for kw in ["lote", "batch", "depositar csv", "csv depositos", "multiples deposit"]):
+        relevant_names.update(["depositar_lote_csv", "crear_template_csv", "procesar_csv_depositos"])
 
     if any(kw in msg for kw in ["reporte", "p&l", "balance", "estado"]):
         relevant_names.update(["generar_reporte_pl", "generar_balance_sheet", "generarreportecustom", "parsearfecha"])
