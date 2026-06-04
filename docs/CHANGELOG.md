@@ -7,6 +7,46 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased] - 2026-06-04
 
+### 🆕 Agregado — Sprints 1+2+3 QBO API (48 tools nuevos, 45%→85% cobertura)
+
+**Sprint 1A — Master Data (8 tools):**
+- `crear_vendor` (proveedor), `crear_cuenta` (Chart of Accounts), `crear_item` (Service/Inventory/NonInventory), `crear_empleado` (nómina), `crear_clase` (segmentación), `crear_departamento` (segmentación), `crear_termino` (plazos Net 30/2/10 Net 30), `crear_paymentmethod` (métodos de pago). Módulo nuevo: `dexter/tools/master_data.py`.
+
+**Sprint 1B — Transacciones faltantes (9 tools):**
+- `crear_billpayment` (paga uno o más bills), `crear_estimate` (cotización), `crear_salesreceipt` (venta de mostrador), `crear_creditmemo` (nota de crédito cliente), `crear_purchase` (compra genérica), `crear_purchaseorder` (PO), `crear_refundreceipt` (reembolso), `crear_vendorcredit` (crédito proveedor), `crear_timeactivity` (horas trabajadas). Módulo nuevo: `dexter/tools/transaction_extra.py`.
+
+**Sprint 1C — Update/Void/Delete/Send (10 tools):**
+- `actualizar_cliente`, `actualizar_vendor`, `actualizar_factura`, `actualizar_bill` (con auto-sync_token), `eliminar_transaccion` (simplified delete, 12 entidades), `void_transaccion` (preserva historial), `desactivar_cliente`, `desactivar_vendor`, `enviar_factura`, `enviar_orden_compra`. Módulo nuevo: `dexter/tools/operations.py`.
+
+**Sprint 1E — Reportes nativos (10 tools):**
+- `reporte_trial_balance` (Balance de Comprobación), `reporte_general_ledger` (Libro Mayor), `reporte_cash_flow` (Flujo de Efectivo), `reporte_ar_aging` (antigüedad por cobrar), `reporte_ap_aging` (antigüedad por pagar), `reporte_customer_balance`, `reporte_vendor_balance`, `reporte_pl_detail` (P&L detallado), `reporte_journal` (journal entries), `reporte_account_list`. Módulo nuevo: `dexter/tools/reports_extra.py`.
+
+**Sprint 1F — Lectura directa (3 tools):**
+- `leer_companyinfo` (info de empresa), `leer_preferencias` (configuración), `consulta_avanzada` (QBO query language con whitelist SQL — bloquea DROP/DELETE/UPDATE/INSERT/ALTER/CREATE, max 1000 resultados). Módulo nuevo: `dexter/tools/read.py`.
+
+**Sprint 2 — Recurring+Attachments (2 tools):**
+- `crear_recurringtransaction` (plantilla automática con intervalos Daily/Weekly/Monthly/Quarterly/Yearly), `adjuntar_archivo` (PDF/imagen vía multipart manual con base64, sin requests-toolbelt). Módulo nuevo: `dexter/tools/recurring.py`.
+
+**Sprint 3 — P2 avanzado (6 tools):**
+- `crear_taxcode` (NON/TAX), `crear_taxrate` (tasas de impuesto), `leer_exchange_rate` (multi-moneda), `ejecutar_batch` (max 30 ops/llamada, reduce latencia), `cdc_query` (Change Data Capture para sync incremental), `crear_budget` (presupuestos). Módulo nuevo: `dexter/tools/advanced.py`.
+
+### 🔄 Cambiado
+- `qbo_request()` pineado con `?minorversion=70` (configurable via env `QB_MINOR_VERSION`) — protege contra breaking changes de QBO API.
+- `main.py` ahora tiene ~4,753 líneas (era 3,608) con 48 wrappers `tool_*` y 35+ helpers nuevos. Shim 100% backward compat preservado.
+- `dexter/tools/__init__.py` ahora registra 21 módulos (era 14) con 94 ALL_SCHEMAS / 94 ALL_FUNCTIONS (era 46).
+- `tests/test_tools_aggregator.py` actualizado: `test_count_is_94` (era `test_count_is_46`).
+
+### 📊 Métricas
+- **Tests:** 311 → 342 pasando (+31 nuevos tests TDD en `test_tools_aggregator.py`).
+- **Tools:** 46 → 94 (+48 nuevos, 104% más).
+- **Módulos:** 14 → 21 (+7 nuevos).
+- **main.py:** 3,608 → 4,753 líneas (+1,145).
+- **Cobertura QBO API:** 45% → 85% (gap residual: 5 P2 opcionales como Transfer, ClassTrackingDetail, DepartmentTrackingDetail, etc.).
+
+---
+
+## [Released] - 2026-06-04
+
 ### 🆕 Agregado
 - **`crear_cliente` (tool)**: crea clientes (Customers) en QBO vía API. Antes el LLM tenía que decir "no tengo esa función" — ahora es first-class. Solo requiere `nombre` (DisplayName); opcionales `email`, `telefono`, `direccion`, `empresa`. Agregado a `dexter/tools/transactions.py` (módulo pasa de 4 → 5 tools).
 - **`ver_log_errores` y `limpiar_log_errores` (tools)**: permiten inspeccionar y limpiar el log de errores persistido desde dentro de Dexter. Agregados a `dexter/tools/admin.py` (módulo pasa de 2 → 4 tools).

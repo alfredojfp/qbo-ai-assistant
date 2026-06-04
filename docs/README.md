@@ -64,6 +64,7 @@ Qbo Scripts/
 │   ├── CAPACIDADES.md
 │   ├── qbo_api_research.md  ← Investigación exhaustiva de la QBO API
 │   ├── qbo_api_gaps.md      ← Gaps priorizados y plan de implementación
+│   ├── comparativa_github.md ← Tabla comparativa Dexter vs 15 proyectos similares en GitHub
 │   ├── MULTI_EMPRESA.md
 │   ├── INSTALL.md
 │   ├── CHANGELOG.md
