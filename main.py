@@ -1578,6 +1578,92 @@ def generate_account_list_report() -> dict:
 
 
 # ========================================================================
+# Sprint 1E P2: 6 reportes opcionales adicionales
+# ========================================================================
+
+def generate_inventory_valuation_report(start_date: str = None, end_date: str = None,
+                                         item_id: str = None) -> dict:
+    """Genera Inventory Valuation Summary (valorización de inventario)."""
+    log_operation("reports")
+    params: Dict[str, Any] = {}
+    if start_date:
+        params["start_date"] = start_date
+    if end_date:
+        params["end_date"] = end_date
+    if item_id:
+        params["item"] = item_id
+    return _fetch_report("InventoryValuationSummary", params)
+
+
+def generate_sales_by_customer_report(start_date: str, end_date: str,
+                                       customer_id: str = None) -> dict:
+    """Genera Sales by Customer Summary (ventas agrupadas por cliente)."""
+    log_operation("reports")
+    params: Dict[str, Any] = {
+        "start_date": start_date,
+        "end_date": end_date,
+    }
+    if customer_id:
+        params["customer"] = customer_id
+    return _fetch_report("CustomerSales", params)
+
+
+def generate_expenses_by_vendor_report(start_date: str, end_date: str,
+                                        vendor_id: str = None) -> dict:
+    """Genera Expenses by Vendor Summary (gastos agrupados por proveedor)."""
+    log_operation("reports")
+    params: Dict[str, Any] = {
+        "start_date": start_date,
+        "end_date": end_date,
+    }
+    if vendor_id:
+        params["vendor"] = vendor_id
+    return _fetch_report("VendorExpenses", params)
+
+
+def generate_transaction_list_report(start_date: str, end_date: str,
+                                      account_id: str = None,
+                                      transaction_type: str = None) -> dict:
+    """Genera Transaction List (lista de transacciones con filtros)."""
+    log_operation("reports")
+    params: Dict[str, Any] = {
+        "start_date": start_date,
+        "end_date": end_date,
+    }
+    if account_id:
+        params["account"] = account_id
+    if transaction_type:
+        params["transaction_type"] = transaction_type
+    return _fetch_report("TransactionList", params)
+
+
+def generate_class_sales_report(start_date: str, end_date: str,
+                                 class_id: str = None) -> dict:
+    """Genera Sales by Class Summary (ventas agrupadas por clase)."""
+    log_operation("reports")
+    params: Dict[str, Any] = {
+        "start_date": start_date,
+        "end_date": end_date,
+    }
+    if class_id:
+        params["class"] = class_id
+    return _fetch_report("ClassSales", params)
+
+
+def generate_department_sales_report(start_date: str, end_date: str,
+                                     department_id: str = None) -> dict:
+    """Genera Sales by Department Summary (ventas agrupadas por departamento)."""
+    log_operation("reports")
+    params: Dict[str, Any] = {
+        "start_date": start_date,
+        "end_date": end_date,
+    }
+    if department_id:
+        params["department"] = department_id
+    return _fetch_report("DepartmentSales", params)
+
+
+# ========================================================================
 # Read operations (Sprint 1F: 3 tools)
 # ========================================================================
 
@@ -3910,6 +3996,43 @@ def tool_reporte_journal(fecha_inicio: str, fecha_fin: str) -> dict:
 def tool_reporte_account_list() -> dict:
     """Tool: Genera Account List (lista de cuentas contables)."""
     return generate_account_list_report()
+
+
+def tool_reporte_inventory_valuation(fecha_inicio: str = None, fecha_fin: str = None,
+                                      item_id: str = None) -> dict:
+    """Tool: Genera Inventory Valuation Summary (valorización de inventario)."""
+    return generate_inventory_valuation_report(fecha_inicio, fecha_fin, item_id)
+
+
+def tool_reporte_sales_by_customer(fecha_inicio: str, fecha_fin: str,
+                                    cliente_id: str = None) -> dict:
+    """Tool: Genera Sales by Customer Summary (ventas agrupadas por cliente)."""
+    return generate_sales_by_customer_report(fecha_inicio, fecha_fin, cliente_id)
+
+
+def tool_reporte_expenses_by_vendor(fecha_inicio: str, fecha_fin: str,
+                                     vendor_id: str = None) -> dict:
+    """Tool: Genera Expenses by Vendor Summary (gastos agrupados por proveedor)."""
+    return generate_expenses_by_vendor_report(fecha_inicio, fecha_fin, vendor_id)
+
+
+def tool_reporte_transaction_list(fecha_inicio: str, fecha_fin: str,
+                                   cuenta_id: str = None,
+                                   tipo_transaccion: str = None) -> dict:
+    """Tool: Genera Transaction List (lista de transacciones filtrable)."""
+    return generate_transaction_list_report(fecha_inicio, fecha_fin, cuenta_id, tipo_transaccion)
+
+
+def tool_reporte_class_sales(fecha_inicio: str, fecha_fin: str,
+                              clase_id: str = None) -> dict:
+    """Tool: Genera Sales by Class Summary (ventas agrupadas por clase)."""
+    return generate_class_sales_report(fecha_inicio, fecha_fin, clase_id)
+
+
+def tool_reporte_department_sales(fecha_inicio: str, fecha_fin: str,
+                                  departamento_id: str = None) -> dict:
+    """Tool: Genera Sales by Department Summary (ventas agrupadas por departamento)."""
+    return generate_department_sales_report(fecha_inicio, fecha_fin, departamento_id)
 
 
 # ========================================================================

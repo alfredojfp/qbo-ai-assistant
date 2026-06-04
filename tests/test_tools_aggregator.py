@@ -79,10 +79,10 @@ class TestToolsAggregator(unittest.TestCase):
         self.assertIsInstance(ALL_SCHEMAS, list)
         self.assertIsInstance(ALL_FUNCTIONS, dict)
 
-    def test_count_is_94(self):
+    def test_count_is_100(self):
         from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
-        self.assertEqual(len(ALL_SCHEMAS), 94)
-        self.assertEqual(len(ALL_FUNCTIONS), 94)
+        self.assertEqual(len(ALL_SCHEMAS), 100)
+        self.assertEqual(len(ALL_FUNCTIONS), 100)
 
     def test_no_duplicate_names(self):
         from dexter.tools import ALL_SCHEMAS
@@ -323,12 +323,12 @@ class TestSprint1COperations(unittest.TestCase):
 
 
 class TestSprint1EReportsExtra(unittest.TestCase):
-    """Sprint 1E: 10 tools de reportes nativos QBO."""
+    """Sprint 1E + P2 opcionales: 16 tools de reportes nativos QBO."""
 
-    def test_reports_extra_module_has_10_tools(self):
+    def test_reports_extra_module_has_16_tools(self):
         from dexter.tools.reports_extra import SCHEMA, FUNCTIONS
-        self.assertEqual(len(SCHEMA), 10)
-        self.assertEqual(len(FUNCTIONS), 10)
+        self.assertEqual(len(SCHEMA), 16)
+        self.assertEqual(len(FUNCTIONS), 16)
 
     def test_reports_extra_all_registered(self):
         expected = [
@@ -470,12 +470,12 @@ class TestSprint3Advanced(unittest.TestCase):
 
 
 class TestSprintTotalCoverage(unittest.TestCase):
-    """Tests de cobertura global: 94 tools, 21 módulos."""
+    """Tests de cobertura global: 100 tools, 21 módulos."""
 
-    def test_total_94_tools(self):
+    def test_total_100_tools(self):
         from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
-        self.assertEqual(len(ALL_SCHEMAS), 94)
-        self.assertEqual(len(ALL_FUNCTIONS), 94)
+        self.assertEqual(len(ALL_SCHEMAS), 100)
+        self.assertEqual(len(ALL_FUNCTIONS), 100)
 
     def test_total_21_modules(self):
         from dexter.tools import KEYWORDS_BY_MODULE
@@ -502,6 +502,82 @@ class TestSprintTotalCoverage(unittest.TestCase):
                 params = s["function"].get("parameters", {})
                 self.assertEqual(params.get("type"), "object", f"{name} parameters.type must be 'object'")
                 self.assertIsInstance(params.get("properties"), dict, f"{name} missing 'properties' dict")
+
+
+class TestP2OptionalReports(unittest.TestCase):
+    """P2 opcionales: 6 reportes faltantes (gaps 49-53 + reabastecimiento)."""
+
+    def test_p2_reports_in_reports_extra(self):
+        from dexter.tools.reports_extra import SCHEMA, FUNCTIONS
+        expected = [
+            "reporte_inventory_valuation",
+            "reporte_sales_by_customer",
+            "reporte_expenses_by_vendor",
+            "reporte_transaction_list",
+            "reporte_class_sales",
+            "reporte_department_sales",
+        ]
+        names = {_schema_name(s) for s in SCHEMA}
+        for name in expected:
+            self.assertIn(name, names, f"reports_extra missing {name}")
+            self.assertIn(name, FUNCTIONS, f"reports_extra FUNCTIONS missing {name}")
+
+    def test_reports_extra_module_has_16_tools(self):
+        from dexter.tools.reports_extra import SCHEMA, FUNCTIONS
+        self.assertEqual(len(SCHEMA), 16)
+        self.assertEqual(len(FUNCTIONS), 16)
+
+    def test_p2_reports_in_global_registry(self):
+        from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
+        names = {_schema_name(s) for s in ALL_SCHEMAS}
+        for name in [
+            "reporte_inventory_valuation",
+            "reporte_sales_by_customer",
+            "reporte_expenses_by_vendor",
+            "reporte_transaction_list",
+            "reporte_class_sales",
+            "reporte_department_sales",
+        ]:
+            self.assertIn(name, names, f"{name} missing from global registry")
+            self.assertIn(name, ALL_FUNCTIONS)
+
+    def test_p2_reports_callable(self):
+        from dexter.tools import ALL_FUNCTIONS
+        from main import (
+            tool_reporte_inventory_valuation,
+            tool_reporte_sales_by_customer,
+            tool_reporte_expenses_by_vendor,
+            tool_reporte_transaction_list,
+            tool_reporte_class_sales,
+            tool_reporte_department_sales,
+        )
+        self.assertIs(ALL_FUNCTIONS["reporte_inventory_valuation"], tool_reporte_inventory_valuation)
+        self.assertIs(ALL_FUNCTIONS["reporte_sales_by_customer"], tool_reporte_sales_by_customer)
+        self.assertIs(ALL_FUNCTIONS["reporte_expenses_by_vendor"], tool_reporte_expenses_by_vendor)
+        self.assertIs(ALL_FUNCTIONS["reporte_transaction_list"], tool_reporte_transaction_list)
+        self.assertIs(ALL_FUNCTIONS["reporte_class_sales"], tool_reporte_class_sales)
+        self.assertIs(ALL_FUNCTIONS["reporte_department_sales"], tool_reporte_department_sales)
+
+    def test_total_100_tools(self):
+        from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
+        self.assertEqual(len(ALL_SCHEMAS), 100)
+        self.assertEqual(len(ALL_FUNCTIONS), 100)
+
+    def test_p2_reports_have_descriptions(self):
+        from dexter.tools import ALL_SCHEMAS
+        new_tools = [
+            "reporte_inventory_valuation",
+            "reporte_sales_by_customer",
+            "reporte_expenses_by_vendor",
+            "reporte_transaction_list",
+            "reporte_class_sales",
+            "reporte_department_sales",
+        ]
+        names = {_schema_name(s): s for s in ALL_SCHEMAS}
+        for name in new_tools:
+            self.assertIn(name, names)
+            desc = names[name]["function"].get("description", "")
+            self.assertGreater(len(desc), 30, f"{name} has too-short description")
 
 
 if __name__ == "__main__":

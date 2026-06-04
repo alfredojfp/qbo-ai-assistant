@@ -1,4 +1,4 @@
-"""dexter.tools.reports_extra — 10 tools de reportes nativos de QuickBooks."""
+"""dexter.tools.reports_extra — 16 tools de reportes nativos de QuickBooks."""
 from typing import Any, Dict, List
 
 from main import (
@@ -12,6 +12,12 @@ from main import (
     tool_reporte_pl_detail,
     tool_reporte_journal,
     tool_reporte_account_list,
+    tool_reporte_inventory_valuation,
+    tool_reporte_sales_by_customer,
+    tool_reporte_expenses_by_vendor,
+    tool_reporte_transaction_list,
+    tool_reporte_class_sales,
+    tool_reporte_department_sales,
 )
 
 SCHEMA: List[Dict[str, Any]] = [
@@ -165,6 +171,105 @@ SCHEMA: List[Dict[str, Any]] = [
             "parameters": {"type": "object", "properties": {}},
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "reporte_inventory_valuation",
+            "description": "Genera Inventory Valuation Summary (valorización de inventario por item con cantidad en mano, costo promedio y valor total). Útil para empresas con productos físicos.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "fecha_inicio": {"type": "string", "description": "YYYY-MM-DD (opcional)"},
+                    "fecha_fin": {"type": "string", "description": "YYYY-MM-DD (opcional)"},
+                    "item_id": {"type": "string", "description": "Filtrar por item específico (opcional)"},
+                },
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "reporte_sales_by_customer",
+            "description": "Genera Sales by Customer Summary (ventas totales agrupadas por cliente en un período). Útil para análisis de revenue concentration y top customers.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "fecha_inicio": {"type": "string", "description": "YYYY-MM-DD"},
+                    "fecha_fin": {"type": "string", "description": "YYYY-MM-DD"},
+                    "cliente_id": {"type": "string", "description": "Filtrar por cliente específico (opcional)"},
+                },
+                "required": ["fecha_inicio", "fecha_fin"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "reporte_expenses_by_vendor",
+            "description": "Genera Expenses by Vendor Summary (gastos totales agrupados por proveedor en un período). Útil para análisis de procurement y top suppliers.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "fecha_inicio": {"type": "string", "description": "YYYY-MM-DD"},
+                    "fecha_fin": {"type": "string", "description": "YYYY-MM-DD"},
+                    "vendor_id": {"type": "string", "description": "Filtrar por proveedor específico (opcional)"},
+                },
+                "required": ["fecha_inicio", "fecha_fin"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "reporte_transaction_list",
+            "description": "Genera Transaction List (lista detallada de transacciones en un período con filtros opcionales por cuenta o tipo). Útil para auditorías y revisiones.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "fecha_inicio": {"type": "string", "description": "YYYY-MM-DD"},
+                    "fecha_fin": {"type": "string", "description": "YYYY-MM-DD"},
+                    "cuenta_id": {"type": "string", "description": "Filtrar por cuenta contable (opcional)"},
+                    "tipo_transaccion": {
+                        "type": "string",
+                        "description": "Filtrar por tipo: Invoice, Bill, Payment, Deposit, JournalEntry, etc.",
+                    },
+                },
+                "required": ["fecha_inicio", "fecha_fin"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "reporte_class_sales",
+            "description": "Genera Sales by Class Summary (ventas agrupadas por clase/segmento en un período). Útil para empresas con múltiples líneas de negocio o proyectos.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "fecha_inicio": {"type": "string", "description": "YYYY-MM-DD"},
+                    "fecha_fin": {"type": "string", "description": "YYYY-MM-DD"},
+                    "clase_id": {"type": "string", "description": "Filtrar por clase específica (opcional)"},
+                },
+                "required": ["fecha_inicio", "fecha_fin"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "reporte_department_sales",
+            "description": "Genera Sales by Department Summary (ventas agrupadas por departamento en un período). Útil para empresas con centros de costo departamentales.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "fecha_inicio": {"type": "string", "description": "YYYY-MM-DD"},
+                    "fecha_fin": {"type": "string", "description": "YYYY-MM-DD"},
+                    "departamento_id": {"type": "string", "description": "Filtrar por departamento específico (opcional)"},
+                },
+                "required": ["fecha_inicio", "fecha_fin"],
+            },
+        },
+    },
 ]
 
 KEYWORDS: List[str] = [
@@ -178,6 +283,12 @@ KEYWORDS: List[str] = [
     "p&l detail", "p&l detallado", "profit and loss detail",
     "journal", "asientos", "journal entries", "pólizas",
     "account list", "lista de cuentas", "chart of accounts listado",
+    "inventory valuation", "valorización inventario", "stock value",
+    "sales by customer", "ventas por cliente", "top customers",
+    "expenses by vendor", "gastos por proveedor", "top suppliers",
+    "transaction list", "lista de transacciones", "transacciones detalladas",
+    "class sales", "ventas por clase", "segmento",
+    "department sales", "ventas por departamento", "centro de costo",
     "reporte nativo", "quickbooks report", "qb report",
 ]
 
@@ -192,4 +303,10 @@ FUNCTIONS: Dict[str, Any] = {
     "reporte_pl_detail": tool_reporte_pl_detail,
     "reporte_journal": tool_reporte_journal,
     "reporte_account_list": tool_reporte_account_list,
+    "reporte_inventory_valuation": tool_reporte_inventory_valuation,
+    "reporte_sales_by_customer": tool_reporte_sales_by_customer,
+    "reporte_expenses_by_vendor": tool_reporte_expenses_by_vendor,
+    "reporte_transaction_list": tool_reporte_transaction_list,
+    "reporte_class_sales": tool_reporte_class_sales,
+    "reporte_department_sales": tool_reporte_department_sales,
 }
