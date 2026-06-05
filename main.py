@@ -525,25 +525,37 @@ def get_account_category(account_type: str) -> str:
         return "OTRO"
 
 def find_account(search_term: str, exact: bool = False, category: str = None) -> List[dict]:
-    """Busca cuenta por nombre o número con fuzzy matching"""
+    """Busca cuenta por nombre o número con fuzzy matching.
+
+    MED-5 fix: None-guard para acc['name'] y acc['category']. Si el
+    chart tiene data malformada (None values), skip la cuenta (no
+    es match válido). Antes crasheaba con AttributeError en .lower().
+    """
     chart = session_state.get("chart_of_accounts", {})
     results = []
 
     for acc_id, acc in chart.items():
+        acc_name = acc.get("name")
+        acc_category = acc.get("category")
+        acc_number = acc.get("number")
+
+        if acc_name is None:
+            continue
+
         # Filtrar por categoría si se especifica
-        if category and acc["category"] != category.upper():
+        if category and acc_category != category.upper():
             continue
 
         # Buscar por número exacto
-        if acc["number"] == search_term:
+        if acc_number == search_term:
             return [acc]
 
         # Buscar por nombre
         if exact:
-            if acc["name"].lower() == search_term.lower():
+            if acc_name.lower() == search_term.lower():
                 results.append(acc)
         else:
-            score = similarity_score(search_term, acc["name"])
+            score = similarity_score(search_term, acc_name)
             if score > 0.6:  # 60% de similitud mínima
                 results.append({**acc, "match_score": score})
 
