@@ -86,11 +86,21 @@ class TestQboQueryAsLlmTool(unittest.TestCase):
 class TestQboQueryAlwaysIncluded(unittest.TestCase):
     """qbo_query debe estar siempre presente en get_relevant_tools()."""
 
+    def _extract_names(self, schemas):
+        out = []
+        for s in schemas:
+            if isinstance(s, dict):
+                if "function" in s and isinstance(s["function"], dict):
+                    out.append(s["function"].get("name", ""))
+                elif "name" in s:
+                    out.append(s["name"])
+        return [n for n in out if n]
+
     def test_qbo_query_included_for_generic_message(self):
         """qbo_query incluido aunque no haya keywords de read module."""
         import main
         tools = main.get_relevant_tools("dame los datos que tengas de este cliente")
-        names = [t["function"]["name"] for t in tools]
+        names = self._extract_names(tools)
         self.assertIn("qbo_query", names,
                       "qbo_query debe estar SIEMPRE presente")
 
@@ -98,21 +108,21 @@ class TestQboQueryAlwaysIncluded(unittest.TestCase):
         """'busca el estimate del cliente' debe incluir qbo_query."""
         import main
         tools = main.get_relevant_tools("busca el estimate del cliente Prueba2")
-        names = [t["function"]["name"] for t in tools]
+        names = self._extract_names(tools)
         self.assertIn("qbo_query", names)
 
     def test_qbo_query_included_for_hola(self):
         """Incluso 'hola' debe incluir qbo_query (siempre-presente)."""
         import main
         tools = main.get_relevant_tools("hola")
-        names = [t["function"]["name"] for t in tools]
+        names = self._extract_names(tools)
         self.assertIn("qbo_query", names)
 
     def test_qbo_query_included_for_salir(self):
         """'salir' también debe incluir qbo_query."""
         import main
         tools = main.get_relevant_tools("salir")
-        names = [t["function"]["name"] for t in tools]
+        names = self._extract_names(tools)
         self.assertIn("qbo_query", names)
 
 

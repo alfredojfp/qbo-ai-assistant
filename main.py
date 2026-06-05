@@ -3146,6 +3146,13 @@ Tu usuario se llama Alfredo, dirígete a él de manera respetuosa pero cercana.
 CAPACIDADES:
 ✅ Clasificación | ✅ Reportes | ✅ Facturas | ✅ Búsquedas | ✅ OCR | ✅ Gestión Multi-empresa
 
+REGLAS DE INTERACCIÓN:
+- Responde de manera conversacional, como si estuvieras hablando con un colega.
+- Si no entiendes lo que Alfredo quiere, PREGUNTA. No adivines. No inventes herramientas.
+- Si necesitas más información para completar una tarea, pídela. Ej: "¿De qué fecha es el estimate?" o "¿Puedes confirmarme el monto?"
+- Tienes acceso a 101 herramientas. Úsalas. No intentes responder de memoria cuando puedes consultar QBO.
+- Si una herramienta no existe para lo que Alfredo pide, dile claramente: "No tengo una herramienta para eso, pero puedo intentar X o Y."
+
 GUÍA INTERACTIVA:
 - Si detectas que Alfredo quiere realizar una tarea compleja (OCR, Reconciliación, Reportes Pro), ofrécele guiarlo paso a paso.
 - Si Alfredo parece perdido, sugiere el uso de comandos de ayuda como "ayuda ocr" o "ayuda bancos".
@@ -5678,51 +5685,35 @@ def _bilingual_keywords(spanish_keywords: list) -> list:
 
 
 def get_relevant_tools(user_message: str) -> list:
-    """Retorna lista de definiciones de tools (schemas) relevantes.
+    """Retorna la lista COMPLETA de tools (schemas) disponibles.
 
-    Data-driven: itera los 14 módulos de dexter.tools y activa los tools
-    de cada módulo si el user_message contiene alguna de sus KEYWORDS.
+    Data-driven: incluye TODOS los tools de TOOLS + ALL_SCHEMAS.
+    El LLM es suficientemente inteligente para elegir el tool correcto
+    sin necesidad de un filtro de keywords que limite sus opciones.
 
-    LOW-6 fix: agrega traducciones inglesas via _bilingual_keywords()
-    para que usuarios en 'en' también activen los tools correctos.
+    Si el LLM no entiende qué tool usar, debe preguntar al usuario
+    (esto se refuerza en el system prompt).
     """
-    from dexter.tools import KEYWORDS_BY_MODULE
     import dexter.tools as dexter_tools
     from dexter.tools import _extract_name
 
-    msg = user_message.lower()
-    relevant_names = set()
+    seen = set()
+    result = []
 
-    for module_name, keywords in KEYWORDS_BY_MODULE.items():
-        if not keywords:
-            continue
-        module = getattr(dexter_tools, module_name.split(".")[-1], None)
-        if module is None:
-            continue
-        bi_kws = _bilingual_keywords(keywords)
-        if any(kw.lower() in msg for kw in bi_kws):
-            relevant_names.update(module.FUNCTIONS.keys())
-
-    # Always include a few basics if no match (safe defaults)
-    if not relevant_names:
-        relevant_names.update([
-            "buscar_cliente", "buscar_cuenta", "generar_reporte_pl",
-        ])
-
-    # Siempre incluir qbo_query — es el tool universal de consulta.
-    # El LLM lo necesita para buscar cualquier entidad (estimates,
-    # invoices, items, etc.) sin depender de keywords.
-    relevant_names.add("qbo_query")
-
-    # Filtrar la lista global TOOLS y también ALL_SCHEMAS de dexter/tools
-    # para incluir tools registrados en el registry pero no en TOOLS.
-    result = [t for t in TOOLS if t["function"]["name"] in relevant_names]
-    result_names = {t["function"]["name"] for t in result}
+    # Todos los tools del registry (101 tools)
     for schema in dexter_tools.ALL_SCHEMAS:
         name = _extract_name(schema)
-        if name and name in relevant_names and name not in result_names:
+        if name and name not in seen:
             result.append(schema)
-            result_names.add(name)
+            seen.add(name)
+
+    # Tools que solo están en TOOLS (legacy, si queda alguno no migrado)
+    for t in TOOLS:
+        name = t["function"]["name"]
+        if name not in seen:
+            result.append(t)
+            seen.add(name)
+
     return result
 
 def _truncate_message_content(msg: dict, max_chars: int = 2000) -> dict:
