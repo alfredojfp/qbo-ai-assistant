@@ -4360,6 +4360,29 @@ def tool_refrescar_chart_accounts() -> dict:
         "mensaje": "Chart of Accounts actualizado exitosamente"
     }
 
+def reset_session_state() -> None:
+    """CRIT-3 fix: limpia state inter-company para evitar data leak.
+
+    Limpia:
+        - conversation_history: mensajes de la conversación anterior
+        - session_state['last_search_results']: IDs de customers/vendors/accounts
+        - session_state['saved_reports']: configs de reportes (se recargan de
+          COMPANY_CONTEXT de la nueva empresa)
+
+    Preserva:
+        - session_state['input_tokens'/'output_tokens'/'total_cost']: contadores
+          de uso de tokens del usuario
+        - session_state['operations']: contadores de operaciones de la sesión
+        - session_state['start_time']: timestamp de inicio de sesión
+        - session_state['language']: idioma del usuario
+    """
+    global conversation_history
+    conversation_history.clear()
+    session_state["last_search_results"] = {}
+    session_state["saved_reports"] = {}
+    # NO limpiar: token counters, operations, start_time, language
+
+
 def tool_gestionar_empresas(accion: str, nombre: str = None, link_o_id: str = None) -> dict:
     """
     Tool: Gestiona el registro y cambio de empresas.
@@ -4394,7 +4417,11 @@ def tool_gestionar_empresas(accion: str, nombre: str = None, link_o_id: str = No
         
         if not target:
             return {"success": False, "message": f"No encontré ninguna empresa registrada como '{nombre}'."}
-        
+
+        # CRIT-3 fix: limpiar state inter-company ANTES de cambiar
+        # (evita que tool results stale se filtren a la nueva empresa)
+        reset_session_state()
+
         # Guardar contexto actual
         if CURRENT_COMPANY:
             save_company_context(CURRENT_COMPANY['name'], COMPANY_CONTEXT)
