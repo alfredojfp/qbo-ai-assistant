@@ -3176,6 +3176,30 @@ REGLAS DE ORO
 - Los IDs son opacos (ej: "70", "1a2b3c"). No asumas que son secuenciales.
 - Verificá antes de crear (buscá duplicados).
 - Para transacciones: usá Void, no Delete (es más seguro y trazable).
+- USÁ TU MEMORIA: después de cada interacción importante, guardá lo aprendido
+  con gestionar_memoria(target='memory', action='add', content='...').
+  Si Alfredo te corrige, guardalo. Si descubrís un ID, guardalo.
+
+═══════════════════════════════════════════════════════════════
+WORKFLOWS FRECUENTES (single-command — ejecutá todos los pasos)
+═══════════════════════════════════════════════════════════════
+
+Cuando Alfredo te pida algo con UNA SOLA orden, ejecutá todos los pasos
+necesarios sin pedir confirmación intermedia. Ejemplos:
+
+  "crea cliente X con estimate de $Y"
+    → buscar_cliente → crear_cliente (si no existe) → crear_estimate
+
+  "reconciliame el CSV de mayo"
+    → procesar_csv_bank_feed → procesar_reconciliacion_bancaria
+
+  "dame los estimates pendientes de cliente Z"
+    → buscar_cliente → qbo_query (SELECT * FROM Estimate WHERE...)
+
+  "crea invoice para cliente Z por $X"
+    → buscar_cliente → crear_invoice
+
+Solo preguntá si te falta información crítica (fecha, monto, cuenta).
 
 ═══════════════════════════════════════════════════════════════
 BASE DE CONOCIMIENTO CONTABLE
@@ -3238,6 +3262,12 @@ def call_llm(user_message: str, tools: List[dict] = None, max_iterations: int = 
     
     recent_hist, context_hint = build_conversation_context(conversation_history)
     local_system_content += "\n" + context_hint
+
+    # Inyectar memoria persistente (MEMORY.md + USER.md) — snapshot al inicio
+    mem = _get_memory()
+    mem_block = mem.format_for_prompt()
+    if mem_block:
+        local_system_content += "\n\n" + mem_block
 
     relevant_tools = get_relevant_tools(user_message) if tools else []
 
@@ -6114,7 +6144,55 @@ def _verify_qbo_connection_or_offer_reauth() -> bool:
     return True
 
 
-# ==================== ENTRY POINT ====================
+# ==================== MEMORIA PERSISTENTE (HERMES-STYLE) ====================
+
+
+_dexter_memory = None  # inicializado bajo __main__
+
+
+def _get_memory():
+    """Lazy init de PersistentMemory."""
+    global _dexter_memory
+    if _dexter_memory is None:
+        from dexter.core.memory import PersistentMemory
+        _dexter_memory = PersistentMemory()
+    return _dexter_memory
+
+
+def tool_gestionar_memoria(target: str = "memory", action: str = "add",
+                           content: str = "", old_text: str = "") -> dict:
+    """Tool: gestiona la memoria persistente del agente (MEMORY.md / USER.md).
+
+    Args:
+        target: 'memory' (notas del agente) o 'user' (perfil de Alfredo)
+        action: 'add' (agregar), 'remove' (eliminar por substring), 'status' (ver uso)
+        content: texto a agregar (para action='add')
+        old_text: substring de la entrada a eliminar (para action='remove')
+
+    Usos típicos:
+      - Después de aprender algo nuevo sobre Alfredo
+      - Después de descubrir un dato del entorno (ej. realm ID)
+      - Cuando Alfredo corrige algo que dijiste
+    """
+    mem = _get_memory()
+    if action == "status":
+        return mem.get_status()
+    elif action == "add":
+        if not content.strip():
+            return {"success": False, "error": "content no puede estar vacío"}
+        return mem.add(target, content)
+    elif action == "remove":
+        if not old_text.strip():
+            return {"success": False, "error": "old_text requerido para remove"}
+        return mem.remove(target, old_text)
+    else:
+        return {"success": False, "error": f"Acción desconocida: {action}"}
+
+
+TOOL_FUNCTIONS["gestionar_memoria"] = tool_gestionar_memoria
+
+
+# ==================== TOOL DISPATCH TABLE ====================
 
 
 if __name__ == "__main__":
@@ -6219,4 +6297,11 @@ if __name__ == "__main__":
     
     # Iniciar loop principal
     main_loop()
+
+    # Guardar memoria persistente al cerrar (por si el agente agregó entradas)
+    print()
+    mem = _get_memory()
+    status = mem.get_status()
+    if status["memory_entries"] > 0 or status["user_entries"] > 0:
+        print(f"📝 Memoria: {status['memory_entries']} notas, {status['user_entries']} perfil")
 
