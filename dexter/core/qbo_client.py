@@ -264,6 +264,11 @@ def find_bank_account_id(
     """
     Helper: encuentra el ID de la cuenta bancaria principal.
     Busca por términos comunes (en español e inglés).
+
+    HIGH-7 fix: usa category='ACTIVO' (no 'BANK' — find_account filtra
+    por categorías en ESPAÑOL). Si no hay match con 'ACTIVO', hace
+    fallback search-wide (sin filter) para casos donde la cuenta
+    no esté categorizada todavía.
     """
     if search_terms is None:
         search_terms = [
@@ -271,7 +276,11 @@ def find_bank_account_id(
             "operating", "principal", "general",
         ]
     for term in search_terms:
-        results = find_account_fn(term, exact=False, category="BANK")
+        results = find_account_fn(term, exact=False, category="ACTIVO")
+        if results:
+            return results[0]["id"]
+    for term in search_terms:
+        results = find_account_fn(term, exact=False, category=None)
         if results:
             return results[0]["id"]
     return ""
