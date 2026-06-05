@@ -8,6 +8,18 @@ COMPANY_FILE = ".current_company"
 
 # ----------------- Utilidades de ID y URL -----------------
 
+def _is_valid_realm_id(s: str) -> bool:
+    """LOW-9: valida que s sea un realm ID plausible.
+
+    Criterios:
+    - Exactamente 10-20 dígitos (rango realista para QBO realmId)
+    - Sin otros caracteres
+    """
+    if not s or not s.isdigit():
+        return False
+    return 10 <= len(s) <= 20
+
+
 def extract_realm_id(input_str: str) -> Optional[str]:
     """
     Extrae el Realm ID de un string que puede ser:
@@ -16,17 +28,21 @@ def extract_realm_id(input_str: str) -> Optional[str]:
     """
     if not input_str:
         return None
-    
-    # Caso 1: Es una URL con companyId=
-    match = re.search(r"companyId=(\d+)", input_str)
-    if match:
-        return match.group(1)
-    
-    # Caso 2: Es un número puro (o string numérico)
-    id_match = re.search(r"(\d{10,})", input_str) # Realm IDs suelen tener 10+ dígitos
-    if id_match:
-        return id_match.group(1)
-        
+
+    # Caso 1: Es una URL con companyId=<digits>
+    url_match = re.search(r"companyId=(\d{10,20})", input_str)
+    if url_match:
+        return url_match.group(1)
+
+    # Caso 2: Es un string numérico puro (después de strip).
+    # LOW-9 fix: NO usar regex \d{10,} (captura cualquier 10+ dígitos
+    # embebidos en texto, incluyendo transaction IDs, phone numbers,
+    # timestamps Unix, números de tarjeta). Validar que TODO el
+    # string sea el realm ID.
+    stripped = input_str.strip()
+    if _is_valid_realm_id(stripped):
+        return stripped
+
     return None
 
 # ----------------- Operaciones de Tokens por Empresa -----------------
