@@ -580,5 +580,78 @@ class TestP2OptionalReports(unittest.TestCase):
             self.assertGreater(len(desc), 30, f"{name} has too-short description")
 
 
+class TestVerifyToolIntegrity(unittest.TestCase):
+    """Tests para la safeguard verify_tool_integrity (Layer 1)."""
+
+    def setUp(self):
+        import main
+        self._main = main
+        self._injected_names = []
+
+    def tearDown(self):
+        for name in self._injected_names:
+            if hasattr(self._main, name):
+                delattr(self._main, name)
+
+    def _inject(self, name: str, fn):
+        setattr(self._main, name, fn)
+        self._injected_names.append(name)
+
+    def test_result_keys_present(self):
+        from dexter.tools import verify_tool_integrity
+        result = verify_tool_integrity(verbose=False)
+        for key in ("ok", "total_wrappers", "total_registered", "orphans", "registered_unwired"):
+            self.assertIn(key, result)
+
+    def test_baseline_no_orphans(self):
+        from dexter.tools import verify_tool_integrity
+        result = verify_tool_integrity(verbose=False)
+        self.assertTrue(result["ok"], f"Baseline should be clean. Got: {result}")
+        self.assertEqual(result["orphans"], [])
+        self.assertEqual(result["registered_unwired"], [])
+
+    def test_detects_injected_orphan(self):
+        from dexter.tools import verify_tool_integrity
+        self._inject("tool_test_orphan_injected", lambda: None)
+        result = verify_tool_integrity(verbose=False)
+        self.assertFalse(result["ok"])
+        self.assertIn("tool_test_orphan_injected", result["orphans"])
+
+    def test_verbose_writes_to_stderr_on_failure(self):
+        import io
+        from dexter.tools import verify_tool_integrity
+        self._inject("tool_test_verbose_orphan", lambda: None)
+        captured = io.StringIO()
+        import sys
+        old_stderr = sys.stderr
+        sys.stderr = captured
+        try:
+            verify_tool_integrity(verbose=True)
+        finally:
+            sys.stderr = old_stderr
+        output = captured.getvalue()
+        self.assertIn("DEXTER TOOLS INTEGRITY CHECK FAILED", output)
+        self.assertIn("tool_test_verbose_orphan", output)
+        self.assertIn("Acción", output)
+
+    def test_verbose_silent_when_ok(self):
+        import io
+        import sys
+        from dexter.tools import verify_tool_integrity
+        captured = io.StringIO()
+        old_stderr = sys.stderr
+        sys.stderr = captured
+        try:
+            verify_tool_integrity(verbose=True)
+        finally:
+            sys.stderr = old_stderr
+        self.assertEqual(captured.getvalue(), "")
+
+    def test_total_wrappers_count(self):
+        from dexter.tools import verify_tool_integrity
+        result = verify_tool_integrity(verbose=False)
+        self.assertEqual(result["total_wrappers"], result["total_registered"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -4738,6 +4738,11 @@ def mover_a_processed(pdf_path: str) -> str:
     return new_path
 
 
+def tool_procesar_lote_bills(nombre_archivo: str = None) -> dict:
+    """Tool: Procesa lote de bills desde PDF en carpeta 'Pending bills'."""
+    return procesar_lote_bills(nombre_archivo)
+
+
 def procesar_lote_bills(nombre_archivo: str = None) -> dict:
     """Procesa lote de bills desde PDF en carpeta 'Pending bills'."""
     try:
@@ -4801,7 +4806,7 @@ TOOL_FUNCTIONS = {
     "taggear_reconciliacion": tool_taggear_reconciliacion,
     "limpiar_tags_reconciliacion": tool_limpiar_tags_reconciliacion,
     "depositar_lote_csv": tool_depositar_lote_csv,
-    "procesar_lote_bills": procesar_lote_bills,
+    "procesar_lote_bills": tool_procesar_lote_bills,
 
     # ========== CAPACIDADES DE AUTONOMÍA ==========
 

@@ -19,10 +19,11 @@ Bienvenido a la documentación de **Dexter**, tu asistente de IA para QuickBooks
 | 📕 [**TROUBLESHOOTING.md**](TROUBLESHOOTING.md) | Todos | Solución de problemas comunes |
 | 📙 [**CONTEXT.md**](CONTEXT.md) | Desarrolladores / LLMs | Contexto completo del proyecto (32 KB) |
 | 🏗️ [**ARCHITECTURE.md**](ARCHITECTURE.md) | Desarrolladores | Diagramas, dataflow, patrones de diseño |
-| 🔧 [**CAPACIDADES.md**](CAPACIDADES.md) | Desarrolladores | Catálogo de los 32 tools y 6 módulos de autonomía |
+| 🔧 [**CAPACIDADES.md**](CAPACIDADES.md) | Desarrolladores | Catálogo de los 100 tools y 21 módulos |
 | 🏢 [**MULTI_EMPRESA.md**](MULTI_EMPRESA.md) | Todos | Guía específica de la feature multi-empresa (v3.5) |
+| 🛡️ [**SAFEGUARDS.md**](SAFEGUARDS.md) | Desarrolladores | 3 capas de safeguards para integridad del registry (v4.1) |
 | 🚀 [**INSTALL.md**](INSTALL.md) | Desarrolladores | Instalación detallada paso a paso |
-| 📜 [**CHANGELOG.md**](CHANGELOG.md) | Todos | Historial versionado v1.0 → v3.7 |
+| 📜 [**CHANGELOG.md**](CHANGELOG.md) | Todos | Historial versionado v1.0 → v4.1 |
 | 🗺️ [**roadmap/**](roadmap/) | Todos | Roadmap y documentos estratégicos |
 
 ---
@@ -64,8 +65,9 @@ Qbo Scripts/
 │   ├── CAPACIDADES.md
 │   ├── qbo_api_research.md  ← Investigación exhaustiva de la QBO API
 │   ├── qbo_api_gaps.md      ← Gaps priorizados y plan de implementación
-│   ├── comparativa_github.md ← Tabla comparativa Dexter vs 15 proyectos similares en GitHub
-│   ├── MULTI_EMPRESA.md
+ │   ├── comparativa_github.md ← Tabla comparativa Dexter vs 15 proyectos similares en GitHub
+ │   ├── SAFEGUARDS.md         ← 3 capas de safeguards para integridad del registry
+ │   ├── MULTI_EMPRESA.md
 │   ├── INSTALL.md
 │   ├── CHANGELOG.md
 │   ├── requirements.txt
@@ -79,7 +81,7 @@ Qbo Scripts/
 ├── ocr_bills.py              ← OCR de facturas
 ├── install.sh                ← Instalación automatizada
 ├── autonomia/                ← 6 módulos de autonomía
-├── scripts/                  ← Scripts auxiliares (oauth_flow, refresh_token, gitmanager, verify_setup, test_suite_legacy)
+ ├── scripts/                  ← Scripts auxiliares (oauth_flow, refresh_token, gitmanager, verify_setup, verify_tool_integrity, test_suite_legacy)
 ├── Pending bills/            ← PDFs a procesar (OCR)
 ├── Processed bills/          ← PDFs ya procesados
 ├── Bank Reconciliation/      ← CSVs de reconciliación

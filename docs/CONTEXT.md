@@ -1,12 +1,12 @@
 # QuickBooks AI Assistant - Context Documentation
 
 **Versión:** 4.1.0-dev 🆕  
-**Fecha:** Junio 2026 (Refactor modular Fases 0-7 + Sprints 1+2+3 QBO API coverage)  
+**Fecha:** Junio 2026 (Refactor modular Fases 0-7 + Sprints 1+2+3 QBO API coverage + 3-layer safeguards)  
 **Asistente:** Dexter (IA Experto)  
 **Desarrollador:** Alfredo  
 **LLM:** DeepSeek V3 + Llama 3 (Hybrid Routing vía OpenRouter)  
 
-> **Nota (2026-06-04):** Refactor monolítico → registry modular + cobertura QBO API ampliada. **94 tools en 21 módulos de `dexter/tools/` + sistema de logging de errores en `dexter/error_log.py`**. Sprints 1A/1B/1C/1E/1F/2/3 implementados — 48 tools nuevos que llevan la cobertura de QBO API de 45% → 85%. Para el catálogo exhaustivo de tools, ver [`CAPACIDADES.md`](CAPACIDADES.md). Para arquitectura técnica, ver [`ARCHITECTURE.md`](ARCHITECTURE.md) y [`dexter/tools/README.md`](../dexter/tools/README.md). Para gap analysis QBO, ver [`qbo_api_gaps.md`](qbo_api_gaps.md). Para multi-empresa, ver [`MULTI_EMPRESA.md`](MULTI_EMPRESA.md). Para cambios recientes, ver [`CHANGELOG.md`](CHANGELOG.md). Para el log de desarrollo técnico, ver [`roadmap/DEVELOPMENT_LOG.md`](roadmap/DEVELOPMENT_LOG.md).
+> **Nota (2026-06-04):** Refactor monolítico → registry modular + cobertura QBO API ampliada. **100 tools en 21 módulos de `dexter/tools/` + sistema de logging de errores en `dexter/error_log.py` + 3-layer safeguards de integridad del registry**. Sprints 1A/1B/1C/1E/1F/2/3 implementados — 54 tools nuevos que llevan la cobertura de QBO API de 45% → 93%. Para el catálogo exhaustivo de tools, ver [`CAPACIDADES.md`](CAPACIDADES.md). Para arquitectura técnica, ver [`ARCHITECTURE.md`](ARCHITECTURE.md) y [`dexter/tools/README.md`](../dexter/tools/README.md). Para gap analysis QBO, ver [`qbo_api_gaps.md`](qbo_api_gaps.md). Para safeguards de integridad, ver [`SAFEGUARDS.md`](SAFEGUARDS.md). Para multi-empresa, ver [`MULTI_EMPRESA.md`](MULTI_EMPRESA.md). Para cambios recientes, ver [`CHANGELOG.md`](CHANGELOG.md). Para el log de desarrollo técnico, ver [`roadmap/DEVELOPMENT_LOG.md`](roadmap/DEVELOPMENT_LOG.md).
 
 ---
 
@@ -23,9 +23,10 @@ Eliminar la necesidad de navegar la interfaz de QuickBooks Online para tareas re
 - ✅ **Guía Interactiva (v3.7)**: Onboarding paso a paso + Matching Engine Bank Feed + Manual de Usuario vivo
 - ✅ **Dexter**: Identidad y personalidad refinada del asistente
 - ✅ **6 Módulos de Autonomía** con 18 funciones avanzadas
-- ✅ **94 Function Tools** totales en **21 módulos de dominio** (`dexter/tools/`, v4.1) 🆕
-- ✅ **Cobertura QBO API 85%** (Sprint 1+2+3: 48 tools nuevos, +35 vs plan) 🆕
-- ✅ **342/342 tests pasando** (era 311, +31 nuevos tests TDD) 🆕
+- ✅ **100 Function Tools** totales en **21 módulos de dominio** (`dexter/tools/`, v4.1) 🆕
+- ✅ **Cobertura QBO API 93%** (Sprint 1+2+3: 54 tools nuevos, +35 vs plan) 🆕
+- ✅ **354/354 tests pasando** (era 311, +43 nuevos tests TDD) 🆕
+- ✅ **3-layer safeguards de integridad del registry** (`verify_tool_integrity` + CLI + pre-commit hook) 🆕
 - ✅ **Sistema de logging de errores** (`dexter/error_log.py`, v4.0) — JSONL persistido en `logs/dexter_errors.log` con categorías (api_call, tool_dispatch, user_input, auth)
 - ✅ **Registry modular data-driven** (v4.0: `get_relevant_tools` itera `KEYWORDS_BY_MODULE`)
 - ✅ **Optimización de tokens 57%** (ahorro masivo de costos)
@@ -47,7 +48,7 @@ QuickBooks AI Assistant
 │   ├── Carga/Guardado de contextos aislados
 │   └── Menú interactivo de selección al inicio
 │
-├── main.py (~4,753 líneas) ⬆️ ACTUALIZADO v4.1 (shim de dexter.tools + log integration + 48 tools nuevos Sprints 1+2+3)
+├── main.py (~5,253 líneas) ⬆️ ACTUALIZADO v4.1 (shim de dexter.tools + log integration + 54 tools nuevos Sprints 1+2+3)
 │   ├── Identidad: **Dexter** (Personalidad profesional/amigable)
 │   ├── Autenticación QuickBooks OAuth 2.0 (Multi-token)
 │   ├── Chart of Accounts dinámico por empresa
@@ -1024,18 +1025,18 @@ Proyecto privado desarrollado por Alfredo para automatización contable interna.
 
 ---
 
-**Última actualización:** 4 de Junio, 2026 (Sprints 1+2+3 QBO API)  
+ **Última actualización:** 4 de Junio, 2026 (Sprints 1+2+3 QBO API + 3-layer safeguards)  
 **Versión del documento:** 4.1.0-dev 🆕  
 **Mantenedor:** Alfredo  
 
-**Cambios en v4.1 (2026-06-04) — Sprints 1+2+3 QBO API coverage (45%→85%):**
+**Cambios en v4.1 (2026-06-04) — Sprints 1+2+3 QBO API coverage (45%→93%) + 3-layer safeguards:**
 
-> **El gap analysis identificó 53 capacidades faltantes de QBO. Esta entrega implementa 48 (90%) en 3 sprints — lleva a Dexter de 46 a 94 tools totales.**
+> **El gap analysis identificó 53 capacidades faltantes de QBO. Esta entrega implementa 54 tools nuevos (incluye 6 reportes P2) en 3 sprints — lleva a Dexter de 46 a 100 tools totales. Además se agregaron 3 capas de safeguards para detectar tools en main.py que no están registrados en dexter/tools/.**
 
 - ✅ **Sprint 1A — Master Data (8):** `crear_vendor`, `crear_cuenta`, `crear_item`, `crear_empleado`, `crear_clase`, `crear_departamento`, `crear_termino`, `crear_paymentmethod`.
 - ✅ **Sprint 1B — Transacciones faltantes (9):** `crear_billpayment`, `crear_estimate`, `crear_salesreceipt`, `crear_creditmemo`, `crear_purchase`, `crear_purchaseorder`, `crear_refundreceipt`, `crear_vendorcredit`, `crear_timeactivity`.
 - ✅ **Sprint 1C — Update/Void/Delete/Send (10):** `actualizar_cliente/vendor/factura/bill`, `eliminar_transaccion`, `void_transaccion`, `desactivar_cliente/vendor`, `enviar_factura`, `enviar_orden_compra`.
-- ✅ **Sprint 1E — Reportes nativos (10):** `reporte_trial_balance`, `reporte_general_ledger`, `reporte_cash_flow`, `reporte_ar_aging`, `reporte_ap_aging`, `reporte_customer_balance`, `reporte_vendor_balance`, `reporte_pl_detail`, `reporte_journal`, `reporte_account_list`.
+- ✅ **Sprint 1E — Reportes nativos (10 + 6 P2 = 16):** `reporte_trial_balance`, `reporte_general_ledger`, `reporte_cash_flow`, `reporte_ar_aging`, `reporte_ap_aging`, `reporte_customer_balance`, `reporte_vendor_balance`, `reporte_pl_detail`, `reporte_journal`, `reporte_account_list`, + `reporte_inventory_valuation`, `reporte_sales_by_customer`, `reporte_expenses_by_vendor`, `reporte_transaction_list`, `reporte_class_sales`, `reporte_department_sales`.
 - ✅ **Sprint 1F — Lectura directa (3):** `leer_companyinfo`, `leer_preferencias`, `consulta_avanzada` (con whitelist SQL: bloquea DROP/DELETE/UPDATE/INSERT/ALTER/CREATE, max 1000 resultados).
 - ✅ **Sprint 2 — Recurring+Attachments (2):** `crear_recurringtransaction`, `adjuntar_archivo` (multipart manual con base64, sin requests-toolbelt).
 - ✅ **Sprint 3 — P2 (6):** `crear_taxcode`, `crear_taxrate`, `leer_exchange_rate`, `ejecutar_batch` (max 30 ops/llamada), `cdc_query` (Change Data Capture), `crear_budget`.
@@ -1044,10 +1045,15 @@ Proyecto privado desarrollado por Alfredo para automatización contable interna.
 - ✅ **`delete_transaction()`** usa simplified delete (12 entidades soportadas).
 - ✅ **`consulta_avanzada()`** whitelista operaciones SQL permitidas (solo SELECT).
 - ✅ **`upload_attachment()`** multipart manual con base64 encoding (sin dependencias nuevas).
-- ✅ **Tests:** 311/311 → 342/342 pasando (+31 nuevos tests TDD en `test_tools_aggregator.py`).
-- ✅ **Registry:** 46 → 94 tools, 14 → 21 módulos.
-- ✅ **Cobertura QBO API:** 45% → 85% (53 gaps → 5 residuales, todos P2 opcionales).
-- 📦 **Nuevos módulos:** `master_data` (8), `transaction_extra` (9), `operations` (10), `reports_extra` (10), `read` (3), `recurring` (2), `advanced` (6).
+- ✅ **3-layer safeguards de integridad del registry** (ver [`SAFEGUARDS.md`](SAFEGUARDS.md) para detalle completo):
+  - **Layer 1 — Runtime:** `verify_tool_integrity(verbose=False)` en `dexter/tools/__init__.py`. Auto-verify on import. Detecta orphans (wrappers en main.py NO en registry) + unwired (entradas en ALL_FUNCTIONS sin schema). Opt-in strict via `DEXTER_STRICT_INTEGRITY=1`.
+  - **Layer 2 — CLI:** `scripts/verify_tool_integrity.py`. Exit 0 si ok, exit 1 si gaps. Útil para CI.
+  - **Layer 3 — Pre-commit hook:** `.git/hooks/pre-commit`. Bloquea `git commit` si hay gaps. Para forzar: `git commit --no-verify`.
+  - **Bug real cazado durante desarrollo:** `tool_procesar_lote_bills` no estaba en `dexter/tools/ocr.py`. Sin el safeguard, el LLM no habría podido llamar este tool.
+- ✅ **Tests:** 311/311 → 354/354 pasando (+43 nuevos: 31 Sprints + 6 P2 reports + 6 safeguards).
+- ✅ **Registry:** 46 → 100 tools, 14 → 21 módulos.
+- ✅ **Cobertura QBO API:** 45% → 93% (53 gaps → 4 residuales P2 opcionales: `crear_companycurrency`, `actualizar_preferences`, `actualizar_companyinfo`, `webhook_setup`).
+- 📦 **Nuevos módulos:** `master_data` (8), `transaction_extra` (9), `operations` (10), `reports_extra` (16), `read` (3), `recurring` (2), `advanced` (6).
 
 **Cambios en v4.0 (2026-06-04) — Refactor modular completo:**
 

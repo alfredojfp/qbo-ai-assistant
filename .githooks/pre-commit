@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Pre-commit hook: verifica que no haya tool_* wrappers huérfanos en main.py
+# (wrappers que existen en main.py pero NO están registrados en dexter.tools.ALL_FUNCTIONS).
+#
+# Para instalar: ver docs/SAFEGUARDS.md o ejecutar:
+#   cp .git/hooks/pre-commit.template .git/hooks/pre-commit
+#   chmod +x .git/hooks/pre-commit
+#
+# Para saltar el hook en un commit específico:
+#   git commit --no-verify
+
+set -e
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+echo "🔍 Verificando integridad de tools antes del commit..."
+
+if ! python3 scripts/verify_tool_integrity.py --quiet; then
+    echo ""
+    echo "❌ COMMIT BLOQUEADO: hay tool_* wrappers huérfanos en main.py."
+    echo ""
+    echo "Esto significa que agregaste una función tool_xxx() en main.py"
+    echo "pero olvidaste registrarla en dexter/tools/<modulo>.py (SCHEMA + FUNCTIONS)."
+    echo ""
+    echo "Opciones:"
+    echo "  1. Registrar el tool en el módulo correspondiente de dexter/tools/"
+    echo "  2. Si es un tool intencionalmente fuera del registry, repórtalo en CHANGELOG"
+    echo "  3. Para forzar el commit: git commit --no-verify"
+    echo ""
+    echo "Detalle del fallo:"
+    python3 scripts/verify_tool_integrity.py 2>&1 | tail -15
+    exit 1
+fi
+
+echo "✓ Integridad OK"
+exit 0

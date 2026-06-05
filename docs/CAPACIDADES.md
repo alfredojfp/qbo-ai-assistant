@@ -337,13 +337,35 @@ Módulo cross-cutting que persiste automáticamente todos los errores capturados
 - [MULTI_EMPRESA.md](MULTI_EMPRESA.md) — Feature multi-empresa
 - [EXAMPLES.md](EXAMPLES.md) — Ejemplos de uso reales
 - [USER_GUIDE.md](USER_GUIDE.md) — Guía para usuarios finales
-- **[`dexter/tools/README.md`](../dexter/tools/README.md)** — 🆕 v4.0: Registry modular de 43 tools en 14 dominios
+- **[`dexter/tools/README.md`](../dexter/tools/README.md)** — 🆕 v4.1: Registry modular de 100 tools en 21 dominios
+- **[`SAFEGUARDS.md`](SAFEGUARDS.md)** — 🆕 v4.1: 3 capas de safeguards de integridad (runtime + CLI + pre-commit hook)
+
+---
+
+## 🆕 Cambios en v4.1 (Sprints 1+2+3 QBO API + Safeguards)
+
+**2026-06-04 — Sprints 1+2+3 (54 tools nuevos, 45%→93% cobertura) + 3-layer safeguards**
+
+### Nuevos tools (54)
+- **Sprint 1A — Master Data (8):** `crear_vendor`, `crear_cuenta`, `crear_item`, `crear_empleado`, `crear_clase`, `crear_departamento`, `crear_termino`, `crear_paymentmethod`.
+- **Sprint 1B — Transacciones (9):** `crear_billpayment`, `crear_estimate`, `crear_salesreceipt`, `crear_creditmemo`, `crear_purchase`, `crear_purchaseorder`, `crear_refundreceipt`, `crear_vendorcredit`, `crear_timeactivity`.
+- **Sprint 1C — Update/Void/Delete/Send (10):** `actualizar_cliente/vendor/factura/bill`, `eliminar_transaccion`, `void_transaccion`, `desactivar_cliente/vendor`, `enviar_factura`, `enviar_orden_compra`.
+- **Sprint 1E — Reportes (10 + 6 P2 = 16):** `reporte_trial_balance`, `reporte_general_ledger`, `reporte_cash_flow`, `reporte_ar_aging`, `reporte_ap_aging`, `reporte_customer_balance`, `reporte_vendor_balance`, `reporte_pl_detail`, `reporte_journal`, `reporte_account_list`, + `reporte_inventory_valuation`, `reporte_sales_by_customer`, `reporte_expenses_by_vendor`, `reporte_transaction_list`, `reporte_class_sales`, `reporte_department_sales`.
+- **Sprint 1F — Lectura directa (3):** `leer_companyinfo`, `leer_preferencias`, `consulta_avanzada` (con whitelist SQL).
+- **Sprint 2 — Recurring+Attachments (2):** `crear_recurringtransaction`, `adjuntar_archivo`.
+- **Sprint 3 — P2 (6):** `crear_taxcode`, `crear_taxrate`, `leer_exchange_rate`, `ejecutar_batch`, `cdc_query`, `crear_budget`.
+
+### Safeguards de integridad
+- **Layer 1:** `verify_tool_integrity(verbose=False)` en `dexter/tools/__init__.py` — auto-verify on import, detecta orphans + unwired.
+- **Layer 2:** `scripts/verify_tool_integrity.py` — CLI standalone para CI (exit 0/1).
+- **Layer 3:** `.git/hooks/pre-commit` — bloquea commits con gaps.
+- **Tests:** 6 nuevos en `TestVerifyToolIntegrity` (TDD).
 
 ---
 
 ## 🆕 Cambios en v4.0 (Refactor modular)
 
-**2026-06-04 — Fases 0-7 del refactor main.py → dexter/tools/**
+**2026-06-04 — Fases 0-7 del refactor main.py → dexter.tools/**
 
 ### Antes (v3.7)
 - 32 tools hardcoded en `main.py` monolítico (~3,000 líneas)
@@ -351,7 +373,7 @@ Módulo cross-cutting que persiste automáticamente todos los errores capturados
 - Agregar un tool nuevo = editar `main.py` en 4+ lugares
 
 ### Ahora (v4.0)
-- 43 tools en 14 módulos de `dexter/tools/` (registry limpia)
+- 100 tools en 21 módulos de `dexter/tools/` (registry limpia) — 43 en v4.0, +54 en v4.1, +3 P2 (reporte_*), -1 neto
 - `get_relevant_tools()` data-driven (KEYWORDS en cada módulo, cobertura 100%)
 - Agregar un tool = crear/editar un módulo (1-2 lugares)
 - `dexter/tools/__init__.py` es el registry agregador (`ALL_SCHEMAS`, `ALL_FUNCTIONS`, `KEYWORDS_BY_MODULE`)

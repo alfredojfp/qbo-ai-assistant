@@ -2,7 +2,7 @@
 from typing import Any, Dict, List
 
 from main import (
-    procesar_lote_bills,
+    tool_procesar_lote_bills,
 )
 
 SCHEMA: List[Dict[str, Any]] = [
@@ -13,5 +13,5 @@ SCHEMA: List[Dict[str, Any]] = [
 # Routing keywords — usadas por get_relevant_tools()
 KEYWORDS: List[str] = ["ocr", "pdf", "factura pdf", "pending", "procesar bill", "extraer"]
 FUNCTIONS: Dict[str, Any] = {
-    "procesar_lote_bills": procesar_lote_bills,
+    "procesar_lote_bills": tool_procesar_lote_bills,
 }

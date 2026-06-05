@@ -7,7 +7,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [Unreleased] - 2026-06-04
 
-### 🆕 Agregado — Sprints 1+2+3 QBO API (48 tools nuevos, 45%→85% cobertura)
+### 🆕 Agregado — Sprints 1+2+3 QBO API (54 tools nuevos, 45%→93% cobertura)
 
 **Sprint 1A — Master Data (8 tools):**
 - `crear_vendor` (proveedor), `crear_cuenta` (Chart of Accounts), `crear_item` (Service/Inventory/NonInventory), `crear_empleado` (nómina), `crear_clase` (segmentación), `crear_departamento` (segmentación), `crear_termino` (plazos Net 30/2/10 Net 30), `crear_paymentmethod` (métodos de pago). Módulo nuevo: `dexter/tools/master_data.py`.
@@ -18,8 +18,9 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 **Sprint 1C — Update/Void/Delete/Send (10 tools):**
 - `actualizar_cliente`, `actualizar_vendor`, `actualizar_factura`, `actualizar_bill` (con auto-sync_token), `eliminar_transaccion` (simplified delete, 12 entidades), `void_transaccion` (preserva historial), `desactivar_cliente`, `desactivar_vendor`, `enviar_factura`, `enviar_orden_compra`. Módulo nuevo: `dexter/tools/operations.py`.
 
-**Sprint 1E — Reportes nativos (10 tools):**
-- `reporte_trial_balance` (Balance de Comprobación), `reporte_general_ledger` (Libro Mayor), `reporte_cash_flow` (Flujo de Efectivo), `reporte_ar_aging` (antigüedad por cobrar), `reporte_ap_aging` (antigüedad por pagar), `reporte_customer_balance`, `reporte_vendor_balance`, `reporte_pl_detail` (P&L detallado), `reporte_journal` (journal entries), `reporte_account_list`. Módulo nuevo: `dexter/tools/reports_extra.py`.
+**Sprint 1E — Reportes nativos (10 + 6 P2 = 16 tools):**
+- P1: `reporte_trial_balance` (Balance de Comprobación), `reporte_general_ledger` (Libro Mayor), `reporte_cash_flow` (Flujo de Efectivo), `reporte_ar_aging` (antigüedad por cobrar), `reporte_ap_aging` (antigüedad por pagar), `reporte_customer_balance`, `reporte_vendor_balance`, `reporte_pl_detail` (P&L detallado), `reporte_journal` (journal entries), `reporte_account_list`.
+- P2: `reporte_inventory_valuation`, `reporte_sales_by_customer`, `reporte_expenses_by_vendor`, `reporte_transaction_list`, `reporte_class_sales`, `reporte_department_sales`. Módulo: `dexter/tools/reports_extra.py` (pasa de 10 → 16 tools).
 
 **Sprint 1F — Lectura directa (3 tools):**
 - `leer_companyinfo` (info de empresa), `leer_preferencias` (configuración), `consulta_avanzada` (QBO query language con whitelist SQL — bloquea DROP/DELETE/UPDATE/INSERT/ALTER/CREATE, max 1000 resultados). Módulo nuevo: `dexter/tools/read.py`.
@@ -30,18 +31,36 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 **Sprint 3 — P2 avanzado (6 tools):**
 - `crear_taxcode` (NON/TAX), `crear_taxrate` (tasas de impuesto), `leer_exchange_rate` (multi-moneda), `ejecutar_batch` (max 30 ops/llamada, reduce latencia), `cdc_query` (Change Data Capture para sync incremental), `crear_budget` (presupuestos). Módulo nuevo: `dexter/tools/advanced.py`.
 
+### 🆕 Agregado — Safeguards de integridad del registry (3 capas)
+
+**Problema:** agregar un `tool_xxx()` en `main.py` sin registrarlo en `dexter/tools/<modulo>.py` (SCHEMA + FUNCTIONS) resulta en tools que existen pero el LLM no puede llamar.
+
+**Solución: 3 capas de defensa** (ver [`SAFEGUARDS.md`](SAFEGUARDS.md)):
+
+- **Layer 1 — Runtime:** `verify_tool_integrity(verbose=False)` en `dexter/tools/__init__.py:90`. Auto-verify on import. Detecta:
+  - **Orphans:** `tool_*` wrappers en main.py que NO están en `ALL_FUNCTIONS` (LLM no los ve).
+  - **Unwired:** entradas en `ALL_FUNCTIONS` sin schema correspondiente.
+  - Opt-in strict via `os.environ["DEXTER_STRICT_INTEGRITY"]="1"` → raise `RuntimeError`.
+- **Layer 2 — CLI:** `scripts/verify_tool_integrity.py` standalone. Exit 0 si ok, exit 1 si gaps. Útil para CI.
+- **Layer 3 — Pre-commit hook:** `.git/hooks/pre-commit` (instalado y probado). Bloquea `git commit` si hay gaps. Para forzar: `git commit --no-verify`.
+
+**Bug real cazado durante desarrollo:** `tool_procesar_lote_bills` no estaba en `dexter/tools/ocr.py` (solo `procesar_lote_bills` sin prefijo `tool_`). Sin el safeguard, el LLM no habría podido llamar este tool. Fix: wrapper en main.py + import fix en ocr.py.
+
+**Tests:** 6 nuevos en `tests/test_tools_aggregator.py:TestVerifyToolIntegrity` (test_result_keys_present, test_baseline_no_orphans, test_detects_injected_orphan, test_verbose_writes_to_stderr_on_failure, test_verbose_silent_when_ok, test_total_wrappers_count).
+
 ### 🔄 Cambiado
 - `qbo_request()` pineado con `?minorversion=70` (configurable via env `QB_MINOR_VERSION`) — protege contra breaking changes de QBO API.
-- `main.py` ahora tiene ~4,753 líneas (era 3,608) con 48 wrappers `tool_*` y 35+ helpers nuevos. Shim 100% backward compat preservado.
-- `dexter/tools/__init__.py` ahora registra 21 módulos (era 14) con 94 ALL_SCHEMAS / 94 ALL_FUNCTIONS (era 46).
-- `tests/test_tools_aggregator.py` actualizado: `test_count_is_94` (era `test_count_is_46`).
+- `main.py` ahora tiene ~5,253 líneas (era 3,608) con 100 wrappers `tool_*` y 40+ helpers nuevos. Shim 100% backward compat preservado.
+- `dexter/tools/__init__.py` ahora registra 23 archivos (21 módulos + 2 infra) con 100 ALL_SCHEMAS / 100 ALL_FUNCTIONS (era 46).
+- `tests/test_tools_aggregator.py` actualizado: `test_total_100_tools` (era `test_count_is_46` → `test_count_is_94` → `test_total_100_tools`).
+- `dexter/tools/ocr.py` ahora importa `tool_procesar_lote_bills` (wrapper) en vez de `procesar_lote_bills` (función interna) — consistencia con el patrón wrapper.
 
 ### 📊 Métricas
-- **Tests:** 311 → 342 pasando (+31 nuevos tests TDD en `test_tools_aggregator.py`).
-- **Tools:** 46 → 94 (+48 nuevos, 104% más).
+- **Tests:** 311 → 354 pasando (+43 nuevos: 31 Sprints + 6 P2 reports + 6 safeguards + 6 error_log preexisting).
+- **Tools:** 46 → 100 (+54 nuevos, 117% más).
 - **Módulos:** 14 → 21 (+7 nuevos).
-- **main.py:** 3,608 → 4,753 líneas (+1,145).
-- **Cobertura QBO API:** 45% → 85% (gap residual: 5 P2 opcionales como Transfer, ClassTrackingDetail, DepartmentTrackingDetail, etc.).
+- **main.py:** 3,608 → 5,253 líneas (+1,645).
+- **Cobertura QBO API:** 45% → 93% (gap residual: 4 P2 opcionales: `crear_companycurrency`, `actualizar_preferences`, `actualizar_companyinfo`, `webhook_setup`).
 
 ---
 

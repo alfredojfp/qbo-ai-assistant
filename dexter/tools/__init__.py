@@ -74,6 +74,103 @@ for _module in _MODULES:
         ALL_FUNCTIONS[_name] = _module.FUNCTIONS[_name]
 
 
+def verify_tool_integrity(verbose: bool = True) -> dict:
+    """Verifica que cada tool_* en main.py esté registrada en dexter.tools.
+
+    Returns:
+        dict con:
+            - 'ok': bool — True si todo está bien
+            - 'total_wrappers': int — wrappers tool_* en main.py
+            - 'total_registered': int — tools en ALL_FUNCTIONS
+            - 'orphans': list — wrappers en main.py no conectados al registry
+            - 'registered_unwired': list — entradas en registry sin schema
+
+    Detecta:
+        1. tool_xxx en main.py que NO está en ALL_FUNCTIONS (LLM no lo ve)
+        2. ALL_FUNCTIONS con nombre pero sin schema en ALL_SCHEMAS
+    """
+    import inspect
+    result = {
+        "ok": True,
+        "total_wrappers": 0,
+        "total_registered": len(ALL_FUNCTIONS),
+        "orphans": [],
+        "registered_unwired": [],
+    }
+
+    try:
+        import main as _main
+    except ImportError:
+        return result
+
+    tool_wrappers: Dict[str, Any] = {}
+    for name, obj in inspect.getmembers(_main):
+        if name.startswith("tool_") and callable(obj):
+            bare = name[len("tool_"):]
+            tool_wrappers[bare] = obj
+    unique_funcs = {id(fn) for fn in tool_wrappers.values()}
+    result["total_wrappers"] = len(unique_funcs)
+
+    # 1) Buscar wrappers que no están en ALL_FUNCTIONS (deduplicado por identidad)
+    seen_unique: set = set()
+    for bare_name, fn in tool_wrappers.items():
+        if id(fn) in seen_unique:
+            continue
+        seen_unique.add(id(fn))
+        if fn not in ALL_FUNCTIONS.values():
+            result["orphans"].append(f"tool_{bare_name}")
+
+    # 2) Buscar entradas en ALL_FUNCTIONS sin schema
+    schema_names = {_extract_name(s) for s in ALL_SCHEMAS}
+    for name in ALL_FUNCTIONS:
+        if name not in schema_names:
+            result["registered_unwired"].append(name)
+
+    result["ok"] = not (result["orphans"] or result["registered_unwired"])
+
+    if verbose and not result["ok"]:
+        import sys
+        sys.stderr.write("\n" + "=" * 70 + "\n")
+        sys.stderr.write("⚠️  DEXTER TOOLS INTEGRITY CHECK FAILED\n")
+        sys.stderr.write("=" * 70 + "\n")
+        sys.stderr.write(f"Wrappers tool_* en main.py: {result['total_wrappers']}\n")
+        sys.stderr.write(f"Tools registradas:           {result['total_registered']}\n")
+        if result["orphans"]:
+            sys.stderr.write(
+                f"\n❌ {len(result['orphans'])} wrappers HUÉRFANAS (en main.py "
+                "pero NO en el registry — el LLM NO las ve):\n"
+            )
+            for o in result["orphans"]:
+                sys.stderr.write(f"   - {o}\n")
+        if result["registered_unwired"]:
+            sys.stderr.write(
+                f"\n❌ {len(result['registered_unwired'])} entradas en "
+                "ALL_FUNCTIONS sin schema:\n"
+            )
+            for u in result["registered_unwired"]:
+                sys.stderr.write(f"   - {u}\n")
+        sys.stderr.write(
+            "\nAcción: agrega el schema y FUNCTIONS en el módulo "
+            "dexter/tools/X.py apropiado.\n"
+            + ("=" * 70)
+            + "\n\n"
+        )
+    return result
+
+
+# Auto-verify on import (warning only, no raise — para no romper import en otros contextos)
+try:
+    _integrity = verify_tool_integrity(verbose=False)
+    if not _integrity["ok"] and __import__("os").getenv("DEXTER_STRICT_INTEGRITY"):
+        raise RuntimeError(
+            f"Tool integrity check failed: {len(_integrity['orphans'])} orphans, "
+            f"{len(_integrity['registered_unwired'])} unwired. "
+            "Set DEXTER_STRICT_INTEGRITY=0 to allow degraded mode."
+        )
+except Exception:  # pragma: no cover
+    pass
+
+
 __all__ = [
     "ALL_SCHEMAS",
     "ALL_FUNCTIONS",
