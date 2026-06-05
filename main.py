@@ -2789,52 +2789,61 @@ def crear_deposito_bank_feed(fecha: str, lines: List[dict],
         'total_amount': deposit_created.get('TotalAmt')
     }
 
-def procesar_csv_bank_feed(csv_file: str) -> dict:
+def procesar_csv_bank_feed(csv_file: str, verbose: bool = True, log: list = None) -> dict:
     """
     Procesa un CSV de Bank Feed y crea depósitos con splits en QuickBooks
 
     Args:
         csv_file: Ruta al archivo CSV
+        verbose: si True (default), imprime progreso a stdout (uso CLI).
+                 si False, silencioso (uso tool/LLM).
+        log: si se pasa una list, cada mensaje de progreso se appendea aquí
+             y se incluye en el return bajo 'log_lines'.
 
     Returns:
-        dict: Estadísticas del procesamiento
+        dict con keys: success, total, success_count, errors, details, log_lines
     """
-    print(f"\n📁 Procesando Bank Feed CSV: {csv_file}")
-    print("="*60)
+    def _emit(msg: str) -> None:
+        if log is not None:
+            log.append(msg)
+        if verbose:
+            print(msg)
 
-    # 1. Agrupar por deposit_id
+    _emit(f"\n📁 Procesando Bank Feed CSV: {csv_file}")
+    _emit("=" * 60)
+
     deposits = agrupar_bank_feed_por_deposit_id(csv_file)
 
     if not deposits:
-        return {
+        result = {
             'success': False,
-            'message': 'Error al leer el archivo CSV'
+            'message': 'Error al leer el archivo CSV',
+            'log_lines': list(log) if log is not None else [],
         }
+        return result
 
-    print(f"\n✅ {len(deposits)} depósito(s) encontrado(s) en el CSV")
-    print()
+    _emit(f"\n✅ {len(deposits)} depósito(s) encontrado(s) en el CSV")
+    _emit("")
 
-    # 2. Procesar cada depósito
     results = {
         'total': len(deposits),
-        'success': 0,
+        'success_count': 0,
         'errors': 0,
         'details': []
     }
 
     for dep_id, dep_data in deposits.items():
-        print(f"🔄 Procesando {dep_id}...")
+        _emit(f"🔄 Procesando {dep_id}...")
 
         bank_feed_amount = dep_data['bank_feed_amount']
         date = dep_data['date']
         lines = dep_data['lines']
 
-        # Validar suma
         es_valido, diferencia = validar_suma_deposit(lines, bank_feed_amount)
 
         if not es_valido:
             error_msg = f"  ❌ Suma no cuadra: diferencia de ${diferencia:.2f}"
-            print(error_msg)
+            _emit(error_msg)
             results['errors'] += 1
             results['details'].append({
                 'deposit_id': dep_id,
@@ -2843,9 +2852,8 @@ def procesar_csv_bank_feed(csv_file: str) -> dict:
             })
             continue
 
-        print(f"  ✓ Suma validada: ${bank_feed_amount:.2f}")
+        _emit(f"  ✓ Suma validada: ${bank_feed_amount:.2f}")
 
-        # Crear el depósito con splits
         resultado = crear_deposito_bank_feed(
             fecha=date,
             lines=lines,
@@ -2853,10 +2861,10 @@ def procesar_csv_bank_feed(csv_file: str) -> dict:
         )
 
         if resultado['success']:
-            print(f"  ✅ Depósito creado (ID: {resultado['deposit_id']})")
-            print(f"     • {len(lines)} líneas procesadas")
-            print(f"     • Monto total: ${bank_feed_amount:.2f}")
-            results['success'] += 1
+            _emit(f"  ✅ Depósito creado (ID: {resultado['deposit_id']})")
+            _emit(f"     • {len(lines)} líneas procesadas")
+            _emit(f"     • Monto total: ${bank_feed_amount:.2f}")
+            results['success_count'] += 1
             results['details'].append({
                 'deposit_id': dep_id,
                 'qb_deposit_id': resultado['deposit_id'],
@@ -2865,7 +2873,7 @@ def procesar_csv_bank_feed(csv_file: str) -> dict:
                 'lines': len(lines)
             })
         else:
-            print(f"  ❌ Error: {resultado['message']}")
+            _emit(f"  ❌ Error: {resultado['message']}")
             results['errors'] += 1
             results['details'].append({
                 'deposit_id': dep_id,
@@ -2873,18 +2881,20 @@ def procesar_csv_bank_feed(csv_file: str) -> dict:
                 'message': resultado['message']
             })
 
-        print()
+        _emit("")
 
-    # 3. Resumen final
-    print("="*60)
-    print("📊 RESUMEN DEL PROCESAMIENTO")
-    print("="*60)
-    print(f"Total depósitos: {results['total']}")
-    print(f"✅ Exitosos: {results['success']}")
-    print(f"❌ Errores: {results['errors']}")
+    _emit("=" * 60)
+    _emit("📊 RESUMEN DEL PROCESAMIENTO")
+    _emit("=" * 60)
+    _emit(f"Total depósitos: {results['total']}")
+    _emit(f"✅ Exitosos: {results['success_count']}")
+    _emit(f"❌ Errores: {results['errors']}")
 
     log_operation("csv_batches")
 
+    results['success'] = results['errors'] == 0
+    if log is not None:
+        results['log_lines'] = list(log)
     return results
 
 
@@ -4793,8 +4803,15 @@ def tool_limpiar_log_errores() -> dict:
 from dexter.error_log import LOG_FILE as _LOG_FILE_FOR_TOOLS
 
 def tool_procesar_bank_feed_csv(archivo_csv: str) -> dict:
-    """Tool: Procesa CSV de Bank Feed con splits"""
-    return procesar_csv_bank_feed(archivo_csv)
+    """Tool: Procesa CSV de Bank Feed con splits.
+
+    MED-8 fix: usa verbose=False y captura log en list para que el
+    LLM reciba el progreso en el dict (no en stdout mezclado).
+    """
+    log_lines: list = []
+    result = procesar_csv_bank_feed(archivo_csv, verbose=False, log=log_lines)
+    result.setdefault("log_lines", log_lines)
+    return result
 
 def tool_procesar_reconciliacion_bancaria(archivo_csv: str) -> dict:
     """Tool: Procesa CSV de reconciliación bancaria"""
