@@ -5550,11 +5550,93 @@ def process_quick_command(user_input: str) -> Optional[str]:
 
 # ==================== OPTIMIZACIONES ====================
 
+def _bilingual_keywords(spanish_keywords: list) -> list:
+    """Combina keywords en español con sus traducciones comunes en inglés.
+
+    LOW-6 fix: cuando el usuario está en modo 'en' o usa términos
+    técnicos en inglés (e.g., 'invoice', 'vendor', 'report'), los
+    KEYWORDS de dexter.tools (todo en español) no matchean. Esta
+    función agrega las traducciones comunes para que el matching
+    funcione bilingüe sin modificar cada módulo individualmente.
+    """
+    en_translations = {
+        "buscar": ["find", "search", "lookup", "look up"],
+        "cliente": ["customer", "client"],
+        "vendor": ["vendor", "supplier", "provider"],
+        "cuenta": ["account"],
+        "item": ["item", "product", "service"],
+        "reporte": ["report", "generate report", "show report"],
+        "p&l": ["p&l", "profit and loss", "income statement", "pnl"],
+        "balance": ["balance", "balance sheet"],
+        "estado": ["statement"],
+        "factura": ["invoice", "bill", "billing"],
+        "bill": ["bill", "vendor bill"],
+        "crear": ["create", "make", "new", "add"],
+        "ocr": ["ocr", "extract", "scan"],
+        "pdf": ["pdf"],
+        "pending": ["pending", "queue"],
+        "procesar": ["process", "handle"],
+        "extraer": ["extract", "pull"],
+        "clasificar": ["classify", "categorize", "categorise"],
+        "banco": ["bank", "banking"],
+        "feed": ["feed"],
+        "lote": ["batch", "bulk", "lot"],
+        "batch": ["batch", "bulk"],
+        "csv": ["csv", "spreadsheet"],
+        "deposito": ["deposit"],
+        "depósito": ["deposit"],
+        "depositar": ["deposit"],
+        "template": ["template", "sample"],
+        "asiento": ["journal entry", "entry", "je"],
+        "journal": ["journal", "journal entry"],
+        "transferencia": ["transfer", "wire"],
+        "token": ["token", "usage", "billing"],
+        "estadística": ["stats", "statistics", "metrics"],
+        "costo": ["cost", "price", "expense"],
+        "gasto": ["expense", "spending", "spend"],
+        "recon": ["recon", "reconcile", "reconciliation", "match"],
+        "reconcili": ["recon", "reconcile", "reconciliation"],
+        "tag": ["tag", "label", "mark"],
+        "marcar": ["mark", "tag", "label"],
+        "código": ["code", "script"],
+        "python": ["python", "py"],
+        "calcula": ["calculate", "compute", "calc"],
+        "analiza": ["analyze", "analyse", "analysis"],
+        "ejecuta": ["execute", "run"],
+        "script": ["script", "code"],
+        "idioma": ["language", "lang"],
+        "language": ["language", "lang"],
+        "cambiar": ["change", "switch"],
+        "empresa": ["company", "business"],
+        "empresas": ["companies", "businesses"],
+        "registrar": ["register", "add", "create"],
+        "listar": ["list", "show all"],
+        "refrescar": ["refresh", "reload"],
+        "chart": ["chart", "accounts", "coa"],
+        "cuentas": ["accounts", "chart"],
+    }
+    out = list(spanish_keywords)
+    for kw in spanish_keywords:
+        for k_norm in en_translations.get(kw.lower(), []):
+            if k_norm not in out:
+                out.append(k_norm)
+    seen = set()
+    deduped = []
+    for x in out:
+        if x.lower() not in seen:
+            deduped.append(x)
+            seen.add(x.lower())
+    return deduped
+
+
 def get_relevant_tools(user_message: str) -> list:
     """Retorna lista de definiciones de tools (schemas) relevantes.
 
     Data-driven: itera los 14 módulos de dexter.tools y activa los tools
     de cada módulo si el user_message contiene alguna de sus KEYWORDS.
+
+    LOW-6 fix: agrega traducciones inglesas via _bilingual_keywords()
+    para que usuarios en 'en' también activen los tools correctos.
     """
     from dexter.tools import KEYWORDS_BY_MODULE
     import dexter.tools as dexter_tools
@@ -5562,14 +5644,14 @@ def get_relevant_tools(user_message: str) -> list:
     msg = user_message.lower()
     relevant_names = set()
 
-    # Iterar cada módulo de dexter.tools y activar sus tools si match keyword
     for module_name, keywords in KEYWORDS_BY_MODULE.items():
         if not keywords:
             continue
         module = getattr(dexter_tools, module_name.split(".")[-1], None)
         if module is None:
             continue
-        if any(kw in msg for kw in keywords):
+        bi_kws = _bilingual_keywords(keywords)
+        if any(kw.lower() in msg for kw in bi_kws):
             relevant_names.update(module.FUNCTIONS.keys())
 
     # Always include a few basics if no match (safe defaults)
