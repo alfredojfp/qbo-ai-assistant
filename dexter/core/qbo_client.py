@@ -127,12 +127,13 @@ class QBOClientImpl:
     ) -> Dict[str, Any]:
         """
         Actualiza un campo (Memo o PrivateNote) en una transaction.
-        QBO requiere POST con `sparse: true` y el Id.
+        QBO requiere POST con `?operation=sparseUpdate` en la URL
+        y los campos a actualizar en el body. SyncToken es obligatorio
+        (usamos "0" como fallback, QBO lo aceptará en la primera update).
         """
         # Construir payload con el type discriminador
         payload = {
             "Id": txn_id,
-            "sparse": True,
             **fields,
         }
         # syncToken puede ser necesario; usamos "0" como fallback
@@ -140,7 +141,10 @@ class QBOClientImpl:
         payload["SyncToken"] = "0"
 
         response = self._request(
-            "POST", f"{txn_type.lower()}/{txn_id}", data=payload
+            "POST",
+            f"{txn_type.lower()}/{txn_id}",
+            data=payload,
+            params={"operation": "sparseUpdate"},
         )
         if hasattr(response, "status_code"):
             if response.status_code != 200:

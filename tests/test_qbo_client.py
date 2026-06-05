@@ -173,9 +173,11 @@ class TestQBOClientUpdate(unittest.TestCase):
         args = request.call_args
         self.assertEqual(args[0][0], "POST")
         self.assertEqual(args[0][1], "deposit/1")
-        # Payload debe tener Id, sparse, SyncToken
+        # HIGH-2 fix: QBO modern API usa ?operation=sparseUpdate en URL, no 'sparse' en body
+        self.assertEqual(args[1]["params"]["operation"], "sparseUpdate")
+        self.assertNotIn("sparse", args[1]["data"])
+        # Payload debe tener Id, SyncToken, Memo
         self.assertEqual(args[1]["data"]["Id"], "1")
-        self.assertTrue(args[1]["data"]["sparse"])
         self.assertEqual(args[1]["data"]["SyncToken"], "0")
         self.assertEqual(args[1]["data"]["Memo"], "BNK-RECON")
         self.assertIn("Deposit", result)
