@@ -610,6 +610,35 @@ _csv_write_lock = _threading.Lock()
 _company_lock = _threading.Lock()  # MED-12: serializa cambios de empresa
 
 
+def _build_entity_ref(entity_id, entity_type: str = None,
+                      name: str = None, include_name: bool = False) -> dict:
+    """Construye un EntityRef para QBO sin incluir 'name' por default.
+
+    LOW-5 fix: QBO rechaza EntityRef cuyo 'name' no coincide exacto
+    con el DisplayName actual del Customer/Vendor/Employee. Convención:
+    enviar SOLO 'value' (el ID) y dejar que QBO resuelva el name.
+
+    Args:
+        entity_id: ID numérico de QBO (str o int).
+        entity_type: 'Customer' | 'Vendor' | 'Employee' | 'Other'.
+                     Opcional (algunos endpoints no lo requieren).
+        name: Display name (IGNORADO por default para evitar rechazos).
+        include_name: si True, incluye 'name' en el dict (uso edge-case).
+
+    Returns:
+        dict {'value': entity_id, 'type': entity_type, ['name': name]}
+    """
+    if not entity_id and entity_id != 0:
+        raise ValueError(f"entity_id required, got {entity_id!r}")
+
+    ref = {"value": str(entity_id)}
+    if entity_type:
+        ref["type"] = entity_type
+    if include_name and name:
+        ref["name"] = name
+    return ref
+
+
 def save_session_to_csv():
     """Guarda los datos de la sesión en el CSV histórico.
 
@@ -2258,7 +2287,7 @@ def upload_attachment(file_content: bytes, file_name: str, content_type: str,
     log_operation("attachments_uploaded")
     b64_content = base64.b64encode(file_content).decode("utf-8")
     metadata = {
-        "AttachableRef": [{"EntityRef": {"type": entity_type, "value": entity_id}}],
+        "AttachableRef": [{"EntityRef": _build_entity_ref(entity_id, entity_type=entity_type)}],
         "FileName": file_name,
         "ContentType": "Document" if content_type == "application/pdf" else "Image",
     }
@@ -2777,10 +2806,12 @@ def crear_deposito_bank_feed(fecha: str, lines: List[dict],
             customers = search_customer(customer_name)
             if customers:
                 deposit_line["DepositLineDetail"]["Entity"] = {
-                    "EntityRef": {
-                        "value": customers[0]['id'], 
-                        "name": customers[0]['name']
-                    },
+                    "EntityRef": _build_entity_ref(
+                        customers[0]['id'],
+                        entity_type="Customer",
+                        name=customers[0]['name'],
+                        include_name=False,
+                    ),
                     "Type": "Customer"
                 }
 
