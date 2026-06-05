@@ -333,13 +333,58 @@ def qbo_request(method: str, endpoint: str, data: dict = None, params: dict = No
     return response
 
 def qbo_query(sql: str) -> dict:
-    """Ejecuta query SQL en QuickBooks"""
-    response = qbo_request("GET", "query", params={"query": sql})
+    """Ejecuta query SQL en QuickBooks con auto-paginación (HIGH-8).
 
-    if response.status_code == 200:
-        return response.json()
-    else:
-        return {"error": response.text, "status": response.status_code}
+    QBO API limita a 1000 resultados por query. Si la respuesta trae
+    1000 (o el caller recibe menos que totalCount), se re-ejecuta la
+    query con STARTPOSITION N MAXRESULTS 1000 hasta agotar la lista.
+    """
+    sql_upper = sql.upper()
+    if "MAXRESULTS" not in sql_upper:
+        sql = f"{sql.rstrip(';').rstrip()} MAXRESULTS 1000"
+
+    first = qbo_request("GET", "query", params={"query": sql})
+
+    if first.status_code != 200:
+        return {"error": first.text, "status": first.status_code}
+
+    aggregated = first.json()
+    qr = aggregated.get("QueryResponse", {})
+
+    entity_keys = [k for k in qr.keys() if k not in ("maxResults", "startPosition", "time", "QueryResponse")]
+    if not entity_keys:
+        return aggregated
+    entity_key = entity_keys[0]
+    rows = list(qr.get(entity_key, []))
+
+    page_size = 1000
+    start_position = len(rows) + 1
+    while len(rows) > 0 and len(rows) % page_size == 0:
+        paged_sql = _inject_startposition(sql, start_position)
+        next_resp = qbo_request("GET", "query", params={"query": paged_sql})
+        if next_resp.status_code != 200:
+            break
+        next_qr = next_resp.json().get("QueryResponse", {})
+        next_rows = next_qr.get(entity_key, [])
+        if not next_rows:
+            break
+        rows.extend(next_rows)
+        start_position += len(next_rows)
+        if len(next_rows) < page_size:
+            break
+
+    if "QueryResponse" in aggregated:
+        aggregated["QueryResponse"][entity_key] = rows
+    return aggregated
+
+
+def _inject_startposition(sql: str, position: int) -> str:
+    """Inserta/actualiza STARTPOSITION N en el SQL."""
+    import re
+    pattern = re.compile(r"\bSTARTPOSITION\s+\d+", re.IGNORECASE)
+    if pattern.search(sql):
+        return pattern.sub(f"STARTPOSITION {position}", sql)
+    return f"{sql.rstrip(';').rstrip()} STARTPOSITION {position}"
 
 # ==================== CHART OF ACCOUNTS ====================
 
