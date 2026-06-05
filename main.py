@@ -5475,10 +5475,47 @@ def get_relevant_tools(user_message: str) -> list:
     # Filtrar la lista global TOOLS
     return [t for t in TOOLS if t["function"]["name"] in relevant_names]
 
-def build_conversation_context(history: list, max_turns: int = 5) -> tuple:
-    recent = history[-(max_turns * 2):] if len(history) > max_turns * 2 else history
+def _truncate_message_content(msg: dict, max_chars: int = 2000) -> dict:
+    """Trunca el campo 'content' de un mensaje a max_chars.
+
+    MED-13 fix: protege el context window del LLM. Si un tool
+    retornó un payload gigante (reporte sin MED-6 fix, batch
+    grande), el mensaje vive en conversation_history y se reenvía
+    en cada iteración. Esta función trunca el contenido a N
+    caracteres agregando un marcador '[truncated, original: N chars]'.
+
+    Preserva: role, name, tool_call_id, tool_calls y otros campos.
+    """
+    if not isinstance(msg, dict) or max_chars <= 0:
+        return msg
+
+    content = msg.get("content")
+    if not isinstance(content, str) or len(content) <= max_chars:
+        return msg
+
+    truncated_msg = dict(msg)
+    truncated_msg["content"] = (
+        content[:max_chars]
+        + f"...[truncated, original: {len(content)} chars]"
+    )
+    truncated_msg["_truncated"] = True
+    truncated_msg["_original_content_length"] = len(content)
+    return truncated_msg
+
+
+def build_conversation_context(history: list, max_turns: int = 5,
+                                max_content_chars: int = 2000) -> tuple:
+    """Construye (recent_messages, context_hint) para el system prompt.
+
+    MED-13 fix: trunca cada mensaje a max_content_chars para evitar
+    que un tool result gigante (5MB) se reenvíe al LLM en cada
+    iteración del loop.
+    """
+    recent_raw = history[-(max_turns * 2):] if len(history) > max_turns * 2 else history
+    recent = [_truncate_message_content(m, max_chars=max_content_chars) for m in recent_raw]
+
     if history:
-        text = " ".join([m.get("content", "")[:80] for m in history[-4:]])
+        text = " ".join([str(m.get("content", ""))[:80] for m in history[-4:]])
         hints = []
         if "reporte" in text: hints.append("reportes")
         if "clasifica" in text: hints.append("clasificación")
