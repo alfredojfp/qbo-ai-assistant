@@ -1,10 +1,11 @@
-"""dexter.tools.read — 3 tools de lectura directa (CompanyInfo, Preferences, Query)."""
+"""dexter.tools.read — 4 tools de lectura directa (CompanyInfo, Preferences, Query, QBO Query)."""
 from typing import Any, Dict, List
 
 from main import (
     tool_leer_companyinfo,
     tool_leer_preferencias,
     tool_consulta_avanzada,
+    tool_qbo_query,
 )
 
 SCHEMA: List[Dict[str, Any]] = [
@@ -43,6 +44,23 @@ SCHEMA: List[Dict[str, Any]] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "qbo_query",
+            "description": "Ejecuta consultas SQL en QuickBooks Online. Usa este tool para buscar, filtrar o contar cualquier entidad (clientes, invoices, estimates, items, vendors, cuentas). Ejemplos: 'SELECT * FROM Estimate WHERE CustomerRef.value = \"70\"', 'SELECT COUNT(*) FROM Invoice WHERE Balance > 0'. Seguro: solo SELECT, bloquea DROP/DELETE/UPDATE/INSERT/ALTER/CREATE.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "query": {
+                        "type": "string",
+                        "description": "SQL query para QBO. Ej: 'SELECT * FROM Estimate WHERE CustomerRef.value = \"70\" MAXRESULTS 10'. Usa MAXRESULTS para limitar resultados.",
+                    },
+                },
+                "required": ["query"],
+            },
+        },
+    },
 ]
 
 KEYWORDS: List[str] = [
@@ -51,10 +69,13 @@ KEYWORDS: List[str] = [
     "consulta", "query", "sql", "búsqueda personalizada", "qbo query",
     "select", "select * from", "búsqueda raw", "raw query",
     "leer metadata", "metadata empresa", "company metadata",
+    "buscar", "filtra", "cuántos", "lista", "dame todos",
+    "search", "find", "list", "filter", "count",
 ]
 
 FUNCTIONS: Dict[str, Any] = {
     "leer_companyinfo": tool_leer_companyinfo,
     "leer_preferencias": tool_leer_preferencias,
     "consulta_avanzada": tool_consulta_avanzada,
+    "qbo_query": tool_qbo_query,
 }
