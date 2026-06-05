@@ -5725,11 +5725,11 @@ def build_conversation_context(history: list, max_turns: int = 5,
     que un tool result gigante (5MB) se reenvíe al LLM en cada
     iteración del loop.
     """
-    recent_raw = history[-(max_turns * 2):] if len(history) > max_turns * 2 else history
+    recent_raw = list(history)[-(max_turns * 2):] if len(history) > max_turns * 2 else list(history)
     recent = [_truncate_message_content(m, max_chars=max_content_chars) for m in recent_raw]
 
     if history:
-        text = " ".join([str(m.get("content", ""))[:80] for m in history[-4:]])
+        text = " ".join([str(m.get("content", ""))[:80] for m in list(history)[-4:]])
         hints = []
         if "reporte" in text: hints.append("reportes")
         if "clasifica" in text: hints.append("clasificación")
