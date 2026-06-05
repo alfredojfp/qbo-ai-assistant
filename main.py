@@ -258,8 +258,15 @@ def refresh_qb_token():
         )
         return False
 
+QB_REQUEST_TIMEOUT = int(os.getenv("QB_REQUEST_TIMEOUT", "30"))
+
+
 def qbo_request(method: str, endpoint: str, data: dict = None, params: dict = None) -> requests.Response:
-    """Realiza request a QuickBooks con manejo automático de refresh token"""
+    """Realiza request a QuickBooks con manejo automático de refresh token.
+
+    CRIT-1 fix: timeout=30s por defecto (configurable vía QB_REQUEST_TIMEOUT).
+    Antes el proceso podía colgarse indefinidamente si QBO no respondía.
+    """
     global QB_ACCESS_TOKEN
 
     headers = {
@@ -277,9 +284,15 @@ def qbo_request(method: str, endpoint: str, data: dict = None, params: dict = No
     params.setdefault("minorversion", minor_version)
 
     if method == "GET":
-        response = requests.get(url, headers=headers, params=params)
+        try:
+            response = requests.get(url, headers=headers, params=params, timeout=QB_REQUEST_TIMEOUT)
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
+            response = requests.get(url, headers=headers, params=params, timeout=QB_REQUEST_TIMEOUT)
     elif method == "POST":
-        response = requests.post(url, headers=headers, json=data)
+        try:
+            response = requests.post(url, headers=headers, json=data, timeout=QB_REQUEST_TIMEOUT)
+        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
+            response = requests.post(url, headers=headers, json=data, timeout=QB_REQUEST_TIMEOUT)
     else:
         raise ValueError(f"Método no soportado: {method}")
 
@@ -289,9 +302,9 @@ def qbo_request(method: str, endpoint: str, data: dict = None, params: dict = No
         if refresh_qb_token():
             headers["Authorization"] = f"Bearer {QB_ACCESS_TOKEN}"
             if method == "GET":
-                response = requests.get(url, headers=headers, params=params)
+                response = requests.get(url, headers=headers, params=params, timeout=QB_REQUEST_TIMEOUT)
             else:
-                response = requests.post(url, headers=headers, json=data)
+                response = requests.post(url, headers=headers, json=data, timeout=QB_REQUEST_TIMEOUT)
 
     # Si la respuesta final no es 2xx, persistir en el log para diagnóstico
     if response.status_code >= 400:
