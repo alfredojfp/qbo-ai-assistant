@@ -16,6 +16,33 @@ En Sprint 5 (refactor main.py → dexter/tools/) establecimos un patrón:
    el tool, pero main.py responde "Tool no encontrado" → loop → "límite de iteraciones"
    alcanzado → usuario frustrado. **Este bug es crítico** (afecta el flujo conversacional
    completo) y no se detecta sin el safeguard.
+3. la signature de `tool_xxx` no coincide con los parámetros del schema
+   (p. ej., schema dice `nombre: str` pero wrapper tiene `name: str`). El LLM pasa
+   `nombre` y Python lanza `TypeError: unexpected keyword argument` → loop →
+   "límite de iteraciones". **Mismo síntoma que el bug 2, distinta causa raíz.**
+
+## Lo que el safeguard SÍ detecta
+
+| Check | Detecta | Severidad |
+|---|---|---|
+| `orphans` | `tool_xxx` en main.py que NO está en `ALL_FUNCTIONS` | 🟠 LLM no ve el tool |
+| `registered_unwired` | Entrada en `ALL_FUNCTIONS` sin schema | 🟡 Schema falta |
+| `not_dispatched` | Schema en `ALL_SCHEMAS` que NO está en `TOOL_FUNCTIONS` | 🔴 **Crítico** (causa "límite de iteraciones") |
+| `signature_mismatches` | Signature de `tool_xxx` incompatible con schema | 🔴 **Crítico** (causa TypeError → "límite de iteraciones") |
+
+## Lo que el safeguard NO detecta (limitaciones)
+
+| Bug | Detectable por |
+|---|---|
+| Tool corre pero `create_X` apunta al endpoint equivocado de QBO | Test de integración con sandbox |
+| Tool corre, retorna OK, pero la data es incorrecta | Test de integración con assertions |
+| QBO API cambió su schema y el tool ya no funciona | Monitoreo en producción + tests con sandbox actualizado |
+| QBO rate limit excedido | Logs + retry logic |
+| Auth token expirado | `refresh_qb_token` + auto-refresh (ya implementado) |
+| Permisos de OAuth insuficientes | Validar scopes al hacer OAuth flow |
+
+Para esos casos, los **logs persistentes** en `dexter/error_log.py` + tests
+de integración manuales con sandbox son la red de seguridad.
 
 ## Solución: 3 capas de defensa
 
@@ -38,6 +65,7 @@ result = verify_tool_integrity(verbose=True)
 #   "orphans": ["tool_xxx", ...],  # en main.py, NO en registry
 #   "registered_unwired": [...],  # en registry, sin schema
 #   "not_dispatched": [...],  # schemas SIN entry en TOOL_FUNCTIONS (LLM los ve pero dispatch falla)
+#   "signature_mismatches": [{tool, issue}, ...],  # signature incompatible con schema
 # }
 ```
 
@@ -76,8 +104,8 @@ git commit --no-verify
 
 ## Tests
 
-9 tests en `tests/test_tools_aggregator.py:TestVerifyToolIntegrity`:
-- `test_result_keys_present`: estructura del dict de retorno (incluye keys de dispatch)
+11 tests en `tests/test_tools_aggregator.py:TestVerifyToolIntegrity`:
+- `test_result_keys_present`: estructura del dict de retorno (incluye keys de dispatch + signature)
 - `test_baseline_no_orphans`: estado limpio (100 tools, 0 gaps)
 - `test_detects_injected_orphan`: inyección de un `tool_test_xxx` huérfano
 - `test_verbose_writes_to_stderr_on_failure`: verbose=True escribe a stderr
@@ -86,6 +114,8 @@ git commit --no-verify
 - `test_result_keys_include_dispatch_check`: incluye `not_dispatched` y `total_dispatched`
 - `test_all_schemas_are_dispatched`: 100/100 schemas tienen entry en `TOOL_FUNCTIONS`
 - `test_verbose_dispatch_failure_mentions_dispatch`: si hay gap de dispatch, el verbose lo menciona
+- `test_result_keys_include_signature_check`: incluye `signature_mismatches`
+- `test_all_signatures_match_schemas`: 100/100 signatures compatibles con sus schemas
 
 ## Caso de estudio: los bugs que cazó
 

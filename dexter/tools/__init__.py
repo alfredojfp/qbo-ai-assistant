@@ -74,6 +74,62 @@ for _module in _MODULES:
         ALL_FUNCTIONS[_name] = _module.FUNCTIONS[_name]
 
 
+def _sname_to_schema(name: str, schemas: list) -> dict | None:
+    """Busca un schema por nombre. Retorna el dict del schema o None."""
+    for s in schemas:
+        if isinstance(s, dict) and "function" in s and isinstance(s["function"], dict):
+            if s["function"].get("name") == name:
+                return s
+    return None
+
+
+def _check_signature_compatibility(fn, schema: dict) -> str | None:
+    """Verifica que la signature de `fn` sea compatible con el schema.
+
+    Retorna None si compatible, o un string describiendo el mismatch.
+    Solo chequea required params (no opcionales), para evitar falsos positivos
+    cuando el schema declara un param opcional que la signature acepta via **kwargs
+    o que la signature tiene defaults.
+    """
+    import inspect
+    try:
+        sig = inspect.signature(fn)
+    except (ValueError, TypeError):
+        return None
+
+    # Si la función acepta **kwargs, no podemos validar exhaustivamente
+    has_var_keyword = any(
+        p.kind == inspect.Parameter.VAR_KEYWORD for p in sig.parameters.values()
+    )
+    if has_var_keyword:
+        return None
+
+    sig_params = set(sig.parameters.keys())
+    params_block = schema.get("function", {}).get("parameters", {}) or {}
+    schema_props = set((params_block.get("properties") or {}).keys())
+    schema_required = set(params_block.get("required") or [])
+
+    missing = schema_required - sig_params
+    if missing:
+        return (
+            f"schema REQUIERE {sorted(missing)} pero la signature solo acepta "
+            f"{sorted(sig_params)}"
+        )
+
+    # Extra required (sin default) en signature que NO están en schema
+    extra_required = []
+    for p in sig_params - schema_props:
+        if sig.parameters[p].default is inspect.Parameter.empty:
+            extra_required.append(p)
+    if extra_required:
+        return (
+            f"signature REQUIERE {sorted(extra_required)} (sin default) "
+            f"pero el schema no los declara"
+        )
+
+    return None
+
+
 def verify_tool_integrity(verbose: bool = True) -> dict:
     """Verifica que cada tool_* en main.py esté registrada en dexter.tools.
 
@@ -98,6 +154,7 @@ def verify_tool_integrity(verbose: bool = True) -> dict:
         "registered_unwired": [],
         "not_dispatched": [],
         "total_dispatched": 0,
+        "signature_mismatches": [],
     }
 
     try:
@@ -136,10 +193,25 @@ def verify_tool_integrity(verbose: bool = True) -> dict:
             if sname not in dispatch_names:
                 result["not_dispatched"].append(sname)
 
+        # 4) Verificar que la signature de cada tool dispatched sea compatible
+        # con su schema (params requeridos en schema ⊆ signature, etc.)
+        for sname in dispatch_names:
+            fn = _main.TOOL_FUNCTIONS[sname]
+            schema = _sname_to_schema(sname, ALL_SCHEMAS)
+            if schema is None:
+                continue
+            mismatch = _check_signature_compatibility(fn, schema)
+            if mismatch:
+                result["signature_mismatches"].append({
+                    "tool": sname,
+                    "issue": mismatch,
+                })
+
     result["ok"] = not (
         result["orphans"]
         or result["registered_unwired"]
         or result["not_dispatched"]
+        or result["signature_mismatches"]
     )
 
     if verbose and not result["ok"]:
@@ -172,6 +244,13 @@ def verify_tool_integrity(verbose: bool = True) -> dict:
             )
             for nd in result["not_dispatched"]:
                 sys.stderr.write(f"   - {nd}\n")
+        if result["signature_mismatches"]:
+            sys.stderr.write(
+                f"\n❌ {len(result['signature_mismatches'])} tools con signature "
+                "incompatible con su schema (LLM pasa params que la function no acepta):\n"
+            )
+            for sm in result["signature_mismatches"]:
+                sys.stderr.write(f"   - {sm['tool']}: {sm['issue']}\n")
         sys.stderr.write(
             "\nAcción: agrega los entries faltantes a TOOL_FUNCTIONS en main.py "
             "y/o schemas en dexter/tools/<modulo>.py apropiado.\n"

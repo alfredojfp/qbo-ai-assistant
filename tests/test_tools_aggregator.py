@@ -699,6 +699,24 @@ class TestVerifyToolIntegrity(unittest.TestCase):
                 finally:
                     main.TOOL_FUNCTIONS[sample_key] = saved
 
+    def test_result_keys_include_signature_check(self):
+        from dexter.tools import verify_tool_integrity
+        result = verify_tool_integrity(verbose=False)
+        self.assertIn("signature_mismatches", result)
+
+    def test_all_signatures_match_schemas(self):
+        """Cada tool dispatched debe tener signature compatible con su schema.
+        Si no, el LLM pasa params que la function no acepta → TypeError → loop.
+        Bug que motivó esta verificación: signatures no se chequeaban, solo
+        se verificaba existencia."""
+        from dexter.tools import verify_tool_integrity
+        result = verify_tool_integrity(verbose=False)
+        self.assertEqual(
+            result["signature_mismatches"], [],
+            f"Hay {len(result['signature_mismatches'])} signature mismatches: "
+            f"{result['signature_mismatches']}"
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

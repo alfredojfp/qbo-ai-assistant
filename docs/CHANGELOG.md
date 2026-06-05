@@ -41,6 +41,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
   - **Orphans:** `tool_*` wrappers en main.py que NO están en `ALL_FUNCTIONS` (LLM no los ve).
   - **Unwired:** entradas en `ALL_FUNCTIONS` sin schema correspondiente.
   - **Not dispatched:** schemas en `ALL_SCHEMAS` que NO están en `main.TOOL_FUNCTIONS` (LLM los ve pero dispatch falla con 'Tool no encontrado' → 'límite de iteraciones').
+  - **Signature mismatches:** signature de `tool_xxx` incompatible con schema (params requeridos en schema no aceptados por signature, o viceversa) — causa `TypeError` en runtime → 'límite de iteraciones'.
   - Opt-in strict via `os.environ["DEXTER_STRICT_INTEGRITY"]="1"` → raise `RuntimeError`.
 - **Layer 2 — CLI:** `scripts/verify_tool_integrity.py` standalone. Exit 0 si ok, exit 1 si gaps. Útil para CI.
 - **Layer 3 — Pre-commit hook:** `.githooks/pre-commit` (trackeable en git). Bloquea `git commit` si hay gaps. Configurar: `git config core.hooksPath .githooks`. Para forzar: `git commit --no-verify`.
@@ -50,7 +51,7 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 1. **`tool_procesar_lote_bills` no estaba en `dexter/tools/ocr.py`** (solo `procesar_lote_bills` sin prefijo `tool_`). Sin el safeguard, el LLM no habría podido llamar este tool. Fix: wrapper en main.py + import fix en ocr.py.
 2. **57 tools sin dispatch en `TOOL_FUNCTIONS`** (todos los de Sprints 1+2+3: `crear_cliente`, `crear_vendor`, `actualizar_*`, `reporte_*`, etc.). El LLM llamaba el tool → main.py respondía "Tool no encontrado" → iteración se repetía → "límite de iteraciones" alcanzado. Usuario no podía crear clientes. **Bug crítico detectado por el safeguard extendido**. Fix: agregar 58 entries a `TOOL_FUNCTIONS` en main.py (organizados por sprint 1A/1B/1C/1E/1F/2/3 + admin).
 
-**Tests:** 9 nuevos en `tests/test_tools_aggregator.py:TestVerifyToolIntegrity` (test_result_keys_present, test_baseline_no_orphans, test_detects_injected_orphan, test_verbose_writes_to_stderr_on_failure, test_verbose_silent_when_ok, test_total_wrappers_count, test_result_keys_include_dispatch_check, test_all_schemas_are_dispatched, test_verbose_dispatch_failure_mentions_dispatch).
+**Tests:** 11 nuevos en `tests/test_tools_aggregator.py:TestVerifyToolIntegrity` (test_result_keys_present, test_baseline_no_orphans, test_detects_injected_orphan, test_verbose_writes_to_stderr_on_failure, test_verbose_silent_when_ok, test_total_wrappers_count, test_result_keys_include_dispatch_check, test_all_schemas_are_dispatched, test_verbose_dispatch_failure_mentions_dispatch, test_result_keys_include_signature_check, test_all_signatures_match_schemas).
 
 ### 🔄 Cambiado
 - `qbo_request()` pineado con `?minorversion=70` (configurable via env `QB_MINOR_VERSION`) — protege contra breaking changes de QBO API.
@@ -60,12 +61,13 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - `dexter/tools/ocr.py` ahora importa `tool_procesar_lote_bills` (wrapper) en vez de `procesar_lote_bills` (función interna) — consistencia con el patrón wrapper.
 
 ### 📊 Métricas
-- **Tests:** 311 → 357 pasando (+46 nuevos: 31 Sprints + 6 P2 reports + 9 safeguards + 6 error_log preexisting).
+- **Tests:** 311 → 359 pasando (+48 nuevos: 31 Sprints + 6 P2 reports + 11 safeguards + 6 error_log preexisting).
 - **Tools:** 46 → 100 (+54 nuevos, 117% más).
 - **Módulos:** 14 → 21 (+7 nuevos).
 - **main.py:** 3,608 → 5,295 líneas (+1,687) — incluye 100 entries en `TOOL_FUNCTIONS` (era 43) + 58 entries nuevos agregados en este fix.
 - **Cobertura QBO API:** 45% → 93% (gap residual: 4 P2 opcionales: `crear_companycurrency`, `actualizar_preferences`, `actualizar_companyinfo`, `webhook_setup`).
 - **Bug fix end-to-end:** `crear_cliente` ahora funciona — verificado con llamada real a QBO sandbox (cliente ID 62 creado).
+- **4ª capa de safeguard añadida:** signature compatibility check (evita `TypeError` en runtime por mismatch schema↔función).
 
 ---
 
