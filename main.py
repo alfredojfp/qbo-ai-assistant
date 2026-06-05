@@ -4601,8 +4601,17 @@ def tool_listar_reportes_guardados() -> dict:
     }
 
 def tool_procesar_csv_depositos(ruta_archivo: str) -> dict:
-    """Tool: Procesa CSV de depósitos"""
-    return process_deposits_csv(ruta_archivo)
+    """Tool: Procesa CSV de depósitos.
+
+    R-4 fix: llama tool_depositar_lote_csv DIRECTAMENTE y retorna su
+    shape rico {success, batch_id, executed, failed, errors} — más útil
+    para el LLM (puede citar batch_id al usuario, resumir executed/failed).
+    process_deposits_csv queda como shim de backward compat (HIGH-4 test).
+    """
+    return tool_depositar_lote_csv(
+        ruta_archivo=ruta_archivo,
+        confirmar=True,
+    )
 
 def tool_crear_template_csv() -> dict:
     """Tool: Crea template CSV"""
