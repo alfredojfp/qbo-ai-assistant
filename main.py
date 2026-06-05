@@ -586,6 +586,7 @@ def calculate_session_cost() -> float:
 
 import threading as _threading
 _csv_write_lock = _threading.Lock()
+_company_lock = _threading.Lock()  # MED-12: serializa cambios de empresa
 
 
 def save_session_to_csv():
@@ -4706,9 +4707,29 @@ def reset_session_state() -> None:
 def tool_gestionar_empresas(accion: str, nombre: str = None, link_o_id: str = None) -> dict:
     """
     Tool: Gestiona el registro y cambio de empresas.
+
+    MED-12 fix: usa _company_lock (threading.RLock) para serializar
+    mutaciones de estado global. Evita race condition si un tool
+    largo (procesar_csv_banco, batch) está mid-flight cuando el
+    usuario pide cambiar empresa.
     """
     global CURRENT_COMPANY, QB_REALM_ID, QB_BASE_URL, COMPANY_CONTEXT, QB_ACCESS_TOKEN, QB_REFRESH_TOKEN
-    
+
+    if accion == "cambiar":
+        if not _company_lock.acquire(blocking=False):
+            return {
+                "success": False,
+                "error": (
+                    "No se puede cambiar de empresa mientras un tool está "
+                    "en ejecución; espera a que termine o cancela con Ctrl+C."
+                ),
+                "lock_busy": True,
+            }
+        try:
+            return _cambiar_empresa_bloqueado(nombre)
+        finally:
+            _company_lock.release()
+
     if accion == "registrar":
         if not nombre or not link_o_id:
             return {"success": False, "message": "Faltan datos (nombre o link_o_id)"}
@@ -4727,56 +4748,56 @@ def tool_gestionar_empresas(accion: str, nombre: str = None, link_o_id: str = No
             status = "✅" if c["has_tokens"] else "🔑"
             res += f"- {status} {c['name']} (ID: {c['realm_id']})\n"
         return {"success": True, "message": res, "empresas": companies}
-        
-    elif accion == "cambiar":
-        if not nombre:
-            return {"success": False, "message": "Falta el nombre de la empresa objetivo."}
-        
-        companies = list_local_companies()
-        target = next((c for c in companies if c['name'].lower() == nombre.lower()), None)
-        
-        if not target:
-            return {"success": False, "message": f"No encontré ninguna empresa registrada como '{nombre}'."}
 
-        # CRIT-3 fix: limpiar state inter-company ANTES de cambiar
-        # (evita que tool results stale se filtren a la nueva empresa)
-        reset_session_state()
-
-        # Guardar contexto actual
-        if CURRENT_COMPANY:
-            save_company_context(CURRENT_COMPANY['name'], COMPANY_CONTEXT)
-        
-        # Cargar meta y tokens de la nueva empresa
-        meta = get_company_meta(target['name'])
-        CURRENT_COMPANY = target
-        QB_REALM_ID = target['realm_id']
-        QB_BASE_URL = f"https://sandbox-quickbooks.api.intuit.com/v3/company/{QB_REALM_ID}"
-        
-        if meta.get("access_token") and meta.get("refresh_token"):
-            QB_ACCESS_TOKEN = meta["access_token"]
-            QB_REFRESH_TOKEN = meta["refresh_token"]
-        
-        save_company_selection(CURRENT_COMPANY)
-        
-        # Recargar contexto
-        COMPANY_CONTEXT = load_company_context(target['name'])
-
-        # MED-9 fix: forzar refresh del chart desde QBO (no usar cache
-        # de 24h). Garantiza que cuentas nuevas en la nueva empresa
-        # aparezcan inmediatamente después del switch.
-        try:
-            fresh_chart = load_chart_of_accounts(force_refresh=True)
-            session_state["chart_of_accounts"] = fresh_chart
-        except Exception:
-            session_state["chart_of_accounts"] = COMPANY_CONTEXT.get("chart_of_accounts", {})
-        
-        return {
-            "success": True, 
-            "message": f"🔄 ¡Cambio exitoso! Ahora estoy operando en '{target['name']}'. He cargado sus cuentas y preferencias.",
-            "empresa": target['name']
-        }
-    
     return {"success": False, "message": "Acción no reconocida."}
+
+
+def _cambiar_empresa_bloqueado(nombre: str) -> dict:
+    """Cuerpo del switch de empresa; el caller YA adquirió _company_lock.
+
+    MED-12: helper interno. El caller (tool_gestionar_empresas) hace
+    acquire(blocking=False) y si lo logra llama a esta función. NO
+    re-adquiere el lock aquí (el caller ya lo tiene).
+    """
+    global CURRENT_COMPANY, QB_REALM_ID, QB_BASE_URL, COMPANY_CONTEXT, QB_ACCESS_TOKEN, QB_REFRESH_TOKEN
+
+    if not nombre:
+        return {"success": False, "message": "Falta el nombre de la empresa objetivo."}
+
+    companies = list_local_companies()
+    target = next((c for c in companies if c['name'].lower() == nombre.lower()), None)
+
+    if not target:
+        return {"success": False, "message": f"No encontré ninguna empresa registrada como '{nombre}'."}
+
+    reset_session_state()
+
+    if CURRENT_COMPANY:
+        save_company_context(CURRENT_COMPANY['name'], COMPANY_CONTEXT)
+
+    meta = get_company_meta(target['name'])
+    CURRENT_COMPANY = target
+    QB_REALM_ID = target['realm_id']
+    QB_BASE_URL = f"https://sandbox-quickbooks.api.intuit.com/v3/company/{QB_REALM_ID}"
+
+    if meta.get("access_token") and meta.get("refresh_token"):
+        QB_ACCESS_TOKEN = meta["access_token"]
+        QB_REFRESH_TOKEN = meta["refresh_token"]
+
+    save_company_selection(CURRENT_COMPANY)
+    COMPANY_CONTEXT = load_company_context(target['name'])
+
+    try:
+        fresh_chart = load_chart_of_accounts(force_refresh=True)
+        session_state["chart_of_accounts"] = fresh_chart
+    except Exception:
+        session_state["chart_of_accounts"] = COMPANY_CONTEXT.get("chart_of_accounts", {})
+
+    return {
+        "success": True,
+        "message": f"🔄 ¡Cambio exitoso! Ahora estoy operando en '{target['name']}'. He cargado sus cuentas y preferencias.",
+        "empresa": target['name'],
+    }
 
 def tool_ver_log_errores(n: int = 20, categoria: str = None) -> dict:
     """Tool: Muestra las últimas N entradas del log de errores persistido.
