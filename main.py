@@ -2487,8 +2487,8 @@ def create_payment(customer_id: str, amount: float, account_id: str,
 # ==================== REPORTES ====================
 
 def generate_pl_report(start_date: str, end_date: str,
-                      accounting_method: str = "Accrual") -> pd.DataFrame:
-    """Genera reporte de Profit & Loss"""
+                      accounting_method: str = "Accrual") -> list:
+    """Genera reporte de Profit & Loss. LOW-7 fix: retorna list[dict]."""
     log_operation("reports")
 
     params = {
@@ -2501,7 +2501,7 @@ def generate_pl_report(start_date: str, end_date: str,
 
     if response.status_code != 200:
         print(f"❌ Error generando reporte: {response.text}")
-        return pd.DataFrame()
+        return []
 
     report_data = response.json()
     rows_data = report_data.get("Rows", {}).get("Row", [])
@@ -2536,11 +2536,10 @@ def generate_pl_report(start_date: str, end_date: str,
     for row in rows_data:
         parse_row(row)
 
-    df = pd.DataFrame(data)
-    return df
+    return data
 
-def generate_balance_sheet(as_of_date: str, accounting_method: str = "Accrual") -> pd.DataFrame:
-    """Genera reporte de Balance Sheet"""
+def generate_balance_sheet(as_of_date: str, accounting_method: str = "Accrual") -> list:
+    """Genera reporte de Balance Sheet. LOW-7 fix: retorna list[dict]."""
     log_operation("reports")
 
     params = {
@@ -2552,7 +2551,7 @@ def generate_balance_sheet(as_of_date: str, accounting_method: str = "Accrual") 
 
     if response.status_code != 200:
         print(f"❌ Error generando reporte: {response.text}")
-        return pd.DataFrame()
+        return []
 
     report_data = response.json()
     rows_data = report_data.get("Rows", {}).get("Row", [])
@@ -2585,8 +2584,23 @@ def generate_balance_sheet(as_of_date: str, accounting_method: str = "Accrual") 
     for row in rows_data:
         parse_row(row)
 
-    df = pd.DataFrame(data)
-    return df
+    return data
+
+
+def _aggregate_by_category(rows: list) -> dict:
+    """LOW-7 helper: agrupa rows por 'categoria' y suma 'monto'.
+
+    Reemplaza el patrón df.groupby('categoria')['monto'].sum().to_dict()
+    sin requerir pandas. Si rows está vacío retorna {}.
+    """
+    if not rows:
+        return {}
+    out = {}
+    for r in rows:
+        cat = r.get("categoria", "")
+        monto = r.get("monto", 0) or 0
+        out[cat] = out.get(cat, 0.0) + float(monto)
+    return out
 
 def save_report_config(name: str, config: dict):
     """Guarda configuración de reporte para uso futuro"""
@@ -4530,38 +4544,33 @@ def tool_crear_budget(nombre: str, fecha_inicio: str, fecha_fin: str,
 
 
 def tool_generar_reporte_pl(fecha_inicio: str, fecha_fin: str, metodo: str = "Accrual") -> dict:
-    """Tool: Genera P&L"""
-    df = generate_pl_report(fecha_inicio, fecha_fin, metodo)
+    """Tool: Genera P&L. LOW-7 fix: usa list[dict] sin pandas."""
+    rows = generate_pl_report(fecha_inicio, fecha_fin, metodo)
 
-    if df.empty:
+    if not rows:
         return {"success": False, "error": "No se pudo generar el reporte"}
-
-    # Calcular totales por categoría
-    summary = df.groupby('categoria')['monto'].sum().to_dict()
 
     return {
         "success": True,
         "periodo": f"{fecha_inicio} a {fecha_fin}",
-        "registros": len(df),
-        "resumen": summary,
-        "data_preview": df.head(10).to_dict(orient='records')
+        "registros": len(rows),
+        "resumen": _aggregate_by_category(rows),
+        "data_preview": rows[:10],
     }
 
 def tool_generar_balance_sheet(fecha: str, metodo: str = "Accrual") -> dict:
-    """Tool: Genera Balance Sheet"""
-    df = generate_balance_sheet(fecha, metodo)
+    """Tool: Genera Balance Sheet. LOW-7 fix: usa list[dict] sin pandas."""
+    rows = generate_balance_sheet(fecha, metodo)
 
-    if df.empty:
+    if not rows:
         return {"success": False, "error": "No se pudo generar el reporte"}
-
-    summary = df.groupby('categoria')['monto'].sum().to_dict()
 
     return {
         "success": True,
         "fecha": fecha,
-        "registros": len(df),
-        "resumen": summary,
-        "data_preview": df.head(10).to_dict(orient='records')
+        "registros": len(rows),
+        "resumen": _aggregate_by_category(rows),
+        "data_preview": rows[:10],
     }
 
 def tool_guardar_reporte(nombre: str, config: dict) -> dict:
