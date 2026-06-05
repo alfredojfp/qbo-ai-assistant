@@ -124,9 +124,9 @@ PRICE_INPUT_LLAMA = 0.05
 PRICE_OUTPUT_LLAMA = 0.08
 
 # Archivos del sistema
-FILE_CHART_CACHE = "chart_of_accounts.json"
-FILE_SAVED_REPORTS = "saved_reports.json"
-FILE_TOKEN_USAGE = "token_usage.csv"
+FILE_CHART_CACHE = "data/chart_of_accounts.json"
+FILE_SAVED_REPORTS = "data/saved_reports.json"
+FILE_TOKEN_USAGE = "data/token_usage.csv"
 FILE_TOKEN_REPORT = "token_usage_report.xlsx"
 FILE_DEPOSITS_TEMPLATE = "deposits_template.csv"
 

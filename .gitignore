@@ -14,13 +14,11 @@ credentials.json
 # ARCHIVOS GENERADOS AUTOMÁTICAMENTE
 # =================================================================
 # Chart of Accounts cache
-chart_of_accounts.json
 
 # Reportes guardados
 saved_reports.json
 
 # Token usage tracking
-token_usage.csv
 token_usage_report.xlsx
 
 # Templates CSV generados
@@ -233,7 +231,6 @@ data/recon_*.csv
 data/bills_preview_*.csv
 
 # Historial de clasificaciones bank feed (test artifact)
-bank_feed_classification_history.json
 
 # Manuales pre-existentes (no se versionan, regenerables)
 manual-completo-final.pdf
@@ -267,3 +264,7 @@ manual-completo-final.tex
 # Asegúrate de revisar antes de hacer commit que no subes
 # información sensible o archivos innecesarios.
 # =================================================================
+data/token_usage.csv
+data/chart_of_accounts.json
+data/bank_feed_classification_history.json
+data/saved_reports.json

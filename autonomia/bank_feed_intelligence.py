@@ -28,7 +28,7 @@ from datetime import datetime
 from difflib import SequenceMatcher
 from typing import Dict, List, Optional, Tuple
 
-CLASSIFICATION_HISTORY_FILE = "bank_feed_classification_history.json"
+CLASSIFICATION_HISTORY_FILE = "data/bank_feed_classification_history.json"
 
 CONFIDENCE_EXACT = 100
 CONFIDENCE_REGEX = 95
