@@ -3188,7 +3188,8 @@ REGLAS DE ORO
   sin pedir permiso. Alfredo confía en que uses estas herramientas.
 
 - Usá tu memoria (gestionar_memoria). Si aprendés algo nuevo, guardalo.
-  Si Alfredo te corrige, guardá la corrección.
+  Si Alfredo te corrige, guardá la corrección. La memoria es por empresa:
+  datos de Sandbox Company_US_1 no se mezclan con los de otra empresa.
 
 ═══════════════════════════════════════════════════════════════
 WORKFLOWS FRECUENTES (single-command — ejecutá todos los pasos)
@@ -4995,6 +4996,9 @@ def _cambiar_empresa_bloqueado(nombre: str) -> dict:
         return {"success": False, "message": f"No encontré ninguna empresa registrada como '{nombre}'."}
 
     reset_session_state()
+    # Invalidar caché de memoria para que cargue la de la nueva empresa
+    global _dexter_memory
+    _dexter_memory = None
 
     if CURRENT_COMPANY:
         save_company_context(CURRENT_COMPANY['name'], COMPANY_CONTEXT)
@@ -6182,11 +6186,25 @@ _dexter_memory = None  # inicializado bajo __main__
 
 
 def _get_memory():
-    """Lazy init de PersistentMemory."""
+    """Lazy init de PersistentMemory — memoria por empresa.
+
+    USER.md es global (~/.config/dexter/USER.md): preferencias de Alfredo.
+    MEMORY.md es por empresa: companies/{name}/MEMORY.md.
+    """
     global _dexter_memory
     if _dexter_memory is None:
         from dexter.core.memory import PersistentMemory
-        _dexter_memory = PersistentMemory()
+
+        # MEMORY.md por empresa (si hay empresa activa)
+        company_memory = None
+        if CURRENT_COMPANY and CURRENT_COMPANY.get("name"):
+            safe_name = CURRENT_COMPANY["name"].replace("/", "_").replace("\\", "_")
+            company_memory = f"companies/{safe_name}/MEMORY.md"
+
+        _dexter_memory = PersistentMemory(
+            memory_path=company_memory,
+            user_path=None,  # USER.md usa el default global
+        )
     return _dexter_memory
 
 
