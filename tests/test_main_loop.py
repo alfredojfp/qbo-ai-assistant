@@ -78,12 +78,11 @@ class TestMenuCommandRoutes(unittest.TestCase):
     since that requires mocking input — but verifying the canonical list)."""
 
     def test_canonical_invokers(self):
-        # These should trigger the menu in main_loop
+        # These should trigger the menu in the main loop body
         invokers = {"menu", "?", "help", "ayuda"}
-        # Just assert the contract is documented in main_loop
         import inspect
-        from main import main_loop
-        src = inspect.getsource(main_loop)
+        from main import _main_loop_body
+        src = inspect.getsource(_main_loop_body)
         for inv in invokers:
             self.assertIn(f'"{inv}"', src, f"main_loop must support '{inv}' as menu invoker")
 
