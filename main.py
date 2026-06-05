@@ -263,11 +263,14 @@ def refresh_qb_token():
 QB_REQUEST_TIMEOUT = int(os.getenv("QB_REQUEST_TIMEOUT", "30"))
 
 
-def qbo_request(method: str, endpoint: str, data: dict = None, params: dict = None) -> requests.Response:
+def qbo_request(method: str, endpoint: str, data: dict = None, params: dict = None,
+                raw_body: bytes = None, extra_headers: dict = None) -> requests.Response:
     """Realiza request a QuickBooks con manejo automático de refresh token y retry.
 
     CRIT-1 fix: timeout=30s por defecto (configurable vía QB_REQUEST_TIMEOUT).
     CRIT-4 fix: retry con backoff exponencial (1s, 2s, 4s) en 429/503/Timeout/ConnectionError.
+    HIGH-6 fix: acepta `raw_body` (bytes) y `extra_headers` para soportar
+                multipart/form-data en upload_attachment.
     """
     from dexter.core.retry import retry_request
 
@@ -276,8 +279,14 @@ def qbo_request(method: str, endpoint: str, data: dict = None, params: dict = No
     headers = {
         "Authorization": f"Bearer {QB_ACCESS_TOKEN}",
         "Accept": "application/json",
-        "Content-Type": "application/json"
     }
+    if raw_body is not None:
+        if extra_headers:
+            headers.update(extra_headers)
+    else:
+        headers["Content-Type"] = "application/json"
+        if extra_headers:
+            headers.update(extra_headers)
 
     url = f"{QB_BASE_URL}/{endpoint}"
 
@@ -293,10 +302,16 @@ def qbo_request(method: str, endpoint: str, data: dict = None, params: dict = No
             headers=headers, params=params, timeout=QB_REQUEST_TIMEOUT,
         )
     elif method == "POST":
-        response = retry_request(
-            requests.post, url,
-            headers=headers, json=data, timeout=QB_REQUEST_TIMEOUT,
-        )
+        if raw_body is not None:
+            response = retry_request(
+                requests.post, url,
+                headers=headers, data=raw_body, timeout=QB_REQUEST_TIMEOUT,
+            )
+        else:
+            response = retry_request(
+                requests.post, url,
+                headers=headers, json=data, timeout=QB_REQUEST_TIMEOUT,
+            )
     else:
         raise ValueError(f"Método no soportado: {method}")
 
@@ -311,10 +326,16 @@ def qbo_request(method: str, endpoint: str, data: dict = None, params: dict = No
                     headers=headers, params=params, timeout=QB_REQUEST_TIMEOUT,
                 )
             else:
-                response = retry_request(
-                    requests.post, url,
-                    headers=headers, json=data, timeout=QB_REQUEST_TIMEOUT,
-                )
+                if raw_body is not None:
+                    response = retry_request(
+                        requests.post, url,
+                        headers=headers, data=raw_body, timeout=QB_REQUEST_TIMEOUT,
+                    )
+                else:
+                    response = retry_request(
+                        requests.post, url,
+                        headers=headers, json=data, timeout=QB_REQUEST_TIMEOUT,
+                    )
 
     # Si la respuesta final no es 2xx, persistir en el log para diagnóstico
     if response.status_code >= 400:
@@ -2011,6 +2032,11 @@ def upload_attachment(file_content: bytes, file_name: str, content_type: str,
     content_type: MIME type (e.g., 'application/pdf', 'image/jpeg')
     entity_type: 'Bill', 'Invoice', 'Purchase', etc.
     entity_id: ID de la entidad a la que se vincula
+
+    HIGH-6 fix: pasa por qbo_request() (con raw_body + extra_headers) para
+    heredar timeout, retry 429/503, refresh token en 401, y error logging.
+    Antes llamaba requests.post() directamente, bypaseando todos los
+    safeguards acumulados (CRIT-1, CRIT-4).
     """
     import base64
     log_operation("attachments_uploaded")
@@ -2036,15 +2062,12 @@ def upload_attachment(file_content: bytes, file_name: str, content_type: str,
         f"{b64_content}\r\n"
         f"--{boundary}--\r\n"
     ).encode("utf-8")
-    # POST custom con multipart
-    global QB_ACCESS_TOKEN
-    headers = {
-        "Authorization": f"Bearer {QB_ACCESS_TOKEN}",
-        "Accept": "application/json",
-        "Content-Type": f"multipart/form-data; boundary={boundary}",
-    }
-    url = f"{QB_BASE_URL}/upload?minorversion=70"
-    response = requests.post(url, headers=headers, data=body)
+    response = qbo_request(
+        "POST",
+        "upload",
+        raw_body=body,
+        extra_headers={"Content-Type": f"multipart/form-data; boundary={boundary}"},
+    )
     if response.status_code == 200:
         att_list = response.json().get("AttachableResponse", [])
         if att_list:
