@@ -264,11 +264,13 @@ QB_REQUEST_TIMEOUT = int(os.getenv("QB_REQUEST_TIMEOUT", "30"))
 
 
 def qbo_request(method: str, endpoint: str, data: dict = None, params: dict = None) -> requests.Response:
-    """Realiza request a QuickBooks con manejo automático de refresh token.
+    """Realiza request a QuickBooks con manejo automático de refresh token y retry.
 
     CRIT-1 fix: timeout=30s por defecto (configurable vía QB_REQUEST_TIMEOUT).
-    Antes el proceso podía colgarse indefinidamente si QBO no respondía.
+    CRIT-4 fix: retry con backoff exponencial (1s, 2s, 4s) en 429/503/Timeout/ConnectionError.
     """
+    from dexter.core.retry import retry_request
+
     global QB_ACCESS_TOKEN
 
     headers = {
@@ -286,27 +288,33 @@ def qbo_request(method: str, endpoint: str, data: dict = None, params: dict = No
     params.setdefault("minorversion", minor_version)
 
     if method == "GET":
-        try:
-            response = requests.get(url, headers=headers, params=params, timeout=QB_REQUEST_TIMEOUT)
-        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
-            response = requests.get(url, headers=headers, params=params, timeout=QB_REQUEST_TIMEOUT)
+        response = retry_request(
+            requests.get, url,
+            headers=headers, params=params, timeout=QB_REQUEST_TIMEOUT,
+        )
     elif method == "POST":
-        try:
-            response = requests.post(url, headers=headers, json=data, timeout=QB_REQUEST_TIMEOUT)
-        except (requests.exceptions.Timeout, requests.exceptions.ConnectionError):
-            response = requests.post(url, headers=headers, json=data, timeout=QB_REQUEST_TIMEOUT)
+        response = retry_request(
+            requests.post, url,
+            headers=headers, json=data, timeout=QB_REQUEST_TIMEOUT,
+        )
     else:
         raise ValueError(f"Método no soportado: {method}")
 
-    # Si es 401, refrescar token y reintentar
+    # Si es 401, refrescar token y reintentar (CRIT-1 logic preservado)
     if response.status_code == 401:
         print("🔄 Token expirado, refrescando...")
         if refresh_qb_token():
             headers["Authorization"] = f"Bearer {QB_ACCESS_TOKEN}"
             if method == "GET":
-                response = requests.get(url, headers=headers, params=params, timeout=QB_REQUEST_TIMEOUT)
+                response = retry_request(
+                    requests.get, url,
+                    headers=headers, params=params, timeout=QB_REQUEST_TIMEOUT,
+                )
             else:
-                response = requests.post(url, headers=headers, json=data, timeout=QB_REQUEST_TIMEOUT)
+                response = retry_request(
+                    requests.post, url,
+                    headers=headers, json=data, timeout=QB_REQUEST_TIMEOUT,
+                )
 
     # Si la respuesta final no es 2xx, persistir en el log para diagnóstico
     if response.status_code >= 400:
