@@ -2085,14 +2085,69 @@ def get_exchange_rate(source_currency: str, target_currency: str = "USD",
     return {"success": False, "error": response.text, "status_code": response.status_code}
 
 
+def _validate_batch_schema(operations: list) -> tuple:
+    """Valida que `operations` cumpla el schema QBO batch.
+
+    MED-7 fix: ejecuta antes del POST. Reglas:
+    - debe ser list no-vacía
+    - cada item debe ser dict con 'bId' y 'operation'
+    - 'operation' debe ser uno de {create, update, delete, query}
+    - 'bId' debe ser único en la lista
+    - máximo 30 (también validado por execute_batch)
+
+    Returns (ok: bool, error_msg: str). Si ok=True, error_msg="".
+    """
+    valid_ops = {"create", "update", "delete", "query"}
+
+    if operations is None:
+        return (False, "operations debe ser una lista, recibí None")
+    if not isinstance(operations, list):
+        return (False, f"operations debe ser list, recibí {type(operations).__name__}")
+    if len(operations) == 0:
+        return (False, "operations está vacía; un batch sin items no se envía a QBO")
+    if len(operations) > 30:
+        return (False, f"Batch demasiado grande: {len(operations)} items (max 30)")
+
+    seen_bids = set()
+    for idx, item in enumerate(operations):
+        prefix = f"item[{idx}]"
+        if not isinstance(item, dict):
+            return (False, f"{prefix} debe ser dict, recibí {type(item).__name__}")
+
+        bId = item.get("bId")
+        if bId is None or bId == "":
+            return (False, f"{prefix} falta campo requerido 'bId'")
+        if bId in seen_bids:
+            return (False, f"bId duplicado: '{bId}'. Cada item del batch debe tener bId único")
+        seen_bids.add(bId)
+
+        op = item.get("operation")
+        if op is None:
+            return (False, f"{prefix} (bId={bId}) falta campo requerido 'operation'")
+        if op not in valid_ops:
+            return (False, (
+                f"{prefix} (bId={bId}) operation='{op}' inválida. "
+                f"Valores válidos: {sorted(valid_ops)}"
+            ))
+
+    return (True, "")
+
+
 def execute_batch(operations: List[dict]) -> dict:
     """Ejecuta hasta 30 operaciones en una sola llamada (batch).
 
     operations: lista de dicts con {bId, operation, Entity/Query}
+
+    MED-7 fix: valida schema antes del POST. Retorna
+    {"success": False, "validation_error": True, "error": ...}
+    si la lista está vacía, tiene bIds duplicados, etc.
     """
     log_operation("batch_executed")
-    if len(operations) > 30:
-        return {"success": False, "error": "Max 30 operaciones por batch"}
+
+    ok, err = _validate_batch_schema(operations)
+    if not ok:
+        return {"success": False, "validation_error": True, "error": err}
+
     batch_data = {"BatchItemRequest": operations}
     response = qbo_request("POST", "batch", data=batch_data)
     if response.status_code == 200:
