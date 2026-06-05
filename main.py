@@ -701,13 +701,18 @@ def create_invoice(customer_id: str, line_items: List[dict], txn_date: str = Non
 
     # Agregar líneas
     for idx, item in enumerate(line_items, 1):
+        qty = item.get("quantity", 1)
+        if qty is None or qty <= 0:
+            raise ValueError(
+                f"create_invoice: line_items[{idx}] quantity must be > 0, got {qty!r}"
+            )
         line = {
             "DetailType": "SalesItemLineDetail",
             "Amount": item["amount"],
             "SalesItemLineDetail": {
                 "ItemRef": {"value": item["item_id"]},
-                "Qty": item.get("quantity", 1),
-                "UnitPrice": item["amount"] / item.get("quantity", 1)
+                "Qty": qty,
+                "UnitPrice": item["amount"] / qty
             }
         }
 
