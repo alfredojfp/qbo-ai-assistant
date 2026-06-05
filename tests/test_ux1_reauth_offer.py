@@ -18,7 +18,57 @@ que:
 import unittest
 import subprocess
 import sys
+import os
 from unittest.mock import patch, MagicMock, call
+
+
+class TestReloadEnvAfterOauth(unittest.TestCase):
+    """Unit tests para _reload_env_after_oauth (UX-1 helper)."""
+
+    def test_reload_updates_qb_globals_from_dotenv(self):
+        """GREEN: _reload_env_after_oauth recarga los tokens desde .env."""
+        import main
+        with patch.dict(os.environ, {
+            "QB_ACCESS_TOKEN": "new-at-from-env",
+            "QB_REFRESH_TOKEN": "new-rt-from-env",
+            "QB_REALM_ID": "9341455870833544",
+        }), patch("dotenv.load_dotenv", return_value=None), \
+           patch("main.CURRENT_COMPANY", None):
+            main._reload_env_after_oauth()
+        self.assertEqual(main.QB_ACCESS_TOKEN, "new-at-from-env")
+        self.assertEqual(main.QB_REFRESH_TOKEN, "new-rt-from-env")
+        self.assertEqual(main.QB_REALM_ID, "9341455870833544")
+
+    def test_reload_saves_meta_json_when_company_set(self):
+        """GREEN: si CURRENT_COMPANY está seteado, actualiza su meta.json."""
+        import main
+        with patch.dict(os.environ, {
+            "QB_ACCESS_TOKEN": "at-sync-test",
+            "QB_REFRESH_TOKEN": "rt-sync-test",
+            "QB_REALM_ID": "9341455870833544",
+        }), patch("dotenv.load_dotenv", return_value=None), \
+           patch("main.CURRENT_COMPANY", {
+            "name": "Sandbox Company_US_1",
+            "realm_id": "9341455870833544",
+        }), patch("company_manager.save_company_meta") as mock_save:
+            main._reload_env_after_oauth()
+        mock_save.assert_called_once_with(
+            "Sandbox Company_US_1", "9341455870833544",
+            access_token="at-sync-test",
+            refresh_token="rt-sync-test",
+        )
+
+    def test_reload_skips_meta_json_when_company_none(self):
+        """GREEN: si CURRENT_COMPANY es None, no llama save_company_meta."""
+        import main
+        from company_manager import save_company_meta
+        with patch.dict(os.environ, {
+            "QB_ACCESS_TOKEN": "at-no-company",
+        }), patch("dotenv.load_dotenv", return_value=None), \
+           patch("main.CURRENT_COMPANY", None), \
+           patch("company_manager.save_company_meta") as mock_save:
+            main._reload_env_after_oauth()
+        mock_save.assert_not_called()
 
 
 class TestVerifyQboConnectionWithReauth(unittest.TestCase):

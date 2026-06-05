@@ -5896,14 +5896,25 @@ _atexit.register(_close_session_safely)
 
 def _reload_env_after_oauth():
     """Recarga QB_ACCESS_TOKEN / QB_REFRESH_TOKEN / QB_REALM_ID desde .env
-    después de un OAuth flow exitoso. Actualiza también los globals."""
-    import importlib
+    después de un OAuth flow exitoso. Actualiza también los globals y
+    el meta.json de la empresa actual (si existe), para evitar que
+    tokens viejos en meta.json sobrescriban los nuevos al reiniciar."""
     global QB_ACCESS_TOKEN, QB_REFRESH_TOKEN, QB_REALM_ID
     from dotenv import load_dotenv
     load_dotenv(override=True)
     QB_ACCESS_TOKEN = os.getenv("QB_ACCESS_TOKEN", QB_ACCESS_TOKEN)
     QB_REFRESH_TOKEN = os.getenv("QB_REFRESH_TOKEN", QB_REFRESH_TOKEN)
     QB_REALM_ID = os.getenv("QB_REALM_ID", QB_REALM_ID)
+
+    # Sincronizar meta.json de la empresa actual con los nuevos tokens
+    if CURRENT_COMPANY:
+        from company_manager import save_company_meta
+        save_company_meta(
+            CURRENT_COMPANY["name"],
+            CURRENT_COMPANY["realm_id"],
+            access_token=QB_ACCESS_TOKEN,
+            refresh_token=QB_REFRESH_TOKEN,
+        )
 
 
 def _verify_qbo_connection_or_offer_reauth() -> bool:
