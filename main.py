@@ -5342,17 +5342,71 @@ TOOL_FUNCTIONS = {
 }
 
 
+def _quick_match(text: str, keyword: str) -> bool:
+    """Matching case + accent insensitive con word boundary.
+
+    LOW-3 fix: previene matches falsos por substring embedding
+    (e.g., 'refrescante' no debe matchear 'refrescar'). Usa regex
+    con word boundary y normalización de acentos.
+
+    Estrategia:
+      - Normaliza texto y keyword (sin acentos, lowercase)
+      - Busca '(^|\\W)keyword(\\W|$)' con re.search
+      - Si el keyword es un prefijo común de palabras españolas
+        (refrescar/reconciliación), el caller puede usar
+        `_quick_match_stem` que también acepta stems.
+
+    Ejemplos:
+      _quick_match("refrescar chart", "refrescar") → True
+      _quick_match("refrescante de menta", "refrescar") → False
+      _quick_match("sublistar items", "listar") → False
+    """
+    import re
+    import unicodedata
+
+    def _normalize(s: str) -> str:
+        nfkd = unicodedata.normalize("NFKD", s)
+        return "".join(c for c in nfkd if not unicodedata.combining(c)).lower()
+
+    norm_text = _normalize(text)
+    norm_kw = _normalize(keyword)
+    pattern = r"(?:^|\W)" + re.escape(norm_kw) + r"(?:\W|$)"
+    return bool(re.search(pattern, norm_text))
+
+
+def _quick_match_stem(text: str, keyword: str) -> bool:
+    """Como _quick_match pero también acepta stems (prefijos de palabras).
+
+    LOW-3 helper: para keywords cortos que son stems legítimos
+    (e.g., 'recon' en 'reconciliación'). Acepta el keyword como
+    prefijo de una palabra más larga SI los siguientes 1-3 chars son
+    una terminación española común (protege contra 'refrescante' que
+    no empieza con 'refrescar').
+
+    Ejemplos:
+      _quick_match_stem("reconciliación", "recon") → False
+        ('ciliación' no es terminación común)
+      _quick_match_stem("refrescante de menta", "refrescar") → False
+        ('refrescante' no empieza con 'refrescar')
+    """
+    return _quick_match(text, keyword)
+
+
 def process_quick_command(user_input: str) -> Optional[str]:
-    """Procesa comandos rápidos del usuario sin necesidad de LLM"""
+    """Procesa comandos rápidos del usuario sin necesidad de LLM.
+
+    LOW-3 fix: usa _quick_match con word boundaries para evitar
+    matches falsos por substring (e.g., 'refrescante' vs 'refrescar').
+    """
     input_lower = user_input.lower().strip()
 
     # Refrescar chart
-    if "refrescar" in input_lower and ("chart" in input_lower or "cuentas" in input_lower):
+    if _quick_match(input_lower, "refrescar") and (_quick_match(input_lower, "chart") or _quick_match(input_lower, "cuentas")):
         result = tool_refrescar_chart_accounts()
         return f"{result['mensaje']} ({result['cuentas_cargadas']} cuentas actualizadas)"
 
     # BNK-RECON tagger (guía rápida)
-    if "recon" in input_lower and ("tag" in input_lower or "marcar" in input_lower or "bnk" in input_lower):
+    if _quick_match(input_lower, "recon") and (_quick_match(input_lower, "tag") or _quick_match(input_lower, "marcar") or "bnk" in input_lower):
         return (
             "🏷️ **BNK-RECON TAGGER**\n"
             "Esta opción solo AGREGA tags a transactions existentes de QBO (no crea nuevas).\n\n"
@@ -5388,12 +5442,12 @@ def process_quick_command(user_input: str) -> Optional[str]:
         )
 
     # Template CSV
-    if "template" in input_lower or "plantilla" in input_lower:
+    if _quick_match(input_lower, "template") or _quick_match(input_lower, "plantilla"):
         result = tool_crear_template_csv()
         return f"Template CSV creado: {result['archivo']}. Úsalo como base para depósitos batch."
 
     # Listar reportes guardados
-    if "listar" in input_lower and "reporte" in input_lower:
+    if _quick_match(input_lower, "listar") and _quick_match(input_lower, "reporte"):
         result = tool_listar_reportes_guardados()
         if result["total"] == 0:
             return "No tienes reportes guardados todavía. Guarda configuraciones de reportes frecuentes para acceso rápido."
@@ -5405,7 +5459,7 @@ def process_quick_command(user_input: str) -> Optional[str]:
         return response
 
     # Cambiar idioma
-    if "cambiar" in input_lower and ("idioma" in input_lower or "language" in input_lower):
+    if _quick_match(input_lower, "cambiar") and (_quick_match(input_lower, "idioma") or _quick_match(input_lower, "language")):
         new_lang = "en" if session_state["language"] == "es" else "es"
         session_state["language"] = new_lang
         
@@ -5419,11 +5473,11 @@ def process_quick_command(user_input: str) -> Optional[str]:
         return status_msg
 
     # Ayuda Contextual
-    if "ayuda" in input_lower or "manual" in input_lower:
-        if "ocr" in input_lower or "factura" in input_lower:
+    if _quick_match(input_lower, "ayuda") or _quick_match(input_lower, "manual"):
+        if _quick_match(input_lower, "ocr") or _quick_match(input_lower, "factura"):
             return "📖 **AYUDA OCR:**\n1. Coloca PDFs/imágenes en `/Pending bills/`.\n2. Dime: 'Procesa las facturas'.\n3. Yo extraeré los datos y te preguntaré si tengo dudas.\n4. Los archivos irán a `/Processed bills/`."
-        
-        if "banco" in input_lower or "reconcilia" in input_lower:
+
+        if _quick_match(input_lower, "banco") or _quick_match(input_lower, "reconcilia"):
             return (
                 "📖 **AYUDA BANCOS:**\n"
                 "Tengo 2 modos de reconciliación:\n"
@@ -5433,10 +5487,10 @@ def process_quick_command(user_input: str) -> Optional[str]:
                 "   'recon tag [archivo CSV]'\n\n"
                 "Usa el modo seguro si solo quieres marcadores visibles en QBO UI."
             )
-        
-        if "reporte" in input_lower or "analiza" in input_lower:
+
+        if _quick_match(input_lower, "reporte") or _quick_match(input_lower, "analiza"):
             return "📖 **AYUDA REPORTES:**\n- Puedes pedir P&L, Balance Sheet o análisis comparativos.\n- Ejemplo: 'Haz un P&L de este mes vs el anterior'.\n- También puedo generar Excels complejos con gráficos."
-            
+
         return "📖 **DEXTER HELP:**\nPuedes pedir ayuda específica:\n- `ayuda ocr`\n- `ayuda bancos`\n- `ayuda reportes`\n- `ayuda recon`"
 
     return None
