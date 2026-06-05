@@ -64,13 +64,19 @@ SCHEMA: List[Dict[str, Any]] = [
 ]
 
 KEYWORDS: List[str] = [
-    "company info", "información de la empresa", "datos de la empresa",
-    "preferencias", "preferences", "configuración empresa",
-    "consulta", "query", "sql", "búsqueda personalizada", "qbo query",
-    "select", "select * from", "búsqueda raw", "raw query",
-    "leer metadata", "metadata empresa", "company metadata",
-    "buscar", "filtra", "cuántos", "lista", "dame todos",
+    "company info", "información", "datos",
+    "preferencias", "preferences", "configuración",
+    "consulta", "query", "sql", "qbo query",
+    "select", "select * from",
+    "leer metadata", "metadata",
+    "buscar", "busca", "buscá", "busco", "busqué", "buscando",
     "search", "find", "list", "filter", "count",
+    "cuántos", "cuantos", "cuantas", "cuántas",
+    "dame", "dáme", "mostrar", "muéstrame", "muestrame",
+    "ver", "enseñar", "consultar", "listar",
+    "filtra", "filtrame", "filtrar",
+    "lista", "listado", "resumen", "detalle",
+    "qué", "cual", "cuál", "cuales", "cuáles",
 ]
 
 FUNCTIONS: Dict[str, Any] = {

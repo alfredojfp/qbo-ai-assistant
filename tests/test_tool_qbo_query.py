@@ -81,3 +81,69 @@ class TestQboQueryAsLlmTool(unittest.TestCase):
         with patch("main.qbo_request", return_value=mock_resp):
             result = main.tool_qbo_query("SELECT * FROM Account")
         self.assertIn("error", result)
+
+
+class TestQboQueryAlwaysIncluded(unittest.TestCase):
+    """qbo_query debe estar siempre presente en get_relevant_tools()."""
+
+    def test_qbo_query_included_for_generic_message(self):
+        """qbo_query incluido aunque no haya keywords de read module."""
+        import main
+        tools = main.get_relevant_tools("dame los datos que tengas de este cliente")
+        names = [t["function"]["name"] for t in tools]
+        self.assertIn("qbo_query", names,
+                      "qbo_query debe estar SIEMPRE presente")
+
+    def test_qbo_query_included_for_estimate_query(self):
+        """'busca el estimate del cliente' debe incluir qbo_query."""
+        import main
+        tools = main.get_relevant_tools("busca el estimate del cliente Prueba2")
+        names = [t["function"]["name"] for t in tools]
+        self.assertIn("qbo_query", names)
+
+    def test_qbo_query_included_for_hola(self):
+        """Incluso 'hola' debe incluir qbo_query (siempre-presente)."""
+        import main
+        tools = main.get_relevant_tools("hola")
+        names = [t["function"]["name"] for t in tools]
+        self.assertIn("qbo_query", names)
+
+    def test_qbo_query_included_for_salir(self):
+        """'salir' también debe incluir qbo_query."""
+        import main
+        tools = main.get_relevant_tools("salir")
+        names = [t["function"]["name"] for t in tools]
+        self.assertIn("qbo_query", names)
+
+
+class TestReadModuleKeywords(unittest.TestCase):
+    """Verificar que las keywords del módulo read matcheen frases comunes."""
+
+    def setUp(self):
+        from dexter.tools.read import KEYWORDS
+        self.kws = KEYWORDS
+
+    def _activates(self, msg):
+        import main
+        bi = main._bilingual_keywords(self.kws)
+        return any(kw.lower() in msg.lower() for kw in bi)
+
+    def test_busca_activates_read(self):
+        self.assertTrue(self._activates("busca el estimate"),
+                        "'busca' debe activar read module")
+
+    def test_dame_activates_read(self):
+        self.assertTrue(self._activates("dame los datos del cliente"),
+                        "'dame' debe activar read module")
+
+    def test_ver_activates_read(self):
+        self.assertTrue(self._activates("ver los estimates"),
+                        "'ver' debe activar read module")
+
+    def test_muestrame_activates_read(self):
+        self.assertTrue(self._activates("muéstrame el balance"),
+                        "'muéstrame' debe activar read module")
+
+    def test_cuantos_activates_read(self):
+        self.assertTrue(self._activates("cuántos clientes tengo"),
+                        "'cuántos' debe activar read module")

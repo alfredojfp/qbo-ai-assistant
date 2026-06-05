@@ -5688,6 +5688,7 @@ def get_relevant_tools(user_message: str) -> list:
     """
     from dexter.tools import KEYWORDS_BY_MODULE
     import dexter.tools as dexter_tools
+    from dexter.tools import _extract_name
 
     msg = user_message.lower()
     relevant_names = set()
@@ -5708,8 +5709,21 @@ def get_relevant_tools(user_message: str) -> list:
             "buscar_cliente", "buscar_cuenta", "generar_reporte_pl",
         ])
 
-    # Filtrar la lista global TOOLS
-    return [t for t in TOOLS if t["function"]["name"] in relevant_names]
+    # Siempre incluir qbo_query — es el tool universal de consulta.
+    # El LLM lo necesita para buscar cualquier entidad (estimates,
+    # invoices, items, etc.) sin depender de keywords.
+    relevant_names.add("qbo_query")
+
+    # Filtrar la lista global TOOLS y también ALL_SCHEMAS de dexter/tools
+    # para incluir tools registrados en el registry pero no en TOOLS.
+    result = [t for t in TOOLS if t["function"]["name"] in relevant_names]
+    result_names = {t["function"]["name"] for t in result}
+    for schema in dexter_tools.ALL_SCHEMAS:
+        name = _extract_name(schema)
+        if name and name in relevant_names and name not in result_names:
+            result.append(schema)
+            result_names.add(name)
+    return result
 
 def _truncate_message_content(msg: dict, max_chars: int = 2000) -> dict:
     """Trunca el campo 'content' de un mensaje a max_chars.
