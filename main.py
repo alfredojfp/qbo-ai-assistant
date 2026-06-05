@@ -1861,9 +1861,27 @@ def cdc_query(entities: List[str], since: str) -> dict:
 
     entities: lista de nombres de entidades (e.g., ['Customer', 'Invoice'])
     since: timestamp ISO (e.g., '2026-06-01T00:00:00Z')
+
+    CRIT-6 fix: payload debe seguir el schema QBO CDC documented:
+        {
+          "trackedEntities": [
+            {
+              "entities": [{"name": "Customer"}, {"name": "Invoice"}],
+              "lastModified": "2026-06-01T00:00:00Z"
+            }
+          ]
+        }
+    Antes se enviaba {entities: [...], since: ...} que QBO rechazaba con 400.
     """
     log_operation("cdc_query")
-    payload = {"entities": entities, "since": since}
+    payload = {
+        "trackedEntities": [
+            {
+                "entities": [{"name": name} for name in entities],
+                "lastModified": since,
+            }
+        ]
+    }
     response = qbo_request("POST", "cdc", data=payload)
     if response.status_code == 200:
         return {"success": True, "data": response.json()}
