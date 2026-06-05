@@ -187,7 +187,13 @@ def update_env_file(key: str, value: str):
         f.writelines(lines)
 
 def parse_date(date_str: str) -> str:
-    """Convierte diferentes formatos de fecha a YYYY-MM-DD"""
+    """Convierte diferentes formatos de fecha a YYYY-MM-DD.
+
+    MED-2 fix: distingue entre fecha vacía (usa today, backward compat)
+    y fecha con formato inválido (raise ValueError con mensaje claro).
+    El fallback silencioso a 'today' causaba errores de auditoría en
+    operaciones batch.
+    """
     if not date_str:
         return datetime.now().strftime("%Y-%m-%d")
 
@@ -205,12 +211,14 @@ def parse_date(date_str: str) -> str:
     for fmt in formats:
         try:
             return datetime.strptime(date_str, fmt).strftime("%Y-%m-%d")
-        except:
+        except ValueError:
             continue
 
-    # Si no se puede parsear, usar hoy
-    print(f"⚠️ No se pudo parsear fecha '{date_str}', usando hoy")
-    return datetime.now().strftime("%Y-%m-%d")
+    raise ValueError(
+        f"parse_date: no se pudo parsear '{date_str}'. "
+        f"Formatos soportados: YYYY-MM-DD, DD/MM/YYYY, DD-MM-YYYY, "
+        f"DD/MM/YY, '15 June 2026', etc."
+    )
 
 def format_currency(amount: float) -> str:
     """Formatea cantidad como moneda"""
