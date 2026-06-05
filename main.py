@@ -4611,7 +4611,15 @@ def tool_gestionar_empresas(accion: str, nombre: str = None, link_o_id: str = No
         
         # Recargar contexto
         COMPANY_CONTEXT = load_company_context(target['name'])
-        session_state["chart_of_accounts"] = COMPANY_CONTEXT.get("chart_of_accounts", {})
+
+        # MED-9 fix: forzar refresh del chart desde QBO (no usar cache
+        # de 24h). Garantiza que cuentas nuevas en la nueva empresa
+        # aparezcan inmediatamente después del switch.
+        try:
+            fresh_chart = load_chart_of_accounts(force_refresh=True)
+            session_state["chart_of_accounts"] = fresh_chart
+        except Exception:
+            session_state["chart_of_accounts"] = COMPANY_CONTEXT.get("chart_of_accounts", {})
         
         return {
             "success": True, 
