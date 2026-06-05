@@ -584,35 +584,45 @@ def calculate_session_cost() -> float:
     """Retorna el costo acumulado de la sesión"""
     return session_state.get("total_cost", 0.0)
 
+import threading as _threading
+_csv_write_lock = _threading.Lock()
+
+
 def save_session_to_csv():
-    """Guarda los datos de la sesión en el CSV histórico"""
-    duration = (datetime.now() - session_state["start_time"]).total_seconds() / 60
-    operations_count = sum(session_state["operations"].values())
-    operations_detail = ", ".join([
-        f"{count} {op}" for op, count in session_state["operations"].items() if count > 0
-    ])
+    """Guarda los datos de la sesión en el CSV histórico.
 
-    row = {
-        "fecha": session_state["start_time"].strftime("%Y-%m-%d"),
-        "sesion_inicio": session_state["start_time"].strftime("%H:%M"),
-        "sesion_fin": datetime.now().strftime("%H:%M"),
-        "duracion_min": round(duration, 1),
-        "input_tokens": session_state["input_tokens"],
-        "output_tokens": session_state["output_tokens"],
-        "total_tokens": session_state["input_tokens"] + session_state["output_tokens"],
-        "costo_usd": round(calculate_session_cost(), 4),
-        "operaciones": operations_count,
-        "detalles": operations_detail or "Sin operaciones"
-    }
+    MED-3 fix: usa _csv_write_lock (threading.Lock) para serializar
+    writes concurrentes. Evita corrupción si Ctrl+C signal handler y
+    auto-save timer llaman a esta función simultáneamente.
+    """
+    with _csv_write_lock:
+        duration = (datetime.now() - session_state["start_time"]).total_seconds() / 60
+        operations_count = sum(session_state["operations"].values())
+        operations_detail = ", ".join([
+            f"{count} {op}" for op, count in session_state["operations"].items() if count > 0
+        ])
 
-    # Crear archivo si no existe
-    file_exists = os.path.exists(FILE_TOKEN_USAGE)
+        row = {
+            "fecha": session_state["start_time"].strftime("%Y-%m-%d"),
+            "sesion_inicio": session_state["start_time"].strftime("%H:%M"),
+            "sesion_fin": datetime.now().strftime("%H:%M"),
+            "duracion_min": round(duration, 1),
+            "input_tokens": session_state["input_tokens"],
+            "output_tokens": session_state["output_tokens"],
+            "total_tokens": session_state["input_tokens"] + session_state["output_tokens"],
+            "costo_usd": round(calculate_session_cost(), 4),
+            "operaciones": operations_count,
+            "detalles": operations_detail or "Sin operaciones"
+        }
 
-    with open(FILE_TOKEN_USAGE, 'a', newline='', encoding='utf-8') as f:
-        writer = csv.DictWriter(f, fieldnames=row.keys())
-        if not file_exists:
-            writer.writeheader()
-        writer.writerow(row)
+        # Crear archivo si no existe
+        file_exists = os.path.exists(FILE_TOKEN_USAGE)
+
+        with open(FILE_TOKEN_USAGE, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.DictWriter(f, fieldnames=row.keys())
+            if not file_exists:
+                writer.writeheader()
+            writer.writerow(row)
 
 def generate_token_report():
     """Genera informe Excel con estadísticas de consumo (SOBRESCRIBE)"""
