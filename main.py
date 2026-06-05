@@ -3202,16 +3202,13 @@ def call_llm(user_message: str, tools: List[dict] = None, max_iterations: int = 
             *_history_window  # Ventana de contexto amplia
         ]
 
-        # Seleccionar modelo basado en complejidad
-        # Si ya estamos en una iteración avanzada (tool calls), mantenemos el modelo original
+        # Usar modelo pesado (DeepSeek) para TODAS las interacciones con tools.
+        # La diferencia de costo es mínima (~$0.001 por consulta) y la diferencia
+        # de calidad en function calling es enorme. Llama 3.1 8B ignora los tools
+        # y responde de memoria, causando datos incorrectos.
+        selected_model = LLM_MODEL_HEAVY
         if iteration == 1:
-            msg_lower = user_message.lower()
-            complejo = any(kw in msg_lower for kw in [
-                "analiza", "porque", "compara", "explica", "clasifica", "extrae", 
-                "informe", "reporte", "balance", "p&l", "asiento", "journal", "ocr"
-            ])
-            selected_model = LLM_MODEL_HEAVY if complejo else LLM_MODEL_LIGHT
-            self_model = selected_model # Tracking interno
+            self_model = selected_model
         else:
             selected_model = self_model
 
