@@ -2859,9 +2859,12 @@ def call_llm(user_message: str, tools: List[dict] = None, max_iterations: int = 
             if function_name in TOOL_FUNCTIONS:
                 try:
                     result_data = TOOL_FUNCTIONS[function_name](**arguments)
-                    result_str = json.dumps(result_data, ensure_ascii=False)
+                    # CRIT-5 fix: usar safe_dumps para manejar Decimal/datetime/Path
+                    from dexter.core.safe_json import safe_dumps
+                    result_str = safe_dumps(result_data, ensure_ascii=False)
                 except Exception as e:
-                    result_str = json.dumps({"error": str(e)})
+                    from dexter.core.safe_json import safe_dumps
+                    result_str = safe_dumps({"error": str(e)}, ensure_ascii=False)
                     _log_error(
                         e,
                         category="tool_dispatch",
@@ -2869,7 +2872,8 @@ def call_llm(user_message: str, tools: List[dict] = None, max_iterations: int = 
                         extra={"arguments": arguments, "user_message": user_message},
                     )
             else:
-                result_str = json.dumps({"error": f"Tool '{function_name}' no encontrado"})
+                from dexter.core.safe_json import safe_dumps
+                result_str = safe_dumps({"error": f"Tool '{function_name}' no encontrado"}, ensure_ascii=False)
                 _log_error(
                     f"Tool '{function_name}' no encontrado en TOOL_FUNCTIONS",
                     category="tool_dispatch",
