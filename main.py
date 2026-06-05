@@ -165,8 +165,15 @@ def similarity_score(a: str, b: str) -> float:
     return SequenceMatcher(None, a.lower(), b.lower()).ratio()
 
 def update_env_file(key: str, value: str):
-    """Actualiza una variable en el archivo .env"""
+    """Actualiza una variable en el archivo .env de forma atómica.
+
+    MED-4 fix: escribe a .env.tmp primero, luego os.replace(tmp, real).
+    os.replace es atómico en POSIX (y NTFS en Windows). Garantiza que
+    .env siempre queda en estado consistente (viejo o nuevo, nunca parcial)
+    aún si el proceso muere a mitad de write.
+    """
     env_path = ".env"
+    tmp_path = ".env.tmp"
     lines = []
 
     if os.path.exists(env_path):
@@ -183,8 +190,17 @@ def update_env_file(key: str, value: str):
     if not updated:
         lines.append(f"{key}={value}\n")
 
-    with open(env_path, 'w') as f:
-        f.writelines(lines)
+    try:
+        with open(tmp_path, 'w') as f:
+            f.writelines(lines)
+        os.replace(tmp_path, env_path)
+    except Exception:
+        if os.path.exists(tmp_path):
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
+        raise
 
 def parse_date(date_str: str) -> str:
     """Convierte diferentes formatos de fecha a YYYY-MM-DD.
