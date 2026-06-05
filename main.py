@@ -1656,11 +1656,82 @@ def send_transaction_email(entity_name: str, entity_id: str, send_to: str = None
 # Report helpers (Sprint 1E: 10+ tools)
 # ========================================================================
 
+def _truncate_report_data(report_name: str, data: dict, max_bytes: int = 250_000) -> dict:
+    """Trunca Rows.Row de un reporte QBO si excede max_bytes.
+
+    MED-6 fix: protege context window del LLM. Reportes grandes
+    (ProfitAndLossDetail, GeneralLedger, TransactionList) pueden
+    ser 5-50MB; default 250KB ≈ 60K tokens, dejando espacio para
+    system prompt + tools + respuesta.
+    """
+    if not isinstance(data, dict) or max_bytes <= 0:
+        return data
+
+    try:
+        encoded_size = len(json.dumps(data, ensure_ascii=False, default=str).encode("utf-8"))
+    except (TypeError, ValueError):
+        return data
+
+    if encoded_size <= max_bytes:
+        return data
+
+    rows_root = data.get("Rows")
+    if not isinstance(rows_root, dict):
+        return data
+
+    rows = rows_root.get("Row")
+    if not isinstance(rows, list) or not rows:
+        return data
+
+    original_count = len(rows)
+    header = data.get("Header")
+    header_size = len(json.dumps({"Header": header}, ensure_ascii=False, default=str).encode("utf-8")) if header else 0
+
+    safe_budget = max(1024, max_bytes - header_size - 512)
+    kept = []
+    accumulated = 0
+    for row in rows:
+        try:
+            row_size = len(json.dumps(row, ensure_ascii=False, default=str).encode("utf-8"))
+        except (TypeError, ValueError):
+            row_size = 0
+        if accumulated + row_size > safe_budget:
+            break
+        kept.append(row)
+        accumulated += row_size
+
+    new_data = dict(data)
+    new_rows_root = dict(rows_root)
+    new_rows_root["Row"] = kept
+    new_data["Rows"] = new_rows_root
+    new_data["_truncated"] = True
+    new_data["_truncation_summary"] = {
+        "report": report_name,
+        "original_bytes": encoded_size,
+        "max_bytes": max_bytes,
+        "original_rows": original_count,
+        "kept_rows": len(kept),
+        "message": (
+            f"Reporte {report_name} truncado: {original_count} filas reducidas "
+            f"a {len(kept)} (de {encoded_size} bytes a <={max_bytes}). "
+            "Para ver el reporte completo, divide el rango de fechas o filtra "
+            "por cuenta/clase/departamento."
+        ),
+    }
+    return new_data
+
+
 def _fetch_report(report_name: str, params: dict) -> dict:
-    """Helper genérico para fetch de reportes. Retorna JSON parseado o error."""
+    """Helper genérico para fetch de reportes. Retorna JSON parseado o error.
+
+    MED-6 fix: aplica _truncate_report_data para proteger context window.
+    """
     response = qbo_request("GET", f"reports/{report_name}", params=params)
     if response.status_code == 200:
-        return {"success": True, "data": response.json()}
+        raw = response.json()
+        max_bytes = int(os.environ.get("MAX_REPORT_BYTES", "250000"))
+        truncated = _truncate_report_data(report_name, raw, max_bytes=max_bytes)
+        return {"success": True, "data": truncated}
     return {"success": False, "error": response.text, "status_code": response.status_code}
 
 
