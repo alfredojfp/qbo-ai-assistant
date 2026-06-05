@@ -11,6 +11,7 @@ import json
 import csv
 import re
 import requests
+from collections import deque
 from datetime import datetime, timedelta
 import glob
 import shutil
@@ -137,8 +138,9 @@ session_state = {
     "language": "es"
 }
 
-# Historial de conversación
-conversation_history = []
+# Historial de conversación (CRIT-2: bounded con deque para evitar OOM en sesiones largas)
+CONVERSATION_HISTORY_MAXLEN = 200
+conversation_history = deque(maxlen=CONVERSATION_HISTORY_MAXLEN)
 
 # ==================== UTILIDADES GENERALES ====================
 
@@ -2782,9 +2784,12 @@ def call_llm(user_message: str, tools: List[dict] = None, max_iterations: int = 
         iteration += 1
 
         # Construir mensajes incluyendo el historial actualizado en cada iteración
+        # CRIT-2: conversation_history es deque(maxlen=200) — slicing no soportado,
+        # usar list() para ventana de contexto
+        _history_window = list(conversation_history)[-(max_iterations*4+10):]
         messages = [
             {"role": "system", "content": local_system_content},
-            *conversation_history[-(max_iterations*4+10):] # Ventana de contexto amplia
+            *_history_window  # Ventana de contexto amplia
         ]
 
         # Seleccionar modelo basado en complejidad
