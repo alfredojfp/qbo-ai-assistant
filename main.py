@@ -2310,67 +2310,48 @@ def load_report_config(name: str) -> Optional[dict]:
 # ==================== PROCESAMIENTO CSV ====================
 
 def process_deposits_csv(csv_path: str) -> dict:
-    """Procesa archivo CSV de depósitos y los crea en batch"""
+    """Procesa archivo CSV de depósitos vía batch engine (Sprint 2).
+
+    HIGH-4 fix: ya no llama create_deposit() directamente. Delega a
+    tool_depositar_lote_csv(confirmar=True) que usa el BatchEngine con
+    state machine, dry-run obligatorio, y rollback seguro via storage.
+    Si una fila falla, no se queda con depósitos huérfanos en QBO.
+
+    Mantiene la return shape anterior {success, total, errors, success_count}
+    para backward compat con callers existentes.
+    """
     log_operation("csv_batches")
 
     if not os.path.exists(csv_path):
         return {"success": False, "error": f"Archivo no encontrado: {csv_path}"}
 
     try:
+        import pandas as pd
         df = pd.read_csv(csv_path)
+        total = len(df)
     except Exception as e:
         return {"success": False, "error": f"Error leyendo CSV: {e}"}
 
-    required_cols = ["customer_name", "amount", "from_account", "to_account", "date"]
-    missing_cols = [col for col in required_cols if col not in df.columns]
+    batch_result = tool_depositar_lote_csv(
+        ruta_archivo=csv_path,
+        confirmar=True,
+    )
 
-    if missing_cols:
-        return {"success": False, "error": f"Columnas faltantes: {missing_cols}"}
+    if not batch_result.get("success"):
+        return {
+            "success": False,
+            "total": total,
+            "success_count": 0,
+            "errors": batch_result.get("errors", [batch_result.get("error", "Batch falló")]),
+        }
 
-    results = {
-        "total": len(df),
-        "success": 0,
-        "errors": []
+    inner = batch_result.get("results", {})
+    return {
+        "success": True,
+        "total": total,
+        "success_count": inner.get("success", 0) if isinstance(inner, dict) else 0,
+        "errors": inner.get("errors", []) if isinstance(inner, dict) else [],
     }
-
-    for idx, row in df.iterrows():
-        # Buscar customer
-        customers = search_customer(row["customer_name"])
-        if not customers:
-            results["errors"].append(f"Fila {idx+1}: Cliente '{row['customer_name']}' no encontrado")
-            continue
-
-        customer_id = customers[0]["id"]
-
-        # Buscar cuentas
-        from_accounts = find_account(row["from_account"])
-        to_accounts = find_account(row["to_account"])
-
-        if not from_accounts or not to_accounts:
-            results["errors"].append(f"Fila {idx+1}: Cuenta no encontrada")
-            continue
-
-        from_account_id = from_accounts[0]["id"]
-        to_account_id = to_accounts[0]["id"]
-
-        # Crear depósito
-        deposit_result = create_deposit(
-            account_id=to_account_id,
-            line_items=[{
-                "amount": float(row["amount"]),
-                "from_account_id": from_account_id,
-                "customer_id": customer_id,
-                "description": row.get("memo", "")
-            }],
-            txn_date=parse_date(str(row["date"]))
-        )
-
-        if deposit_result["success"]:
-            results["success"] += 1
-        else:
-            results["errors"].append(f"Fila {idx+1}: {deposit_result['error']}")
-
-    return results
 
 def create_deposits_template():
     """Crea archivo CSV template para depósitos"""
