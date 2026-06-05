@@ -19,11 +19,11 @@ Resolver **47 bugs** identificados en auditoría estática (4-Jun-2026) en `main
 | Iteración | Severidad | # Bugs | Estado | Commits | Tests añadidos |
 |---|---|---|---|---|---|
 | **Iter 1** | 🟥 CRITICAL | 6 | ✅ **COMPLETADO** | 6/6 | 32 |
-| Iter 2 | 🟧 HIGH | 8 | ⏳ Pendiente | 0/8 | 0 |
+| **Iter 2** | 🟧 HIGH | 9 | ✅ **COMPLETADO** | 9/9 | 30 |
 | Iter 3 | 🟨 MEDIUM | 14 | ⏳ Pendiente | 0/14 | 0 |
 | Iter 4 | 🟦 LOW | 9 | ⏳ Pendiente | 0/9 | 0 |
 | Iter 5 | 🟪 Refactors | 11 | ⏳ Pendiente | 0/11 | 0 |
-| **TOTAL** | | **48** | | **6/48** | **32** |
+| **TOTAL** | | **49** | | **15/49** | **62** |
 
 ---
 
@@ -70,7 +70,7 @@ Resolver **47 bugs** identificados en auditoría estática (4-Jun-2026) en `main
 
 ---
 
-## 🟧 ITERACIÓN 2 — HIGH (pendiente)
+## 🟧 ITERACIÓN 2 — HIGH (✅ COMPLETADO)
 
 | ID | Bug | File | Estado |
 |---|---|---|---|
@@ -78,7 +78,7 @@ Resolver **47 bugs** identificados en auditoría estática (4-Jun-2026) en `main
 | HIGH-2 | `update_transaction` mezcla `sparse` body/URL param | `qbo_client.py:135, main.py:1367` | ✅ |
 | HIGH-3 | `void_transaction` sobreescribe `PrivateNote` | `main.py:1397-1409` | ✅ |
 | HIGH-4 | `process_deposits_csv` crea real QBO sin rollback | `main.py:2232-2293` | ✅ |
-| HIGH-5 | `procesar_reconciliacion_bancaria` N+1 query + partial writes | `main.py:2569-2723` | ⏳ |
+| HIGH-5 | `procesar_reconciliacion_bancaria` N+1 query + partial writes | `main.py:2569-2723` | ✅ (N+1 hoist; rollback en HIGH-5b) |
 | HIGH-6 | `upload_attachment` bypassa `qbo_request` | `main.py:1880-1934` | ⏳ |
 | HIGH-7 | `find_bank_account_id(category="BANK")` siempre retorna "" | `qbo_client.py:269, main.py:410` | ⏳ |
 | HIGH-8 | `qbo_query` no pagina > 1000 | `main.py:312-319` | ⏳ |
@@ -210,3 +210,7 @@ Pendiente para Iteración 5. Cubre:
 | 2026-06-04 | Iter 2 | HIGH-2 ✅ (commit b521046) — update_transaction sparse via URL param; 404 tests |
 | 2026-06-04 | Iter 2 | HIGH-3 ✅ (commit 67f673e) — void_transaction preserva PrivateNote; 407 tests |
 | 2026-06-04 | Iter 2 | HIGH-4 ✅ (commit 95b81dd) — process_deposits_csv delega a batch engine; 410 tests |
+| 2026-06-04 | Iter 2 | HIGH-7 ✅ (commit c1c02c2) — find_bank_account_id usa 'ACTIVO'; 413 tests |
+| 2026-06-04 | Iter 2 | HIGH-8 ✅ (commit 8cc5a01) — qbo_query auto-pagina > 1000; 417 tests |
+| 2026-06-04 | Iter 2 | HIGH-6 ✅ (commit 9096780) — upload_attachment usa qbo_request; 419 tests |
+| 2026-06-04 | Iter 2 | HIGH-5 ✅ (commit 78658e3) — hoist vendor lookup en reconciliación; 421 tests |
