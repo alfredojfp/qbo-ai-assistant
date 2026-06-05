@@ -20,7 +20,7 @@ Resolver **47 bugs** identificados en auditoría estática (4-Jun-2026) en `main
 |---|---|---|---|---|---|
 | **Iter 1** | 🟥 CRITICAL | 6 | ✅ **COMPLETADO** | 6/6 | 32 |
 | **Iter 2** | 🟧 HIGH | 9 | ✅ **COMPLETADO** | 9/9 | 30 |
-| Iter 3 | 🟨 MEDIUM | 14 | ⏳ Pendiente | 0/14 | 0 |
+| Iter 3 | 🟨 MEDIUM | 14 | 🔄 En progreso | 3/14 | 14 |
 | Iter 4 | 🟦 LOW | 9 | ⏳ Pendiente | 0/9 | 0 |
 | Iter 5 | 🟪 Refactors | 11 | ⏳ Pendiente | 0/11 | 0 |
 | **TOTAL** | | **49** | | **15/49** | **62** |
@@ -214,3 +214,6 @@ Pendiente para Iteración 5. Cubre:
 | 2026-06-04 | Iter 2 | HIGH-8 ✅ (commit 8cc5a01) — qbo_query auto-pagina > 1000; 417 tests |
 | 2026-06-04 | Iter 2 | HIGH-6 ✅ (commit 9096780) — upload_attachment usa qbo_request; 419 tests |
 | 2026-06-04 | Iter 2 | HIGH-5 ✅ (commit 78658e3) — hoist vendor lookup en reconciliación; 421 tests |
+| 2026-06-04 | Iter 3 | MED-1 ✅ (commit af0374e) — QB_REALM_ID validation; 425 tests |
+| 2026-06-04 | Iter 3 | MED-2 ✅ (commit f097212) — parse_date raise en inválido; 432 tests |
+| 2026-06-04 | Iter 3 | MED-4 ✅ (commit dedda35) — update_env_file atomic write; 435 tests |
