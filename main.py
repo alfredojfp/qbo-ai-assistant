@@ -4921,6 +4921,17 @@ def buscar_pdf_en_pending_bills(nombre_archivo: str = None) -> str:
     pdfs = glob.glob(os.path.join(carpeta_pending, "*.pdf"))
     pdfs.extend(glob.glob(os.path.join(carpeta_pending, "*.PDF")))
 
+    # MED-14 fix: si nombre_archivo es absolute path, retornarlo directo
+    # si existe (no buscar basename en Pending bills). Permite al usuario
+    # procesar PDFs desde cualquier ubicación (Downloads, /tmp, etc.).
+    if nombre_archivo and os.path.isabs(nombre_archivo):
+        if os.path.isfile(nombre_archivo):
+            print(f"✓ Absolute path: {nombre_archivo}")
+            return nombre_archivo
+        raise FileNotFoundError(
+            f"❌ Absolute path no encontrado: {nombre_archivo}"
+        )
+
     if not pdfs:
         raise FileNotFoundError(
             f"❌ No hay archivos PDF en '{carpeta_pending}'\n"
