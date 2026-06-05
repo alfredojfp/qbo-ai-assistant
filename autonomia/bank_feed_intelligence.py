@@ -30,6 +30,23 @@ from typing import Dict, List, Optional, Tuple
 
 CLASSIFICATION_HISTORY_FILE = "data/bank_feed_classification_history.json"
 
+
+def _get_classification_path() -> str:
+    """Retorna la ruta del archivo de clasificación para la empresa actual.
+    
+    Si hay una empresa activa, usa companies/{name}/classification_history.json.
+    Si no, usa el path por defecto.
+    """
+    try:
+        import main
+        company = getattr(main, "CURRENT_COMPANY", None)
+        if company and company.get("name"):
+            safe_name = company["name"].replace("/", "_").replace("\\", "_")
+            return f"companies/{safe_name}/classification_history.json"
+    except (ImportError, AttributeError):
+        pass
+    return CLASSIFICATION_HISTORY_FILE
+
 CONFIDENCE_EXACT = 100
 CONFIDENCE_REGEX = 95
 CONFIDENCE_FUZZY_HIGH_BASE = 80
@@ -293,7 +310,15 @@ class BankFeedClassificationEngine:
         }
 
 
-_classification_engine = BankFeedClassificationEngine()
+_classification_engines = {}  # cache: path → engine (por empresa)
+
+
+def _get_engine() -> BankFeedClassificationEngine:
+    """Retorna el engine de clasificación para la empresa actual."""
+    path = _get_classification_path()
+    if path not in _classification_engines:
+        _classification_engines[path] = BankFeedClassificationEngine(history_file=path)
+    return _classification_engines[path]
 
 
 def tool_analyze_bank_feed_for_classification(
@@ -301,10 +326,10 @@ def tool_analyze_bank_feed_for_classification(
     transactions: Optional[List[Dict]] = None,
     min_confidence: float = 0.7
 ) -> dict:
-    global _classification_engine
+    engine = _get_engine()
     if transactions is None:
         return {"success": False, "message": "Necesito transacciones para analizar"}
-    results = _classification_engine.analyze_pending_transactions(transactions, min_confidence)
+    results = engine.analyze_pending_transactions(transactions, min_confidence)
     return {"success": True, "account": account_name, "analysis": results}
 
 
@@ -317,30 +342,32 @@ def tool_record_bank_feed_classification(
     vendor: Optional[str] = None,
     qb_suggestion: Optional[str] = None
 ) -> dict:
-    global _classification_engine
-    _classification_engine.record_classification(
-        description, account_id, account_name, amount, date, vendor, qb_suggestion
-    )
-    return {"success": True, "message": "Clasificación registrada"}
+    engine = _get_engine()
+    try:
+        engine.record_classification(
+            description, account_id, account_name, amount, date, vendor, qb_suggestion
+        )
+        return {"success": True, "message": "Clasificación registrada"}
+    except Exception as e:
+        return {"success": False, "message": str(e)}
 
 
 def tool_get_classification_history_stats() -> dict:
-    global _classification_engine
-    total = len(_classification_engine.history["classifications"])
+    engine = _get_engine()
+    total = len(engine.history["classifications"])
     return {
         "success": True,
         "total_classifications": total,
-        "patterns_learned": len(_classification_engine.history["patterns"])
+        "patterns_learned": len(engine.history["patterns"])
     }
 
 
 def tool_find_pattern_for_transaction(description: str) -> dict:
-    """
-    Busca un patrón en el historial que coincida con la descripción.
+    """Busca un patrón en el historial que coincida con la descripción.
     Returns match_found=True si encuentra match con confidence >= 50%.
     """
-    global _classification_engine
-    result = _classification_engine.classify(description, 0.0)
+    engine = _get_engine()
+    result = engine.classify(description, 0.0)
     if result["confidence"] >= 50:
         return {
             "success": True,
