@@ -3061,6 +3061,9 @@ def procesar_reconciliacion_bancaria(csv_file: str) -> dict:
         'total_debits': float(total_debits),
         'mode': balance_mode
     }
+    return results
+
+
 SYSTEM_PROMPT = """
 Eres Dexter, un asistente de IA experto para QuickBooks. Tu tono es natural, amigable y profesional.
 Tu usuario se llama Alfredo, dirígete a él de manera respetuosa pero cercana.
