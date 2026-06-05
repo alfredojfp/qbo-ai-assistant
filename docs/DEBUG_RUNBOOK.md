@@ -2,7 +2,7 @@
 
 **Propósito:** Documento vivo con el plan de debug exhaustivo, progreso por iteración, tests agregados y commits generados.
 
-**Última actualización:** 5-Jun-2026 — Plan 49 bugs COMPLETADO (38/49 fixed) + 10/11 refactors ✅ (R-3 cancelado a pedido del usuario)
+**Última actualización:** 5-Jun-2026 — Plan 49 bugs COMPLETADO (38/49 fixed) + 10/11 refactors ✅ (R-3 cancelado) + UX-1 fix de re-auth interactivo
 
 ---
 
@@ -323,5 +323,6 @@ Cubre:
 | 2026-06-05 | Iter 5 | R-11 ✅ (commit 97f5e93) — CI workflow; 635 tests |
 | 2026-06-05 | Iter 5 | **R-3 ⏳ CANCELADO** — usuario decidió "No no lo aplicaremos" |
 | 2026-06-05 | Cierre | Plan 49 bugs: 38/49 (77.6%) fixed + 10/11 refactors ✅ |
+| 2026-06-05 | Post-plan | UX-1 ✅ (commit a91d1c9) — re-auth interactivo cuando refresh token expira; 641 tests |
 
 ---
