@@ -1443,8 +1443,22 @@ def delete_transaction(entity_name: str, entity_id: str, sync_token: str) -> dic
 
 
 def void_transaction(entity_name: str, entity_id: str, sync_token: str) -> dict:
-    """Anula (void) una transacción. Aplica a Payment, BillPayment, Invoice, SalesReceipt."""
+    """Anula (void) una transacción. Aplica a Payment, BillPayment, Invoice, SalesReceipt.
+
+    HIGH-3 fix: lee la transacción primero para preservar PrivateNote original
+    (e.g. BNK-RECON tag). Prepend "[VOIDED] " a la nota existente. Si la nota
+    está vacía/ausente o el read falla, usa "[VOIDED]" como fallback (no bloquea).
+    """
     log_operation(f"{entity_name}_voided")
+    existing_note = ""
+    try:
+        read_resp = qbo_request("GET", f"{entity_name}/{entity_id}")
+        if read_resp.status_code == 200:
+            data_key = entity_name[0].upper() + entity_name[1:]
+            existing_note = read_resp.json().get(data_key, {}).get("PrivateNote", "") or ""
+    except Exception:
+        existing_note = ""
+    void_note = f"[VOIDED] {existing_note}".strip() if existing_note else "[VOIDED]"
     response = qbo_request(
         "POST",
         entity_name,
@@ -1452,7 +1466,7 @@ def void_transaction(entity_name: str, entity_id: str, sync_token: str) -> dict:
         data={
             "Id": entity_id,
             "SyncToken": sync_token,
-            "PrivateNote": "[VOIDED]",
+            "PrivateNote": void_note,
         },
     )
     if response.status_code == 200:
