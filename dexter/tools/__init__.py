@@ -96,6 +96,8 @@ def verify_tool_integrity(verbose: bool = True) -> dict:
         "total_registered": len(ALL_FUNCTIONS),
         "orphans": [],
         "registered_unwired": [],
+        "not_dispatched": [],
+        "total_dispatched": 0,
     }
 
     try:
@@ -126,15 +128,28 @@ def verify_tool_integrity(verbose: bool = True) -> dict:
         if name not in schema_names:
             result["registered_unwired"].append(name)
 
-    result["ok"] = not (result["orphans"] or result["registered_unwired"])
+    # 3) Buscar schemas que NO están en TOOL_FUNCTIONS (LLM los ve, pero dispatch falla)
+    if hasattr(_main, "TOOL_FUNCTIONS"):
+        dispatch_names = set(_main.TOOL_FUNCTIONS.keys())
+        result["total_dispatched"] = len(dispatch_names)
+        for sname in schema_names:
+            if sname not in dispatch_names:
+                result["not_dispatched"].append(sname)
+
+    result["ok"] = not (
+        result["orphans"]
+        or result["registered_unwired"]
+        or result["not_dispatched"]
+    )
 
     if verbose and not result["ok"]:
         import sys
         sys.stderr.write("\n" + "=" * 70 + "\n")
         sys.stderr.write("⚠️  DEXTER TOOLS INTEGRITY CHECK FAILED\n")
         sys.stderr.write("=" * 70 + "\n")
-        sys.stderr.write(f"Wrappers tool_* en main.py: {result['total_wrappers']}\n")
+        sys.stderr.write(f"Wrappers tool_* en main.py:  {result['total_wrappers']}\n")
         sys.stderr.write(f"Tools registradas:           {result['total_registered']}\n")
+        sys.stderr.write(f"Tools en dispatch (TOOL_FUNCTIONS): {result['total_dispatched']}\n")
         if result["orphans"]:
             sys.stderr.write(
                 f"\n❌ {len(result['orphans'])} wrappers HUÉRFANAS (en main.py "
@@ -149,9 +164,17 @@ def verify_tool_integrity(verbose: bool = True) -> dict:
             )
             for u in result["registered_unwired"]:
                 sys.stderr.write(f"   - {u}\n")
+        if result["not_dispatched"]:
+            sys.stderr.write(
+                f"\n❌ {len(result['not_dispatched'])} schemas SIN dispatch en "
+                "TOOL_FUNCTIONS (LLM los ve pero el dispatch falla → "
+                "'Tool no encontrado'):\n"
+            )
+            for nd in result["not_dispatched"]:
+                sys.stderr.write(f"   - {nd}\n")
         sys.stderr.write(
-            "\nAcción: agrega el schema y FUNCTIONS en el módulo "
-            "dexter/tools/X.py apropiado.\n"
+            "\nAcción: agrega los entries faltantes a TOOL_FUNCTIONS en main.py "
+            "y/o schemas en dexter/tools/<modulo>.py apropiado.\n"
             + ("=" * 70)
             + "\n\n"
         )

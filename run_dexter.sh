@@ -25,7 +25,7 @@ PYTHON="${PYTHON:-python3}"
 
 echo "============================================================"
 echo "  DEXTER - QuickBooks AI Assistant"
-echo "  v4.0.0-dev (43 tools en 14 dominios)"
+echo "  v4.1.0-dev (100 tools en 21 dominios)"
 echo "============================================================"
 echo ""
 echo "Directorio: $SCRIPT_DIR"

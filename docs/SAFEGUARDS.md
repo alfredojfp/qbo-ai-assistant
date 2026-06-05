@@ -6,10 +6,16 @@ En Sprint 5 (refactor main.py → dexter/tools/) establecimos un patrón:
 - Cada tool nuevo sigue TDD con test en `tests/test_tools_aggregator.py`
 - Cada módulo en `dexter/tools/` exporta `SCHEMA` + `FUNCTIONS` + `KEYWORDS`
 - El agregador `dexter/tools/__init__.py` los une en `ALL_SCHEMAS` y `ALL_FUNCTIONS`
-- `main.py` define un wrapper `tool_xxx()` que se registra en el dispatch table
+- `main.py` define un wrapper `tool_xxx()` que se registra en `TOOL_FUNCTIONS` (dispatch table)
 
-**Bug que esto previene:** agregar un `tool_nuevo()` en main.py pero olvidar registrarlo
-en `dexter/tools/<modulo>.py`. El LLM no podría llamarlo aunque el código existe.
+**Bugs que esto previene:**
+1. agregar un `tool_nuevo()` en main.py pero olvidar registrarlo
+   en `dexter/tools/<modulo>.py`. El LLM no podría llamarlo aunque el código existe.
+2. agregar el schema y FUNCTIONS a `dexter/tools/<modulo>.py` pero olvidar agregar
+   el `tool_xxx` wrapper a `TOOL_FUNCTIONS` en main.py. El LLM ve el schema y llama
+   el tool, pero main.py responde "Tool no encontrado" → loop → "límite de iteraciones"
+   alcanzado → usuario frustrado. **Este bug es crítico** (afecta el flujo conversacional
+   completo) y no se detecta sin el safeguard.
 
 ## Solución: 3 capas de defensa
 
@@ -28,8 +34,10 @@ result = verify_tool_integrity(verbose=True)
 #   "ok": bool,
 #   "total_wrappers": int,  # wrappers únicos en main.py
 #   "total_registered": int,  # entries en ALL_FUNCTIONS
+#   "total_dispatched": int,  # entries en main.TOOL_FUNCTIONS
 #   "orphans": ["tool_xxx", ...],  # en main.py, NO en registry
 #   "registered_unwired": [...],  # en registry, sin schema
+#   "not_dispatched": [...],  # schemas SIN entry en TOOL_FUNCTIONS (LLM los ve pero dispatch falla)
 # }
 ```
 
@@ -68,24 +76,47 @@ git commit --no-verify
 
 ## Tests
 
-6 tests en `tests/test_tools_aggregator.py:TestVerifyToolIntegrity`:
-- `test_result_keys_present`: estructura del dict de retorno
+9 tests en `tests/test_tools_aggregator.py:TestVerifyToolIntegrity`:
+- `test_result_keys_present`: estructura del dict de retorno (incluye keys de dispatch)
 - `test_baseline_no_orphans`: estado limpio (100 tools, 0 gaps)
 - `test_detects_injected_orphan`: inyección de un `tool_test_xxx` huérfano
 - `test_verbose_writes_to_stderr_on_failure`: verbose=True escribe a stderr
 - `test_verbose_silent_when_ok`: verbose=True NO escribe si todo OK
 - `test_total_wrappers_count`: count de wrappers únicos == count registrados
+- `test_result_keys_include_dispatch_check`: incluye `not_dispatched` y `total_dispatched`
+- `test_all_schemas_are_dispatched`: 100/100 schemas tienen entry en `TOOL_FUNCTIONS`
+- `test_verbose_dispatch_failure_mentions_dispatch`: si hay gap de dispatch, el verbose lo menciona
 
-## Caso de estudio: el bug que cazó
+## Caso de estudio: los bugs que cazó
 
-Durante el desarrollo del safeguard, `verify_tool_integrity` detectó que
+### Bug 1: orphan en registry
+Durante el desarrollo inicial del safeguard, `verify_tool_integrity` detectó que
 `tool_procesar_lote_bills` (recién agregado) no estaba en
 `dexter/tools/ocr.py` (solo `procesar_lote_bills` sin prefijo `tool_`).
 Fix: agregar wrapper `tool_procesar_lote_bills` en main.py + cambiar import
 en `dexter/tools/ocr.py` de `procesar_lote_bills` a `tool_procesar_lote_bills`.
 
-Esto demuestra que el safeguard funciona: SIN él, el LLM no habría podido
-llamar `procesar_lote_bills` y el bug habría llegado a producción.
+### Bug 2: schema sin dispatch (CRÍTICO)
+Después de implementar el check de `not_dispatched`, el safeguard detectó que
+**57 tools** (todos los de Sprints 1+2+3) tenían schema y wrapper pero
+**faltaban en `TOOL_FUNCTIONS` en main.py**. Esto significa que el LLM llamaba
+el tool (veía el schema) → main.py respondía "Tool no encontrado" → el LLM
+intentaba de nuevo → 5 iteraciones → "límite de iteraciones" → usuario frustrado.
+
+**Síntoma reportado por el usuario:**
+> 👤 Tú: necesito que crees un nuevo cliente con el nombre Prueba1
+> 🤖 Se alcanzó el límite de iteraciones. Por favor, reformula tu pregunta.
+
+**Root cause:** `TOOL_FUNCTIONS` solo tenía 43 entries, pero `ALL_FUNCTIONS`
+tenía 100. 57 schemas no estaban conectados al dispatch.
+
+**Fix:** agregar los 57 entries faltantes a `TOOL_FUNCTIONS` en main.py
+(organizados por sprint). Después del fix, llamada real a QBO sandbox creó
+cliente con ID 62.
+
+Esto demuestra que el safeguard funciona para bugs críticos que
+**no se pueden detectar solo con tests unitarios** — el test pasa porque
+el wrapper existe, pero la integración end-to-end falla.
 
 ## Mantenimiento futuro
 

@@ -37,16 +37,20 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 **Solución: 3 capas de defensa** (ver [`SAFEGUARDS.md`](SAFEGUARDS.md)):
 
-- **Layer 1 — Runtime:** `verify_tool_integrity(verbose=False)` en `dexter/tools/__init__.py:90`. Auto-verify on import. Detecta:
+- **Layer 1 — Runtime:** `verify_tool_integrity(verbose=False)` en `dexter/tools/__init__.py`. Auto-verify on import. Detecta:
   - **Orphans:** `tool_*` wrappers en main.py que NO están en `ALL_FUNCTIONS` (LLM no los ve).
   - **Unwired:** entradas en `ALL_FUNCTIONS` sin schema correspondiente.
+  - **Not dispatched:** schemas en `ALL_SCHEMAS` que NO están en `main.TOOL_FUNCTIONS` (LLM los ve pero dispatch falla con 'Tool no encontrado' → 'límite de iteraciones').
   - Opt-in strict via `os.environ["DEXTER_STRICT_INTEGRITY"]="1"` → raise `RuntimeError`.
 - **Layer 2 — CLI:** `scripts/verify_tool_integrity.py` standalone. Exit 0 si ok, exit 1 si gaps. Útil para CI.
-- **Layer 3 — Pre-commit hook:** `.git/hooks/pre-commit` (instalado y probado). Bloquea `git commit` si hay gaps. Para forzar: `git commit --no-verify`.
+- **Layer 3 — Pre-commit hook:** `.githooks/pre-commit` (trackeable en git). Bloquea `git commit` si hay gaps. Configurar: `git config core.hooksPath .githooks`. Para forzar: `git commit --no-verify`.
 
-**Bug real cazado durante desarrollo:** `tool_procesar_lote_bills` no estaba en `dexter/tools/ocr.py` (solo `procesar_lote_bills` sin prefijo `tool_`). Sin el safeguard, el LLM no habría podido llamar este tool. Fix: wrapper en main.py + import fix en ocr.py.
+**Bugs reales cazados durante desarrollo:**
 
-**Tests:** 6 nuevos en `tests/test_tools_aggregator.py:TestVerifyToolIntegrity` (test_result_keys_present, test_baseline_no_orphans, test_detects_injected_orphan, test_verbose_writes_to_stderr_on_failure, test_verbose_silent_when_ok, test_total_wrappers_count).
+1. **`tool_procesar_lote_bills` no estaba en `dexter/tools/ocr.py`** (solo `procesar_lote_bills` sin prefijo `tool_`). Sin el safeguard, el LLM no habría podido llamar este tool. Fix: wrapper en main.py + import fix en ocr.py.
+2. **57 tools sin dispatch en `TOOL_FUNCTIONS`** (todos los de Sprints 1+2+3: `crear_cliente`, `crear_vendor`, `actualizar_*`, `reporte_*`, etc.). El LLM llamaba el tool → main.py respondía "Tool no encontrado" → iteración se repetía → "límite de iteraciones" alcanzado. Usuario no podía crear clientes. **Bug crítico detectado por el safeguard extendido**. Fix: agregar 58 entries a `TOOL_FUNCTIONS` en main.py (organizados por sprint 1A/1B/1C/1E/1F/2/3 + admin).
+
+**Tests:** 9 nuevos en `tests/test_tools_aggregator.py:TestVerifyToolIntegrity` (test_result_keys_present, test_baseline_no_orphans, test_detects_injected_orphan, test_verbose_writes_to_stderr_on_failure, test_verbose_silent_when_ok, test_total_wrappers_count, test_result_keys_include_dispatch_check, test_all_schemas_are_dispatched, test_verbose_dispatch_failure_mentions_dispatch).
 
 ### 🔄 Cambiado
 - `qbo_request()` pineado con `?minorversion=70` (configurable via env `QB_MINOR_VERSION`) — protege contra breaking changes de QBO API.
@@ -56,11 +60,12 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - `dexter/tools/ocr.py` ahora importa `tool_procesar_lote_bills` (wrapper) en vez de `procesar_lote_bills` (función interna) — consistencia con el patrón wrapper.
 
 ### 📊 Métricas
-- **Tests:** 311 → 354 pasando (+43 nuevos: 31 Sprints + 6 P2 reports + 6 safeguards + 6 error_log preexisting).
+- **Tests:** 311 → 357 pasando (+46 nuevos: 31 Sprints + 6 P2 reports + 9 safeguards + 6 error_log preexisting).
 - **Tools:** 46 → 100 (+54 nuevos, 117% más).
 - **Módulos:** 14 → 21 (+7 nuevos).
-- **main.py:** 3,608 → 5,253 líneas (+1,645).
+- **main.py:** 3,608 → 5,295 líneas (+1,687) — incluye 100 entries en `TOOL_FUNCTIONS` (era 43) + 58 entries nuevos agregados en este fix.
 - **Cobertura QBO API:** 45% → 93% (gap residual: 4 P2 opcionales: `crear_companycurrency`, `actualizar_preferences`, `actualizar_companyinfo`, `webhook_setup`).
+- **Bug fix end-to-end:** `crear_cliente` ahora funciona — verificado con llamada real a QBO sandbox (cliente ID 62 creado).
 
 ---
 

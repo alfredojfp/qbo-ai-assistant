@@ -652,6 +652,53 @@ class TestVerifyToolIntegrity(unittest.TestCase):
         result = verify_tool_integrity(verbose=False)
         self.assertEqual(result["total_wrappers"], result["total_registered"])
 
+    def test_result_keys_include_dispatch_check(self):
+        from dexter.tools import verify_tool_integrity
+        result = verify_tool_integrity(verbose=False)
+        for key in ("not_dispatched", "total_dispatched"):
+            self.assertIn(key, result)
+
+    def test_all_schemas_are_dispatched(self):
+        """Cada schema expuesto al LLM debe tener un entry en TOOL_FUNCTIONS.
+        Si no, el LLM llama el tool y main.py responde 'Tool no encontrado'
+        → 'límite de iteraciones' → usuario frustrado.
+        Bug que motivó esta verificación: 'crear_cliente' faltaba en TOOL_FUNCTIONS
+        (definido en main.py + schema en dexter/tools/transactions.py, pero no
+        registrado en el dispatch table)."""
+        from dexter.tools import verify_tool_integrity
+        result = verify_tool_integrity(verbose=False)
+        self.assertEqual(
+            result["not_dispatched"], [],
+            f"Hay {len(result['not_dispatched'])} schemas sin dispatch: "
+            f"{result['not_dispatched']}"
+        )
+
+    def test_verbose_dispatch_failure_mentions_dispatch(self):
+        import io
+        import sys
+        from dexter.tools import verify_tool_integrity
+        # Forzar un gap: registrar un tool pero NO agregarlo a TOOL_FUNCTIONS
+        from dexter.tools import ALL_SCHEMAS
+        from dexter.tools import _extract_name
+        # Tomar un nombre de schema que SÍ esté dispatched y simular que no
+        # (monkey-patching en main.TOOL_FUNCTIONS)
+        import main
+        if main.TOOL_FUNCTIONS:
+            sample_key = next(iter(main.TOOL_FUNCTIONS))
+            if sample_key in main.TOOL_FUNCTIONS:
+                saved = main.TOOL_FUNCTIONS.pop(sample_key)
+                try:
+                    captured = io.StringIO()
+                    old = sys.stderr
+                    sys.stderr = captured
+                    try:
+                        verify_tool_integrity(verbose=True)
+                    finally:
+                        sys.stderr = old
+                    self.assertIn("dispatch", captured.getvalue().lower())
+                finally:
+                    main.TOOL_FUNCTIONS[sample_key] = saved
+
 
 if __name__ == "__main__":
     unittest.main()

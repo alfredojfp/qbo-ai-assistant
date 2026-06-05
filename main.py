@@ -4807,6 +4807,7 @@ TOOL_FUNCTIONS = {
     "limpiar_tags_reconciliacion": tool_limpiar_tags_reconciliacion,
     "depositar_lote_csv": tool_depositar_lote_csv,
     "procesar_lote_bills": tool_procesar_lote_bills,
+    "crear_cliente": tool_crear_cliente,
 
     # ========== CAPACIDADES DE AUTONOMÍA ==========
 
@@ -4840,6 +4841,80 @@ TOOL_FUNCTIONS = {
     "generarreportecustom": tool_generate_custom_report,
     "parsearfecha": tool_parse_date_expression,
     "gestionar_empresas": tool_gestionar_empresas,
+
+    # ========== SPRINT 1+2+3: 57 tools nuevos (completan cobertura QBO API 93%) ==========
+
+    # Sprint 1A — Master Data
+    "crear_vendor": tool_crear_vendor,
+    "crear_cuenta": tool_crear_cuenta,
+    "crear_item": tool_crear_item,
+    "crear_empleado": tool_crear_empleado,
+    "crear_clase": tool_crear_clase,
+    "crear_departamento": tool_crear_departamento,
+    "crear_termino": tool_crear_termino,
+    "crear_paymentmethod": tool_crear_paymentmethod,
+
+    # Sprint 1B — Transacciones faltantes
+    "crear_billpayment": tool_crear_billpayment,
+    "crear_estimate": tool_crear_estimate,
+    "crear_salesreceipt": tool_crear_salesreceipt,
+    "crear_creditmemo": tool_crear_creditmemo,
+    "crear_purchase": tool_crear_purchase,
+    "crear_purchaseorder": tool_crear_purchaseorder,
+    "crear_refundreceipt": tool_crear_refundreceipt,
+    "crear_vendorcredit": tool_crear_vendorcredit,
+    "crear_timeactivity": tool_crear_timeactivity,
+
+    # Sprint 1C — Update/Void/Delete/Send
+    "actualizar_cliente": tool_actualizar_cliente,
+    "actualizar_vendor": tool_actualizar_vendor,
+    "actualizar_factura": tool_actualizar_factura,
+    "actualizar_bill": tool_actualizar_bill,
+    "eliminar_transaccion": tool_eliminar_transaccion,
+    "void_transaccion": tool_void_transaccion,
+    "desactivar_cliente": tool_desactivar_cliente,
+    "desactivar_vendor": tool_desactivar_vendor,
+    "enviar_factura": tool_enviar_factura,
+    "enviar_orden_compra": tool_enviar_orden_compra,
+
+    # Sprint 1E — Reportes nativos (10 P1 + 6 P2 = 16)
+    "reporte_trial_balance": tool_reporte_trial_balance,
+    "reporte_general_ledger": tool_reporte_general_ledger,
+    "reporte_cash_flow": tool_reporte_cash_flow,
+    "reporte_ar_aging": tool_reporte_ar_aging,
+    "reporte_ap_aging": tool_reporte_ap_aging,
+    "reporte_customer_balance": tool_reporte_customer_balance,
+    "reporte_vendor_balance": tool_reporte_vendor_balance,
+    "reporte_pl_detail": tool_reporte_pl_detail,
+    "reporte_journal": tool_reporte_journal,
+    "reporte_account_list": tool_reporte_account_list,
+    "reporte_inventory_valuation": tool_reporte_inventory_valuation,
+    "reporte_sales_by_customer": tool_reporte_sales_by_customer,
+    "reporte_expenses_by_vendor": tool_reporte_expenses_by_vendor,
+    "reporte_transaction_list": tool_reporte_transaction_list,
+    "reporte_class_sales": tool_reporte_class_sales,
+    "reporte_department_sales": tool_reporte_department_sales,
+
+    # Sprint 1F — Lectura directa
+    "leer_companyinfo": tool_leer_companyinfo,
+    "leer_preferencias": tool_leer_preferencias,
+    "consulta_avanzada": tool_consulta_avanzada,
+
+    # Sprint 2 — Recurring+Attachments
+    "crear_recurringtransaction": tool_crear_recurringtransaction,
+    "adjuntar_archivo": tool_adjuntar_archivo,
+
+    # Sprint 3 — P2 avanzado
+    "crear_taxcode": tool_crear_taxcode,
+    "crear_taxrate": tool_crear_taxrate,
+    "leer_exchange_rate": tool_leer_exchange_rate,
+    "ejecutar_batch": tool_ejecutar_batch,
+    "cdc_query": tool_cdc_query,
+    "crear_budget": tool_crear_budget,
+
+    # Admin — log de errores
+    "ver_log_errores": tool_ver_log_errores,
+    "limpiar_log_errores": tool_limpiar_log_errores,
 }
 
 
@@ -5015,7 +5090,7 @@ def show_main_menu() -> str:
         "  • 'salir' / 'exit'    - Termina la sesión\n"
         "\n"
         "💡 Habla con naturalidad para todo lo demás. El LLM interpreta\n"
-        "   y llama el tool correcto (43 tools disponibles en 14 dominios).\n"
+        "   y llama el tool correcto (100 tools disponibles en 21 dominios).\n"
     )
 
 
