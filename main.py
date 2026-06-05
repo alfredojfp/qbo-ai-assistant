@@ -409,11 +409,17 @@ def qbo_query(sql: str) -> dict:
     aggregated = first.json()
     qr = aggregated.get("QueryResponse", {})
 
-    entity_keys = [k for k in qr.keys() if k not in ("maxResults", "startPosition", "time", "QueryResponse")]
+    entity_keys = [k for k in qr.keys() if k not in ("maxResults", "startPosition", "time",
+                                                          "totalCount", "QueryResponse")]
     if not entity_keys:
         return aggregated
     entity_key = entity_keys[0]
-    rows = list(qr.get(entity_key, []))
+    raw = qr.get(entity_key, [])
+    try:
+        rows = list(raw)
+    except TypeError:
+        # entity_key apunta a escalar (ej: totalCount), no a lista
+        return aggregated
 
     page_size = 1000
     start_position = len(rows) + 1
