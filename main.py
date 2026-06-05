@@ -5556,9 +5556,23 @@ def show_main_menu() -> str:
 
 
 def main_loop():
-    """Loop principal conversacional (estilo Claude Code / opencode)."""
+    """Loop principal conversacional (estilo Claude Code / opencode).
+
+    LOW-2 fix: usa try/finally alrededor del while para garantizar
+    save_session_to_csv() en cualquier salida (normal, Ctrl+C, o
+    excepción). Adicionalmente, atexit.register() se llama una vez
+    al import (safety net para SIGTERM/SIGKILL limpio).
+    """
     print("🤖 DEXTER listo. Escribe 'menu' o '?' para ver la ayuda. 'salir' para terminar.\n")
 
+    try:
+        _main_loop_body()
+    finally:
+        _close_session_safely()
+
+
+def _main_loop_body():
+    """Cuerpo principal del loop, separado para try/finally en main_loop."""
     while True:
         try:
             user_input = input("👤 Tú: ").strip()
@@ -5617,30 +5631,56 @@ def main_loop():
             import traceback
             traceback.print_exc()
 
-    # Cerrar sesión
-    print("\n" + "="*70)
-    print("Cerrando sesión...")
 
-    duration = (datetime.now() - session_state["start_time"]).total_seconds() / 60
-    total_tokens = session_state["input_tokens"] + session_state["output_tokens"]
-    cost = calculate_session_cost()
+_session_already_closed = False
 
-    print("\n📊 RESUMEN DE LA SESIÓN")
-    print("="*70)
-    print(f"  Duración: {duration:.0f} minutos")
-    print(f"  Tokens: {total_tokens:,}")
-    print(f"    • Input: {session_state['input_tokens']:,}")
-    print(f"    • Output: {session_state['output_tokens']:,}")
-    print(f"  Costo: ${cost:.4f}")
-    print(f"  Operaciones: {sum(session_state['operations'].values())}")
 
-    for op, count in session_state["operations"].items():
-        if count > 0:
-            print(f"    • {op}: {count}")
+def _close_session_safely() -> None:
+    """Cierra sesión con print de resumen y save idempotente.
 
-    save_session_to_csv()
-    print("\n✅ Sesión guardada exitosamente")
-    print("="*70)
+    LOW-2 fix: se llama desde main_loop() finally block. Idempotente
+    (LOW-2b): usa _session_already_closed para que atexit y finally
+    no escriban dos veces el CSV.
+    """
+    global _session_already_closed
+    if _session_already_closed:
+        return
+    _session_already_closed = True
+
+    try:
+        print("\n" + "=" * 70)
+        print("Cerrando sesión...")
+
+        duration = (datetime.now() - session_state["start_time"]).total_seconds() / 60
+        total_tokens = session_state["input_tokens"] + session_state["output_tokens"]
+        cost = calculate_session_cost()
+
+        print("\n📊 RESUMEN DE LA SESIÓN")
+        print("=" * 70)
+        print(f"  Duración: {duration:.0f} minutos")
+        print(f"  Tokens: {total_tokens:,}")
+        print(f"    • Input: {session_state['input_tokens']:,}")
+        print(f"    • Output: {session_state['output_tokens']:,}")
+        print(f"  Costo: ${cost:.4f}")
+        print(f"  Operaciones: {sum(session_state['operations'].values())}")
+
+        for op, count in session_state["operations"].items():
+            if count > 0:
+                print(f"    • {op}: {count}")
+
+        save_session_to_csv()
+        print("\n✅ Sesión guardada exitosamente")
+        print("=" * 70)
+    except Exception as e:
+        print(f"\n⚠️ Error cerrando sesión: {e}")
+        try:
+            _log_error(e, category="user_input", user_input="<session_close>")
+        except Exception:
+            pass
+
+
+import atexit as _atexit
+_atexit.register(_close_session_safely)
 
 # ==================== ENTRY POINT ====================
 
