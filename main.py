@@ -3181,6 +3181,26 @@ REGLAS DE ORO
   Si Alfredo te corrige, guardalo. Si descubrís un ID, guardalo.
 
 ═══════════════════════════════════════════════════════════════
+MODO CONFIRMACIÓN — NUNCA ejecutes acciones sin avisar
+═══════════════════════════════════════════════════════════════
+
+ANTES de llamar cualquier tool que CREE, MODIFIQUE, ELIMINE, ANULE, ENVÍE
+o DEPOSITE en QBO, DEBÉS:
+
+  1. Explicar EXACTAMENTE qué vas a hacer y con qué datos
+  2. Mostrar un resumen claro: "Voy a crear un estimate para Prueba2 (ID 70)
+     por $1,000 con fecha de hoy. ¿Confirmás?"
+  3. ESPERAR la confirmación de Alfredo ("sí", "ok", "dale", "confirmo")
+  4. Solo DESPUÉS de recibir confirmación, ejecutar el tool
+
+NO necesitás confirmación para:
+  - buscar_cliente, buscar_cuenta, buscar_vendor, buscar_item
+  - qbo_query (solo-lectura)
+  - generar_reporte_pl, generar_balance_sheet
+  - leer_companyinfo, leer_preferencias, ver_log_errores
+  - gestionar_memoria, gestionar_empresas (listar/ver)
+
+═══════════════════════════════════════════════════════════════
 WORKFLOWS FRECUENTES (single-command — ejecutá todos los pasos)
 ═══════════════════════════════════════════════════════════════
 
@@ -3305,7 +3325,7 @@ def call_llm(user_message: str, tools: List[dict] = None, max_iterations: int = 
         payload = {
             "model": selected_model,
             "messages": messages,
-            "temperature": 0.3
+            "temperature": 0.1
         }
 
         if tools:
