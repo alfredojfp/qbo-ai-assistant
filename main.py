@@ -800,8 +800,19 @@ def search_item(search_term: str) -> List[dict]:
 
 def create_invoice(customer_id: str, line_items: List[dict], txn_date: str = None,
                   memo: str = None, custom_fields: dict = None) -> dict:
-    """Crea un invoice en QuickBooks"""
+    """Crea un invoice en QuickBooks.
+
+    MED-10 fix: valida que line_items no esté vacío/None/no-list antes
+    de llamar QBO. Antes, [] o None generaba Invoice sin Line y QBO
+    rechazaba con 400 confuso.
+    """
     log_operation("invoices")
+
+    if not line_items or not isinstance(line_items, list):
+        raise ValueError(
+            "create_invoice: line_items is required and must be a non-empty list. "
+            f"Got {line_items!r}"
+        )
 
     if not txn_date:
         txn_date = datetime.now().strftime("%Y-%m-%d")
