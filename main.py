@@ -3366,7 +3366,11 @@ def call_llm(user_message: str, tools: List[dict] = None, max_iterations: int = 
             arg_preview = ", ".join(f"{k}={v}" for k, v in list(arguments.items())[:2])
             if len(arguments) > 2:
                 arg_preview += ", ..."
-            print(f"  🔧 {function_name}({arg_preview})" if arg_preview else f"  🔧 {function_name}")
+            try:
+                from dexter.console import tool_start
+                tool_start(function_name, arg_preview)
+            except ImportError:
+                print(f"  🔧 {function_name}({arg_preview})" if arg_preview else f"  🔧 {function_name}")
 
             # Ejecutar tool
             if function_name in TOOL_FUNCTIONS:
@@ -3405,7 +3409,12 @@ def call_llm(user_message: str, tools: List[dict] = None, max_iterations: int = 
             summary = result_str[:100].replace("\n", " ")
             if len(result_str) > 100:
                 summary += f"... ({len(result_str)} chars)"
-            print(f"       → {summary}")
+            try:
+                from dexter.console import tool_result
+                is_ok = '"error"' not in result_str[:50].lower()
+                tool_result(summary, success=is_ok)
+            except ImportError:
+                print(f"       → {summary}")
 
         # Continuar iteración (el LLM procesará los resultados de los tools)
 
@@ -5911,14 +5920,13 @@ def show_main_menu() -> str:
 
 
 def main_loop():
-    """Loop principal conversacional (estilo Claude Code / opencode).
-
-    LOW-2 fix: usa try/finally alrededor del while para garantizar
-    save_session_to_csv() en cualquier salida (normal, Ctrl+C, o
-    excepción). Adicionalmente, atexit.register() se llama una vez
-    al import (safety net para SIGTERM/SIGKILL limpio).
-    """
-    print("🤖 DEXTER listo. Escribe 'menu' o '?' para ver la ayuda. 'salir' para terminar.\n")
+    """Loop principal conversacional (estilo Claude Code / opencode)."""
+    try:
+        from dexter.console import console
+        console.print("  [dim]DEXTER listo. 'menu' para ayuda, 'salir' para terminar.[/dim]")
+        console.print()
+    except ImportError:
+        print("🤖 DEXTER listo. Escribe 'menu' o '?' para la ayuda. 'salir' para terminar.\n")
 
     try:
         _main_loop_body()
@@ -5930,7 +5938,12 @@ def _main_loop_body():
     """Cuerpo principal del loop, separado para try/finally en main_loop."""
     while True:
         try:
-            user_input = input("👤 Tú: ").strip()
+            # Usar Rich prompt si está disponible, sino input() normal
+            try:
+                from dexter.console import user_prompt as _rich_prompt
+                user_input = _rich_prompt().strip()
+            except ImportError:
+                user_input = input("👤 Tú: ").strip()
 
             if not user_input:
                 continue
@@ -5953,11 +5966,19 @@ def _main_loop_body():
                 continue
 
             # Llamar al LLM con tools
-            print("\n🤖 ", end="", flush=True)
+            try:
+                from dexter.console import assistant_label, assistant_response as _rich_response
+                assistant_label()
+            except ImportError:
+                print("\n🤖 ", end="", flush=True)
 
             try:
                 response = call_llm(user_input, tools=TOOLS)
-                print(f"{response}\n")
+                try:
+                    from dexter.console import assistant_response as _ar
+                    _ar(response)
+                except ImportError:
+                    print(f"{response}\n")
             except KeyboardInterrupt:
                 print("\n[Interrupción detectada]\n")
                 break
@@ -6207,11 +6228,12 @@ TOOL_FUNCTIONS["gestionar_memoria"] = tool_gestionar_memoria
 
 if __name__ == "__main__":
 
-    # ASCII Art Banner
-    # Banner
-    print("-" * 70)
-    print(" " * 20 + "DEXTER - AI Assistant v1.0")
-    print("-" * 70)
+    from dexter.console import (banner, header, success, error,
+                                 user_prompt, assistant_label, assistant_response,
+                                 status_msg, console)
+
+    # Banner principal
+    banner("🧠  DEXTER  ·  QBO Assistant", version="4.1.0-dev")
 
     # ---------------------------------------------------------------
     # SELECTOR DE EMPRESA (MULTI-COMPANY)
@@ -6222,18 +6244,17 @@ if __name__ == "__main__":
     CURRENT_COMPANY = load_current_company()
 
     if CURRENT_COMPANY:
-        print(f"📁 Empresa activa: {CURRENT_COMPANY['name']}")
-        print(f"   Realm ID: {CURRENT_COMPANY['realm_id']}")
-        print()
-        cambiar = input("¿Deseas cambiar de empresa? (s/N): ").strip().lower()
+        header(f"📁 {CURRENT_COMPANY['name']} · Realm {CURRENT_COMPANY['realm_id']}")
+        cambiar = input("  ¿Cambiar de empresa? (s/N): ").strip().lower()
         if cambiar in ["s", "si", "sí", "y", "yes"]:
             CURRENT_COMPANY = None
+            console.print()
 
     # Si no hay empresa seleccionada, mostrar selector
     if not CURRENT_COMPANY:
         CURRENT_COMPANY = select_company_interactive(QB_REALM_ID)
         if not CURRENT_COMPANY:
-            print("❌ No se seleccionó ninguna empresa. Saliendo...")
+            error("No se seleccionó ninguna empresa.")
             exit(0)
 
     # Guardar selección
@@ -6250,13 +6271,12 @@ if __name__ == "__main__":
         print(f"🔑 Tokens cargados específicamente para {CURRENT_COMPANY['name']}")
 
     # Cargar contexto de la empresa
-    print(f"📊 Cargando contexto de {CURRENT_COMPANY['name']}...")
+    status_msg(f"Cargando contexto de {CURRENT_COMPANY['name']}...")
     COMPANY_CONTEXT = load_company_context(CURRENT_COMPANY['name'])
 
     # Cargar Chart of Accounts específico de esta empresa
     if COMPANY_CONTEXT.get("chart_of_accounts"):
         session_state["chart_of_accounts"] = COMPANY_CONTEXT["chart_of_accounts"]
-        print(f"✅ Chart cargado desde caché ({len(COMPANY_CONTEXT['chart_of_accounts'])} cuentas)")
     else:
         session_state["chart_of_accounts"] = load_chart_of_accounts()
         COMPANY_CONTEXT["chart_of_accounts"] = session_state["chart_of_accounts"]
@@ -6265,17 +6285,15 @@ if __name__ == "__main__":
     # Cargar otros contextos
     if COMPANY_CONTEXT.get("saved_reports"):
         session_state["saved_reports"] = COMPANY_CONTEXT["saved_reports"]
-
-    # Cargar idioma preferido
     if COMPANY_CONTEXT.get("language"):
         session_state["language"] = COMPANY_CONTEXT["language"]
 
-    print("✅ Contexto cargado:")
-    print(f"   - {len(COMPANY_CONTEXT['chart_of_accounts'])} cuentas")
-    print(f"   - {len(COMPANY_CONTEXT.get('saved_reports', {}))} reportes")
-    print(f"   - {len(COMPANY_CONTEXT.get('bank_feed_rules', {}))} reglas")
-    print(f"   - Idioma: {session_state['language'].upper()}")
-    print()
+    n_accounts = len(session_state.get("chart_of_accounts", {}))
+    n_reports = len(COMPANY_CONTEXT.get("saved_reports", {}))
+    n_rules = len(COMPANY_CONTEXT.get("bank_feed_rules", {}))
+    lang = session_state.get("language", "es").upper()
+    status_msg(f"Contexto: {n_accounts} cuentas · {n_reports} reportes · {n_rules} reglas · {lang}")
+    console.print()
 
     # Verificar credenciales mínimas
     missing_creds = []
@@ -6295,11 +6313,10 @@ if __name__ == "__main__":
 
     # Verificar conexión a QuickBooks (UX-1: ofrece re-auth si refresh falla)
     if not _verify_qbo_connection_or_offer_reauth():
-        print("\n❌ No se pudo establecer conexión con QuickBooks.")
-        print("   Si QBO está temporalmente caído, vuelve a intentar en unos minutos.")
-        print("   Si el refresh token expiró, corre: python3 scripts/oauth_flow.py")
+        error("No se pudo establecer conexión con QuickBooks.")
+        info("Si el refresh token expiró, ejecutá: python3 scripts/oauth_flow.py")
         exit(1)
-    print()
+    console.print()
 
     # Asegurar Chart of Accounts cargado en session_state
     if not session_state.get("chart_of_accounts"):

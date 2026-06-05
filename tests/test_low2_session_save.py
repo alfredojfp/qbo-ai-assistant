@@ -49,9 +49,10 @@ class TestSessionSaveOnInterrupt(unittest.TestCase):
     def test_save_runs_after_keyboard_interrupt_in_call_llm(self):
         """GREEN: si KeyboardInterrupt ocurre en call_llm, save corre igual."""
         import main
+        from dexter.console import user_prompt as _rich_prompt
         with patch("main.call_llm", side_effect=KeyboardInterrupt), \
              patch("main.save_session_to_csv") as mock_save, \
-             patch("main.input", return_value="hola"):
+             patch("dexter.console.user_prompt", return_value="hola"):
             try:
                 main.main_loop()
             except (KeyboardInterrupt, StopIteration, EOFError, Exception):
@@ -62,7 +63,7 @@ class TestSessionSaveOnInterrupt(unittest.TestCase):
     def test_save_runs_when_main_loop_exits_normally(self):
         """GREEN: cuando main_loop retorna normalmente, save corre."""
         import main
-        with patch("main.input", side_effect=["hola", "salir"]), \
+        with patch("dexter.console.user_prompt", side_effect=["hola", "salir"]), \
              patch("main.process_quick_command", return_value=None), \
              patch("main.call_llm", return_value="respuesta"), \
              patch("main.save_session_to_csv") as mock_save:
