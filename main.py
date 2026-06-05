@@ -444,22 +444,43 @@ def _inject_startposition(sql: str, position: int) -> str:
 
 # ==================== CHART OF ACCOUNTS ====================
 
+CHART_SCHEMA_VERSION = 2  # LOW-4: bump cuando cambia estructura de accounts
+
+
 def load_chart_of_accounts(force_refresh: bool = False) -> dict:
-    """Carga Chart of Accounts desde QBO (con caché opcional)"""
-    # Intentar cargar desde caché si no es refresh forzado
+    """Carga Chart of Accounts desde QBO (con caché opcional).
+
+    LOW-4 fix: el cache incluye schema_version + company_realm_id.
+    Si el schema difiere o el realm es OTRA empresa, ignora el cache
+    y re-descarga de QBO. Esto evita que un cambio de estructura
+    en el código cargue datos viejos incompatibles.
+    """
+    current_realm = os.environ.get("QB_REALM_ID", "")
+
     if not force_refresh and os.path.exists(FILE_CHART_CACHE):
         try:
             with open(FILE_CHART_CACHE, 'r') as f:
                 cache = json.load(f)
-                cache_date = datetime.fromisoformat(cache.get("last_updated", "2020-01-01"))
 
+            cache_schema = cache.get("schema_version")
+            cache_realm = cache.get("company_realm_id")
+            cache_date_str = cache.get("last_updated", "2020-01-01")
+
+            if cache_schema != CHART_SCHEMA_VERSION:
+                print(f"⚠️ Cache schema desactualizado (v{cache_schema} → "
+                      f"v{CHART_SCHEMA_VERSION}); re-descargando...")
+            elif cache_realm != current_realm:
+                print(f"⚠️ Cache de realm '{cache_realm}' (actual: "
+                      f"'{current_realm}'); re-descargando...")
+            else:
+                cache_date = datetime.fromisoformat(cache_date_str)
                 if datetime.now() - cache_date < timedelta(days=1):
-                    print(f"📊 Chart of Accounts cargado desde caché ({len(cache['accounts'])} cuentas)")
+                    print(f"📊 Chart of Accounts cargado desde caché "
+                          f"({len(cache['accounts'])} cuentas)")
                     return cache["accounts"]
         except Exception as e:
             print(f"⚠️ Error leyendo caché: {e}")
 
-    # Cargar desde QBO
     print("📥 Descargando Chart of Accounts desde QuickBooks Online...")
     sql = "SELECT * FROM Account WHERE Active = true"
     result = qbo_query(sql)
@@ -470,7 +491,6 @@ def load_chart_of_accounts(force_refresh: bool = False) -> dict:
 
     accounts_data = result.get("QueryResponse", {}).get("Account", [])
 
-    # Procesar cuentas
     chart = {}
     categories = {"ACTIVO": 0, "PASIVO": 0, "INGRESO": 0, "GASTO": 0, "OTRO": 0}
 
@@ -492,8 +512,9 @@ def load_chart_of_accounts(force_refresh: bool = False) -> dict:
 
         categories[category] += 1
 
-    # Guardar caché
     cache_data = {
+        "schema_version": CHART_SCHEMA_VERSION,
+        "company_realm_id": current_realm,
         "last_updated": datetime.now().isoformat(),
         "accounts": chart
     }
