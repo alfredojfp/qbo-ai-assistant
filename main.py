@@ -96,7 +96,18 @@ QB_REALM_ID = os.getenv("QB_REALM_ID")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 # URLs QuickBooks
-QB_BASE_URL = f"https://sandbox-quickbooks.api.intuit.com/v3/company/{QB_REALM_ID}"
+def _build_qb_base_url(realm_id: str) -> str:
+    """MED-1 fix: valida realm_id y construye QB_BASE_URL. Raise con
+    mensaje claro si realm_id es None o vacío."""
+    if not realm_id:
+        raise RuntimeError(
+            "QB_REALM_ID environment variable is required but missing or empty. "
+            "Set it in .env or run the OAuth setup: python scripts/oauth_flow.py"
+        )
+    return f"https://sandbox-quickbooks.api.intuit.com/v3/company/{realm_id}"
+
+
+QB_BASE_URL = _build_qb_base_url(QB_REALM_ID)
 QB_AUTH_URL = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer"
 
 # Configuración LLM (Hybrid Model Routing)
