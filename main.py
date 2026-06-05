@@ -748,9 +748,29 @@ def create_invoice(customer_id: str, line_items: List[dict], txn_date: str = Non
         }
 
 def create_customer(display_name: str, email: str = None, phone: str = None,
-                    address: str = None, company_name: str = None) -> dict:
-    """Crea un cliente (Customer) en QuickBooks."""
+                    address: str = None, company_name: str = None,
+                    deduplicate: bool = False) -> dict:
+    """Crea un cliente (Customer) en QuickBooks.
+
+    Si `deduplicate=True`, hace pre-check vía `search_customer(exact=True)`
+    antes de POST. Si encuentra match exacto por DisplayName, retorna el
+    ID existente con `idempotent_reused=True` y no llama a QBO. Default
+    False para backward compat.
+    """
     log_operation("customers_created")
+
+    if deduplicate:
+        existing = search_customer(display_name, exact=True)
+        if existing:
+            return {
+                "success": True,
+                "customer_id": existing[0]["id"],
+                "display_name": existing[0]["name"],
+                "company_name": existing[0].get("company", ""),
+                "balance": existing[0].get("balance", 0),
+                "active": existing[0].get("active", True),
+                "idempotent_reused": True,
+            }
 
     customer_data: Dict[str, Any] = {"DisplayName": display_name}
 
