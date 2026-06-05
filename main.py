@@ -11,6 +11,8 @@ import json
 import csv
 import re
 import requests
+import subprocess
+import sys
 from collections import deque
 from datetime import datetime, timedelta
 import glob
@@ -5888,6 +5890,112 @@ def _close_session_safely() -> None:
 import atexit as _atexit
 _atexit.register(_close_session_safely)
 
+
+# ==================== VERIFICACIÓN QBO + OFERTA DE RE-AUTH (UX-1) ====================
+
+
+def _reload_env_after_oauth():
+    """Recarga QB_ACCESS_TOKEN / QB_REFRESH_TOKEN / QB_REALM_ID desde .env
+    después de un OAuth flow exitoso. Actualiza también los globals."""
+    import importlib
+    global QB_ACCESS_TOKEN, QB_REFRESH_TOKEN, QB_REALM_ID
+    from dotenv import load_dotenv
+    load_dotenv(override=True)
+    QB_ACCESS_TOKEN = os.getenv("QB_ACCESS_TOKEN", QB_ACCESS_TOKEN)
+    QB_REFRESH_TOKEN = os.getenv("QB_REFRESH_TOKEN", QB_REFRESH_TOKEN)
+    QB_REALM_ID = os.getenv("QB_REALM_ID", QB_REALM_ID)
+
+
+def _verify_qbo_connection_or_offer_reauth() -> bool:
+    """Verifica la conexión a QBO. Si falla, intenta refresh; si refresh
+    también falla (refresh token expirado), ofrece al usuario lanzar
+    `scripts/oauth_flow.py` para re-autenticar interactivamente.
+
+    Returns:
+        True si la conexión quedó establecida (directa, vía refresh, o
+              vía re-auth del usuario).
+        False si QBO no responde y el usuario eligió no re-autenticar,
+              o si el input no es interactivo (EOF), o si el OAuth
+              flow terminó con error.
+
+    UX-1: reemplaza el `exit(1)` silencioso del bloque de verificación
+          por una experiencia de recuperación. Llamado desde el entry
+          point `if __name__ == "__main__":`.
+    """
+    from pathlib import Path
+
+    print("\n🔄 Verificando conexión a QuickBooks...")
+    test_query = qbo_query("SELECT COUNT(*) FROM Account")
+
+    # Camino feliz: QBO responde 200
+    if "error" not in test_query:
+        print("✅ Conexión establecida")
+        return True
+
+    # QBO no respondió. Intentar refresh automático.
+    print(f"⚠️  Error conectando a QuickBooks: {test_query.get('error', 'desconocido')}")
+    print("🔄 Intentando refrescar token...")
+    if refresh_qb_token():
+        # Refresh exitoso, re-verificar
+        test_query2 = qbo_query("SELECT COUNT(*) FROM Account")
+        if "error" not in test_query2:
+            print("✅ Conexión establecida (token refrescado)")
+            return True
+        # Refresh dijo OK pero el endpoint sigue fallando (raro)
+        print(f"⚠️  El token se refrescó pero QBO sigue respondiendo: {test_query2.get('error')}")
+
+    # Refresh falló (o el endpoint sigue caído post-refresh). El caso más
+    # probable es que el refresh_token mismo expiró (sandbox expira cada
+    # ~24h, producción cada 100 días). Ofrecer OAuth interactivo.
+    print("\n❌ No se pudo refrescar el token automáticamente.")
+    print("   Esto pasa cuando el refresh token de QBO expira.")
+    print("   Solución: correr el OAuth flow completo (login en navegador).")
+    oauth_script = Path(__file__).resolve().parent / "scripts" / "oauth_flow.py"
+    print(f"\n   Comando: python3 {oauth_script}")
+
+    # Detectar si la entrada es interactiva
+    if not sys.stdin.isatty():
+        print("\n⚠️  Entrada no interactiva: no se puede ofrecer re-auth.")
+        print("   Correr `python3 scripts/oauth_flow.py` manualmente y volver a intentar.")
+        return False
+
+    try:
+        respuesta = input("\n¿Lanzar el OAuth flow ahora? (S/n): ").strip().lower()
+    except (EOFError, KeyboardInterrupt):
+        print("\n   Cancelado por el usuario.")
+        return False
+
+    if respuesta not in ("", "s", "si", "sí", "y", "yes"):
+        print("   No se relanzará el OAuth flow.")
+        return False
+
+    # Lanzar OAuth flow en el mismo proceso (bloquea hasta que el user
+    # complete el login en el navegador o cancele).
+    env_label = "sandbox"
+    if "production" in (os.getenv("QB_ENV") or "").lower() or \
+       "production" in (os.getenv("QB_BASE_URL") or "").lower():
+        env_label = "production"
+    print(f"\n🚀 Lanzando OAuth flow ({env_label})...")
+    proc = subprocess.run(
+        [sys.executable, str(oauth_script), "--environment", env_label],
+        cwd=str(Path(__file__).resolve().parent),
+    )
+    if proc.returncode != 0:
+        print(f"\n❌ OAuth flow terminó con código {proc.returncode}.")
+        return False
+
+    # OAuth completó. Recargar .env (el script escribió nuevos tokens) y
+    # re-verificar.
+    print("\n🔄 Recargando credenciales desde .env...")
+    _reload_env_after_oauth()
+    test_query3 = qbo_query("SELECT COUNT(*) FROM Account")
+    if "error" in test_query3:
+        print(f"❌ OAuth completó pero QBO sigue sin responder: {test_query3.get('error')}")
+        return False
+    print("✅ Conexión establecida (re-auth exitoso)")
+    return True
+
+
 # ==================== ENTRY POINT ====================
 
 
@@ -5979,18 +6087,13 @@ if __name__ == "__main__":
         print("\nCrea un archivo .env con las credenciales necesarias.")
         exit(1)
 
-    # Verificar conexión a QuickBooks
-    print("\n🔄 Verificando conexión a QuickBooks...")
-    test_query = qbo_query("SELECT COUNT(*) FROM Account")
-
-    if "error" in test_query:
-        print(f"⚠️ Error conectando a QuickBooks: {test_query['error']}")
-        print("\n🔄 Intentando refrescar token...")
-        if not refresh_qb_token():
-            print("\n❌ No se pudo refrescar el token. Verifica tus credenciales.")
-            exit(1)
-
-    print("✅ Conexión establecida\n")
+    # Verificar conexión a QuickBooks (UX-1: ofrece re-auth si refresh falla)
+    if not _verify_qbo_connection_or_offer_reauth():
+        print("\n❌ No se pudo establecer conexión con QuickBooks.")
+        print("   Si QBO está temporalmente caído, vuelve a intentar en unos minutos.")
+        print("   Si el refresh token expiró, corre: python3 scripts/oauth_flow.py")
+        exit(1)
+    print()
 
     # Asegurar Chart of Accounts cargado en session_state
     if not session_state.get("chart_of_accounts"):
