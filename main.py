@@ -5702,6 +5702,11 @@ def get_relevant_tools(user_message: str) -> list:
 
     # Todos los tools del registry (101 tools)
     for schema in dexter_tools.ALL_SCHEMAS:
+        # Normalizar: algunos módulos usan formato corto {name, desc, params}
+        # sin el wrapper {"type": "function", "function": {...}}.
+        # OpenRouter/Groq/DeepInfra requieren el formato estándar.
+        if isinstance(schema, dict) and "type" not in schema:
+            schema = {"type": "function", "function": schema}
         name = _extract_name(schema)
         if name and name not in seen:
             result.append(schema)
