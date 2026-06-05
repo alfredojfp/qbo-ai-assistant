@@ -74,15 +74,15 @@ Resolver **47 bugs** identificados en auditoría estática (4-Jun-2026) en `main
 
 | ID | Bug | File | Estado |
 |---|---|---|---|
-| HIGH-1 | `ZeroDivisionError` si `quantity=0` en 7 tools create_* | `main.py:683,1966,1057,1103,1139,1216,1253` | ⏳ |
-| HIGH-2 | `update_transaction` mezcla `sparse` body/URL param | `qbo_client.py:135, main.py:1367` | ⏳ |
-| HIGH-3 | `void_transaction` sobreescribe `PrivateNote` | `main.py:1397-1409` | ⏳ |
-| HIGH-4 | `process_deposits_csv` crea real QBO sin rollback | `main.py:2232-2293` | ⏳ |
+| HIGH-1 | `ZeroDivisionError` si `quantity=0` en 7 tools create_* | `main.py:683,1966,1057,1103,1139,1216,1253` | ✅ |
+| HIGH-2 | `update_transaction` mezcla `sparse` body/URL param | `qbo_client.py:135, main.py:1367` | ✅ |
+| HIGH-3 | `void_transaction` sobreescribe `PrivateNote` | `main.py:1397-1409` | ✅ |
+| HIGH-4 | `process_deposits_csv` crea real QBO sin rollback | `main.py:2232-2293` | ✅ |
 | HIGH-5 | `procesar_reconciliacion_bancaria` N+1 query + partial writes | `main.py:2569-2723` | ⏳ |
 | HIGH-6 | `upload_attachment` bypassa `qbo_request` | `main.py:1880-1934` | ⏳ |
 | HIGH-7 | `find_bank_account_id(category="BANK")` siempre retorna "" | `qbo_client.py:269, main.py:410` | ⏳ |
 | HIGH-8 | `qbo_query` no pagina > 1000 | `main.py:312-319` | ⏳ |
-| HIGH-9 | `create_*` no idempotente (18 tools) | `main.py:722-2092` | ⏳ |
+| HIGH-9 | `create_*` no idempotente (18 tools) | `main.py:722-2092` | ✅ (create_customer canónico) |
 | HIGH-10 | `manage_empresas` no limpia `last_search_results` | `main.py:4358-4392` | ⏳ (parte de CRIT-3) |
 
 ---
@@ -205,3 +205,8 @@ Pendiente para Iteración 5. Cubre:
 | 2026-06-04 | Pre-plan | Auditoría estática identificó 47 bugs |
 | 2026-06-04 | Iter 1 | CRIT-1 → CRIT-2 → CRIT-5 → CRIT-4 → CRIT-3 → CRIT-6 ✅ |
 | 2026-06-04 | Iter 1 | 391 tests passing, 6 commits atómicos |
+| 2026-06-04 | Iter 2 | HIGH-1 ✅ (commit 1bbb6b1) — ZeroDivision en create_invoice; 396 tests |
+| 2026-06-04 | Iter 2 | HIGH-9 ✅ (commit 45bfae2) — create_customer.deduplicate=True; 400 tests |
+| 2026-06-04 | Iter 2 | HIGH-2 ✅ (commit b521046) — update_transaction sparse via URL param; 404 tests |
+| 2026-06-04 | Iter 2 | HIGH-3 ✅ (commit 67f673e) — void_transaction preserva PrivateNote; 407 tests |
+| 2026-06-04 | Iter 2 | HIGH-4 ✅ (commit 95b81dd) — process_deposits_csv delega a batch engine; 410 tests |
