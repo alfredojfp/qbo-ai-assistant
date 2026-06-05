@@ -90,7 +90,7 @@ def _detect_entity_key(qr: Dict[str, Any]) -> Optional[str]:
     QBO QueryResponse tiene keys como 'Customer', 'Invoice', 'Bill'.
     También tiene metadata: 'maxResults', 'startPosition', 'time'.
     """
-    metadata = {"maxResults", "startPosition", "time", "QueryResponse"}
+    metadata = {"maxResults", "startPosition", "time", "totalCount", "QueryResponse"}
     for k in qr.keys():
         if k not in metadata:
             return k
@@ -122,7 +122,10 @@ def query_with_pagination(sql: str, page_size: int = 1000,
     if not entity_key:
         return []
 
-    rows = list(qr.get(entity_key, []))
+    try:
+        rows = list(qr.get(entity_key, []))
+    except TypeError:
+        return []
 
     start_position = len(rows) + 1
     while rows and len(rows) % page_size == 0:

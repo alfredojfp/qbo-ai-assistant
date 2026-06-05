@@ -9,6 +9,11 @@
 
 set -e
 
+# Desactivar set -e antes de la app — main.py puede retornar exit(1)
+# por errores de auth/conexión, y queremos que el usuario vea el mensaje
+# de error y el prompt "Presiona Enter" antes de que la terminal se cierre.
+set +e
+
 # Resolver el directorio del script (resuelve symlinks)
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")")" && pwd)"
 
