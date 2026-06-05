@@ -2810,6 +2810,18 @@ def procesar_reconciliacion_bancaria(csv_file: str) -> dict:
 
     results = {"total": len(transactions), "success": 0, "errors": 0, "details": []}
 
+    has_debits = any(txn['credit'] <= 0 for txn in transactions)
+    bank_charges_vendor_id = None
+    if has_debits:
+        vendors = search_vendor("Bank Charges")
+        if not vendors:
+            return {
+                "success": False,
+                "error": "No se encontró vendor 'Bank Charges' para reconciliar débitos. "
+                         "Crea el vendor o ajusta el flujo de reconciliación.",
+            }
+        bank_charges_vendor_id = vendors[0]['id']
+
     for txn in transactions:
         try:
             if txn['credit'] > 0:
@@ -2822,13 +2834,8 @@ def procesar_reconciliacion_bancaria(csv_file: str) -> dict:
                 )
             else:
                 amount = txn['debit']
-                vendors = search_vendor("Bank Charges")
-                if not vendors:
-                    results['errors'] += 1
-                    continue
-                vendor_id = vendors[0]['id']
                 result = create_bill(
-                    vendor_id=vendor_id,
+                    vendor_id=bank_charges_vendor_id,
                     line_items=[{"amount": amount, "account_id": expense_account_id, "description": txn['description']}],
                     txn_date=parse_date(txn['date']),
                     memo=f"Reconciliation - {txn['reference']}" if txn['reference'] else "Bank Reconciliation"
