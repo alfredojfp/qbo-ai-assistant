@@ -130,6 +130,70 @@ FILE_TOKEN_USAGE = "data/token_usage.csv"
 FILE_TOKEN_REPORT = "token_usage_report.xlsx"
 FILE_DEPOSITS_TEMPLATE = "deposits_template.csv"
 
+# ── Dry-Run Mode ──────────────────────────────────────────────────────
+DRY_RUN_ACTIVE = False
+
+# Tools de solo-lectura: SIEMPRE se ejecutan, incluso en dry-run
+# (necesarios para dar contexto al usuario sobre qué se haría)
+_READ_ONLY_TOOLS = {
+    "buscar_cliente", "buscar_vendor", "buscar_cuenta", "buscar_item",
+    "qbo_query", "consulta_avanzada",
+    "generar_reporte_pl", "generar_balance_sheet", "generar_reporte_custom",
+    "reporte_trial_balance", "reporte_general_ledger", "reporte_cash_flow",
+    "reporte_ar_aging", "reporte_ap_aging", "reporte_journal",
+    "reporte_account_list", "reporte_customer_balance", "reporte_vendor_balance",
+    "reporte_pl_detail", "reporte_inventory_valuation", "reporte_class_sales",
+    "reporte_department_sales", "reporte_expenses_by_vendor",
+    "reporte_sales_by_customer", "reporte_transaction_list",
+    "leer_companyinfo", "leer_preferencias", "leer_exchange_rate",
+    "cdc_query", "ver_log_errores", "gestionar_memoria",
+    "gestionar_empresas", "refrescar_chart_accounts",
+    "estadisticasclasificacion", "buscarpatron",
+    "analizarbankfeed", "buscarenweb", "buscardocsqbo",
+    "obtenersugerencias", "obtenercontexto",
+}
+# Tools de escritura (no exhaustivo — por defecto, cualquier tool NO en
+# _READ_ONLY_TOOLS se considera de escritura y se simula en dry-run).
+
+
+def _parse_dry_run(message: str):
+    """Detecta y elimina el flag --dry-run de un mensaje.
+
+    Returns:
+        (mensaje_limpio: str, es_dry_run: bool)
+    """
+    clean = message
+    is_dry = False
+    for flag in ("--dry-run", "--DRY-RUN", "--dry_run", "--DRY_RUN"):
+        if flag in clean:
+            clean = clean.replace(flag, "")
+            is_dry = True
+    # Limpiar espacios dobles
+    clean = " ".join(clean.split())
+    return clean, is_dry
+
+
+def _execute_tool(function_name: str, arguments: dict):
+    """Ejecuta un tool, respetando el modo dry-run.
+
+    En dry-run, tools de solo-lectura se ejecutan normalmente.
+    Tools de escritura retornan un mensaje simulado.
+    """
+    if function_name in TOOL_FUNCTIONS:
+        if DRY_RUN_ACTIVE and function_name not in _READ_ONLY_TOOLS:
+            args_str = ", ".join(f"{k}={v}" for k, v in arguments.items())
+            return {
+                "dry_run": True,
+                "dry_run_note": f"[DRY-RUN] Se simularía {function_name}({args_str}). "
+                                f"No se ejecutó nada en QBO.",
+                "success": True,
+            }
+        try:
+            return TOOL_FUNCTIONS[function_name](**arguments)
+        except Exception as e:
+            return {"error": str(e)}
+    return {"error": f"Tool '{function_name}' no encontrado"}
+
 # Estado de la sesión
 session_state = {
     "start_time": datetime.now(),
@@ -3373,30 +3437,18 @@ def call_llm(user_message: str, tools: List[dict] = None, max_iterations: int = 
             except ImportError:
                 print(f"  🔧 {function_name}({arg_preview})" if arg_preview else f"  🔧 {function_name}")
 
-            # Ejecutar tool
-            if function_name in TOOL_FUNCTIONS:
-                try:
-                    result_data = TOOL_FUNCTIONS[function_name](**arguments)
-                    # CRIT-5 fix: usar safe_dumps para manejar Decimal/datetime/Path
-                    from dexter.core.safe_json import safe_dumps
-                    result_str = safe_dumps(result_data, ensure_ascii=False)
-                except Exception as e:
-                    from dexter.core.safe_json import safe_dumps
-                    result_str = safe_dumps({"error": str(e)}, ensure_ascii=False)
-                    _log_error(
-                        e,
-                        category="tool_dispatch",
-                        tool_name=function_name,
-                        extra={"arguments": arguments, "user_message": user_message},
-                    )
-            else:
-                from dexter.core.safe_json import safe_dumps
-                result_str = safe_dumps({"error": f"Tool '{function_name}' no encontrado"}, ensure_ascii=False)
+            # Ejecutar tool (con soporte dry-run)
+            from dexter.core.safe_json import safe_dumps
+            try:
+                result_data = _execute_tool(function_name, arguments)
+                result_str = safe_dumps(result_data, ensure_ascii=False)
+            except Exception as e:
+                result_str = safe_dumps({"error": str(e)}, ensure_ascii=False)
                 _log_error(
-                    f"Tool '{function_name}' no encontrado en TOOL_FUNCTIONS",
+                    e,
                     category="tool_dispatch",
                     tool_name=function_name,
-                    extra={"user_message": user_message},
+                    extra={"arguments": arguments, "user_message": user_message},
                 )
 
             # Agregar resultado al historial
@@ -5951,6 +6003,9 @@ def _main_loop_body():
 
             if not user_input:
                 continue
+
+            # Detectar modo dry-run
+            user_input, DRY_RUN_ACTIVE = _parse_dry_run(user_input)
 
             lower = user_input.lower()
 
