@@ -132,6 +132,7 @@ FILE_DEPOSITS_TEMPLATE = "deposits_template.csv"
 
 # ── Dry-Run Mode ──────────────────────────────────────────────────────
 DRY_RUN_ACTIVE = False
+_last_dry_run_message = None  # guardado para /ejecutar
 
 # Tools de solo-lectura: SIEMPRE se ejecutan, incluso en dry-run
 # (necesarios para dar contexto al usuario sobre qué se haría)
@@ -170,6 +171,9 @@ def _parse_dry_run(message: str):
             is_dry = True
     # Limpiar espacios dobles
     clean = " ".join(clean.split())
+    if is_dry:
+        global _last_dry_run_message
+        _last_dry_run_message = clean
     return clean, is_dry
 
 
@@ -6006,8 +6010,19 @@ def _main_loop_body():
 
             # Detectar modo dry-run
             user_input, DRY_RUN_ACTIVE = _parse_dry_run(user_input)
-
             lower = user_input.lower()
+
+            # Comando /ejecutar: replica el último dry-run pero real
+            if lower in ("/ejecutar", "ejecutar", "hacelo", "dale", "ahora si", "ahora sí", "confirmo"):
+                if _last_dry_run_message:
+                    user_input = _last_dry_run_message
+                    _last_dry_run_message = None
+                    lower = user_input.lower()
+                    DRY_RUN_ACTIVE = False
+                    print(f"  [Ejecutando: \"{user_input}\"]")
+                else:
+                    print("  No hay nada pendiente para ejecutar. Usá --dry-run primero.")
+                    continue
 
             # Comando de salida
             if lower in ["salir", "exit", "quit", "chao", "adiós", "adios"]:
