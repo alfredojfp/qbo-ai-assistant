@@ -6013,7 +6013,8 @@ def _main_loop_body():
             lower = user_input.lower()
 
             # Comando /ejecutar: replica el último dry-run pero real
-            if lower in ("/ejecutar", "ejecutar", "hacelo", "dale", "ahora si", "ahora sí", "confirmo"):
+            if lower in ("/ejecutar", "ejecutar", "ejecutalo", "ejecútalo",
+                         "hacelo", "dale", "ahora si", "ahora sí", "confirmo"):
                 if _last_dry_run_message:
                     user_input = _last_dry_run_message
                     _last_dry_run_message = None

@@ -12,9 +12,36 @@ El modo dry-run permite simular cualquier operación de escritura en QBO sin eje
 
 ## ¿Cómo se usa?
 
-Agregá `--dry-run` al final de tu mensaje:
+### Simular → Revisar → Ejecutar
 
 ```
+❯ Tú: crea un estimate para Prueba2 por $1,000 --dry-run
+
+  ⚡ buscar_cliente · nombre=Prueba2
+    ✓ Cliente encontrado (ID 70)
+
+  [DRY-RUN] Se simularía crear_estimate(cliente_id=70, monto=1000)
+            No se ejecutó nada en QBO.
+
+  Dexter · En modo simulación, crearía un estimate para Prueba2 (ID 70)
+           por $1,000.00. No se hizo ningún cambio en QBO.
+
+❯ Tú: ejecutalo          ← una palabra
+
+  [Ejecutando: "crea un estimate para Prueba2 por $1,000"]
+  ⚡ crear_estimate · cliente_id=70, monto=1000
+    ✅ Estimate #91 creado — $1,000.00
+```
+
+### Comandos para ejecutar
+
+Cualquiera de estos replica el último dry-run:
+- `/ejecutar`
+- `ejecutalo` / `ejecútalo`
+- `hacelo`
+- `dale`
+- `confirmo`
+- `ahora sí`
 ❯ Tú: crea un estimate para Prueba2 por $1,000 --dry-run
 
   ⚡ buscar_cliente · nombre=Prueba2

@@ -97,3 +97,20 @@ class TestDryRunMode(unittest.TestCase):
         cleaned, is_dry = main._parse_dry_run(msg)
         self.assertTrue(is_dry)
         self.assertEqual(cleaned, "crea un estimate para Prueba2 por $1,000")
+
+    def test_last_dry_run_message_stored(self):
+        """Después de parsear --dry-run, el mensaje se guarda para /ejecutar."""
+        import main
+        main._last_dry_run_message = None
+        cleaned, is_dry = main._parse_dry_run("crea cliente X --dry-run")
+        self.assertTrue(is_dry)
+        self.assertEqual(main._last_dry_run_message, "crea cliente X")
+
+    def test_last_dry_run_message_not_stored_without_flag(self):
+        """Sin --dry-run, no se guarda nada."""
+        import main
+        main._last_dry_run_message = "algo viejo"
+        cleaned, is_dry = main._parse_dry_run("hola")
+        self.assertFalse(is_dry)
+        # No debe cambiar
+        self.assertEqual(main._last_dry_run_message, "algo viejo")
