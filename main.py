@@ -3348,6 +3348,11 @@ def call_llm(user_message: str, tools: List[dict] = None, max_iterations: int = 
     if mem_block:
         local_system_content += "\n\n" + mem_block
 
+    # Inyectar perfil de empresa (PROFILE.md) si existe
+    profile = _load_company_profile()
+    if profile:
+        local_system_content += "\n\n═══ PERFIL DE EMPRESA ═══\n" + profile[:3000]
+
     relevant_tools = get_relevant_tools(user_message) if tools else []
 
     # Solo agregar mensaje del usuario si no está vacío (para tool calls iterativos)
@@ -6034,6 +6039,19 @@ def _main_loop_body():
                 print(f"\n{show_main_menu()}")
                 continue
 
+            # Comando /estudiar: regenera el perfil de la empresa
+            if lower in ("/estudiar", "estudiar empresa", "/estudiar empresa"):
+                print("  🔍 Estudiando la empresa desde QBO...")
+                try:
+                    profile = _generate_company_profile(force=True)
+                    if profile:
+                        print(f"  ✅ Perfil actualizado: {profile}")
+                    else:
+                        print("  ⚠️ No se pudo generar el perfil.")
+                except Exception as e:
+                    print(f"  ❌ Error: {e}")
+                continue
+
             # Procesar comandos rápidos (triggers NL como "informe de tokens", "lote csv")
             quick_response = process_quick_command(user_input)
             if quick_response:
@@ -6279,6 +6297,168 @@ def _get_memory():
     return _dexter_memory
 
 
+# ═══════════════════════════════════════════════════════════════════════
+# COMPANY PROFILE — perfil automático de empresa (UX-3)
+# ═══════════════════════════════════════════════════════════════════════
+
+def _generate_company_profile(profile_dir: str = None, force: bool = False):
+    """Genera PROFILE.md con datos clave de la empresa desde QBO.
+
+    Contenido: chart of accounts, P&L últimos 3 meses, clientes activos,
+    vendors activos, invoices recientes, y cuentas bancarias.
+
+    Se ejecuta una sola vez (si PROFILE.md no existe) o con force=True.
+    """
+    from pathlib import Path
+    from datetime import datetime, timedelta
+
+    if not CURRENT_COMPANY:
+        return ""
+
+    if profile_dir:
+        base = Path(profile_dir)
+    else:
+        safe_name = CURRENT_COMPANY["name"].replace("/", "_").replace("\\", "_")
+        base = Path(f"companies/{safe_name}")
+
+    profile_path = base / "PROFILE.md"
+    if profile_path.exists() and not force:
+        return ""
+
+    base.mkdir(parents=True, exist_ok=True)
+    today = datetime.now()
+    last_month = (today - timedelta(days=30)).strftime("%Y-%m-%d")
+    three_months_ago = (today - timedelta(days=90)).strftime("%Y-%m-%d")
+
+    lines = []
+    lines.append(f"# Perfil de {CURRENT_COMPANY['name']}")
+    lines.append(f"Generado: {today.strftime('%Y-%m-%d %H:%M')}")
+    lines.append(f"Realm ID: {CURRENT_COMPANY['realm_id']}")
+    lines.append("")
+
+    # ── Chart of Accounts ──
+    try:
+        acct_count = qbo_query("SELECT COUNT(*) FROM Account")
+        total = acct_count.get("QueryResponse", {}).get("totalCount", 0)
+    except Exception:
+        total = 0
+
+    lines.append(f"## Chart of Accounts ({total} cuentas)")
+
+    if total > 0:
+        try:
+            accts = qbo_query("SELECT * FROM Account MAXRESULTS 200")
+            acct_rows = accts.get("QueryResponse", {}).get("Account", [])
+            type_counts = {}
+            bank_accounts = []
+            for a in acct_rows:
+                atype = a.get("AccountType", "Other")
+                type_counts[atype] = type_counts.get(atype, 0) + 1
+                if atype in ("Bank", "Credit Card"):
+                    bank_accounts.append(f"  - {a.get('Name', '?')} ({atype}) · {a.get('Id', '?')}")
+
+            lines.append("Por tipo:")
+            for atype, count in sorted(type_counts.items()):
+                lines.append(f"  - {atype}: {count}")
+
+            if bank_accounts:
+                lines.append("Cuentas bancarias:")
+                lines.extend(bank_accounts)
+        except Exception:
+            lines.append("  (no se pudo obtener detalle)")
+
+    lines.append("")
+
+    # ── P&L ──
+    lines.append("## P&L (último mes)")
+    try:
+        pl = _fetch_report("ProfitAndLoss", start_date=last_month,
+                          end_date=today.strftime("%Y-%m-%d"))
+        lines.append(_report_summary(pl, compact=True))
+    except Exception:
+        lines.append("  (no disponible)")
+
+    lines.append("")
+
+    # ── Clientes / Vendors activos ──
+    try:
+        cust_count = qbo_query("SELECT COUNT(*) FROM Customer WHERE Active = true")
+        cust_total = cust_count.get("QueryResponse", {}).get("totalCount", 0)
+    except Exception:
+        cust_total = 0
+    try:
+        vend_count = qbo_query("SELECT COUNT(*) FROM Vendor WHERE Active = true")
+        vend_total = vend_count.get("QueryResponse", {}).get("totalCount", 0)
+    except Exception:
+        vend_total = 0
+
+    lines.append(f"## Clientes / Proveedores")
+    lines.append(f"  - Clientes activos: {cust_total}")
+    lines.append(f"  - Proveedores activos: {vend_total}")
+    lines.append("")
+
+    # ── Invoices recientes (últimos 30 días) ──
+    lines.append("## Actividad reciente (30 días)")
+    try:
+        inv = qbo_query(
+            f"SELECT * FROM Invoice WHERE TxnDate >= '{last_month}' MAXRESULTS 5"
+        )
+        inv_rows = inv.get("QueryResponse", {}).get("Invoice", [])
+        if inv_rows:
+            lines.append("Últimas facturas:")
+            for i in inv_rows[:5]:
+                customer = i.get("CustomerRef", {}).get("name", "?")
+                total = i.get("TotalAmt", 0)
+                date = i.get("TxnDate", "?")
+                lines.append(f"  - {date} | {customer} | ${total:,.2f}")
+        else:
+            lines.append("  Sin facturas en los últimos 30 días")
+    except Exception:
+        lines.append("  (no disponible)")
+
+    profile_path.write_text("\n".join(lines), encoding="utf-8")
+    return str(profile_path)
+
+
+def _load_company_profile(profile_dir: str = None):
+    """Carga PROFILE.md como string para inyectar en el prompt."""
+    from pathlib import Path
+
+    if profile_dir:
+        path = Path(profile_dir) / "PROFILE.md"
+    elif CURRENT_COMPANY:
+        safe_name = CURRENT_COMPANY["name"].replace("/", "_").replace("\\", "_")
+        path = Path(f"companies/{safe_name}/PROFILE.md")
+    else:
+        return ""
+
+    if path.exists():
+        return path.read_text(encoding="utf-8").strip()
+    return ""
+
+
+def _report_summary(report_data: dict, compact: bool = False) -> str:
+    """Convierte datos de _fetch_report en un resumen de texto compacto."""
+    lines = []
+    header = report_data.get("Header", {})
+    name = header.get("ReportName", "Reporte")
+    rows = report_data.get("Rows", {}).get("Row", [])
+    if isinstance(rows, list):
+        for row in rows[:10]:
+            label = row.get("ColData", [{}])[0].get("value", "")
+            value = ""
+            if len(row.get("ColData", [])) > 1:
+                value = row["ColData"][-1].get("value", "")
+            if label and value:
+                lines.append(f"  {label}: {value}")
+    if compact:
+        return "\n".join(lines[:8])
+    return f"{name}\n" + "\n".join(lines)
+
+
+# ═══════════════════════════════════════════════════════════════════════
+
+
 def tool_gestionar_memoria(target: str = "memory", action: str = "add",
                            content: str = "", old_text: str = "") -> dict:
     """Tool: gestiona la memoria persistente del agente (MEMORY.md / USER.md).
@@ -6383,6 +6563,21 @@ if __name__ == "__main__":
     lang = session_state.get("language", "es").upper()
     status_msg(f"Contexto: {n_accounts} cuentas · {n_reports} reportes · {n_rules} reglas · {lang}")
     console.print()
+
+    # Generar perfil de empresa si es primera carga
+    from pathlib import Path
+    safe_name = CURRENT_COMPANY["name"].replace("/", "_").replace("\\", "_")
+    profile_path = Path(f"companies/{safe_name}/PROFILE.md")
+    if not profile_path.exists():
+        status_msg("Primera carga detectada. Estudiando la empresa...")
+        try:
+            profile_file = _generate_company_profile()
+            if profile_file:
+                success(f"Perfil generado: {profile_file}")
+            else:
+                info("Perfil no disponible (sin conexión a QBO)")
+        except Exception as e:
+            info(f"No se pudo generar perfil: {e}")
 
     # Verificar credenciales mínimas
     missing_creds = []
