@@ -3258,6 +3258,10 @@ REGLAS DE ORO
 - Usá tu memoria (gestionar_memoria). Si aprendés algo nuevo, guardalo.
   Si Alfredo te corrige, guardá la corrección. La memoria es por empresa:
   datos de Sandbox Company_US_1 no se mezclan con los de otra empresa.
+- Para OCR: si Alfredo corrige un dato extraído de una factura, registrá
+  el tip con registrar_provider_tip(provider="Proveedor", tip="...").
+  Ej: "CFE: el total está en negrita abajo a la derecha".
+  La próxima factura del mismo proveedor se procesará mejor.
 
 ═══════════════════════════════════════════════════════════════
 WORKFLOWS FRECUENTES (single-command — ejecutá todos los pasos)
@@ -5147,6 +5151,36 @@ def tool_leer_archivo(ruta: str) -> dict:
     except Exception as e:
         return {"success": False, "error": str(e)}
 
+
+def tool_registrar_provider_tip(provider: str, tip: str) -> dict:
+    """Tool: Registra un tip de extracción para facturas de un proveedor.
+
+    Usar cuando Alfredo corrige la extracción OCR de una factura.
+    El tip se guarda en la memoria de la empresa y se usa en futuros
+    procesamientos OCR para el mismo proveedor.
+
+    Ejemplos:
+      provider="CFE", tip="Total en negrita abajo derecha"
+      provider="Amazon", tip="Usar columna USD, ignorar MXN"
+      provider="Ferretería Local", tip="Factura manuscrita, leer observaciones"
+    """
+    provider = provider.strip()
+    tip = tip.strip()
+    if not provider or not tip:
+        return {"success": False, "error": "provider y tip son requeridos"}
+
+    entry = f"{provider}: {tip}"
+    mem = _get_memory()
+    return mem.add("memory", entry)
+
+
+def _get_provider_tips(provider: str) -> list:
+    """Retorna tips guardados para un proveedor específico."""
+    mem = _get_memory()
+    all_entries = mem.get_memory_entries()
+    prefix = f"{provider}:"
+    return [e[len(prefix):].strip() for e in all_entries if e.startswith(prefix)]
+
 # Resolver el path del log una vez para tool_ver_log_errores
 from dexter.error_log import LOG_FILE as _LOG_FILE_FOR_TOOLS
 
@@ -5665,6 +5699,7 @@ TOOL_FUNCTIONS = {
     "ver_log_errores": tool_ver_log_errores,
     "limpiar_log_errores": tool_limpiar_log_errores,
     "leer_archivo": tool_leer_archivo,
+    "registrar_provider_tip": tool_registrar_provider_tip,
 }
 
 

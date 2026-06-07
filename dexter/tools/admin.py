@@ -1,4 +1,4 @@
-"""dexter.tools.admin — 6 tools de administración."""
+"""dexter.tools.admin — 7 tools de administración."""
 from typing import Any, Dict, List
 
 from main import (
@@ -8,6 +8,7 @@ from main import (
     tool_limpiar_log_errores,
     tool_gestionar_memoria,
     tool_leer_archivo,
+    tool_registrar_provider_tip,
 )
 
 SCHEMA: List[Dict[str, Any]] = [
@@ -17,6 +18,7 @@ SCHEMA: List[Dict[str, Any]] = [
         {'type': 'function', 'function': {'name': 'limpiar_log_errores', 'description': 'Borra el archivo de log de errores (logs/dexter_errors.log).', 'parameters': {'type': 'object', 'properties': {}}}},
         {'type': 'function', 'function': {'name': 'gestionar_memoria', 'description': 'Gestiona la memoria persistente del agente. Acciones: add (agregar), remove (eliminar), status (ver estado).', 'parameters': {'type': 'object', 'properties': {'target': {'type': 'string', 'enum': ['memory', 'user'], 'description': "Tipo: 'memory' (notas del agente) o 'user' (perfil de Alfredo)"}, 'action': {'type': 'string', 'enum': ['add', 'remove', 'status'], 'description': 'Acción a realizar'}, 'content': {'type': 'string', 'description': 'Texto a agregar (para action=add)'}, 'old_text': {'type': 'string', 'description': 'Substring a eliminar (para action=remove)'}}, 'required': ['target', 'action']}}},
         {'type': 'function', 'function': {'name': 'leer_archivo', 'description': 'Lee un archivo del proyecto (PROFILE.md, MEMORY.md, documentación, templates). Retorna el contenido. Útil para consultar datos de la empresa.', 'parameters': {'type': 'object', 'properties': {'ruta': {'type': 'string', 'description': 'Ruta relativa del archivo. Ej: companies/Sandbox/PROFILE.md'}}, 'required': ['ruta']}}},
+        {'type': 'function', 'function': {'name': 'registrar_provider_tip', 'description': 'Registra un tip para procesar facturas de un proveedor. Usar cuando Alfredo corrige OCR. El tip se guarda y aplica en futuros OCR.', 'parameters': {'type': 'object', 'properties': {'provider': {'type': 'string', 'description': 'Nombre del proveedor (CFE, Amazon, etc)'}, 'tip': {'type': 'string', 'description': 'Instrucción (ej: El total está en negrita abajo a la derecha)'}}, 'required': ['provider', 'tip']}}},
 ]
 
 
@@ -32,4 +34,5 @@ FUNCTIONS: Dict[str, Any] = {
     "limpiar_log_errores": tool_limpiar_log_errores,
     "gestionar_memoria": tool_gestionar_memoria,
     "leer_archivo": tool_leer_archivo,
+    "registrar_provider_tip": tool_registrar_provider_tip,
 }
