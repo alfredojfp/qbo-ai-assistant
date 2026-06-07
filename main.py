@@ -3348,10 +3348,18 @@ def call_llm(user_message: str, tools: List[dict] = None, max_iterations: int = 
     if mem_block:
         local_system_content += "\n\n" + mem_block
 
-    # Inyectar perfil de empresa (PROFILE.md) si existe
-    profile = _load_company_profile()
-    if profile:
-        local_system_content += "\n\n═══ PERFIL DE EMPRESA ═══\n" + profile[:3000]
+    # Inyectar perfil de empresa (PROFILE.md) — solo la referencia, no el contenido.
+    # El LLM usa gestionar_memoria o lee el archivo cuando necesita los datos.
+    if CURRENT_COMPANY:
+        safe_name = CURRENT_COMPANY["name"].replace("/", "_").replace("\\", "_")
+        profile_note = (
+            f"\n\n═══ DATOS DE EMPRESA ═══\n"
+            f"Nombre: {CURRENT_COMPANY['name']} | Realm: {CURRENT_COMPANY['realm_id']}\n"
+            f"Perfil completo en: companies/{safe_name}/PROFILE.md\n"
+            f"Memoria en: companies/{safe_name}/MEMORY.md\n"
+            f"\nConsultá estos archivos SOLO cuando necesites datos específicos de la empresa."
+        )
+        local_system_content += profile_note
 
     relevant_tools = get_relevant_tools(user_message) if tools else []
 
@@ -5112,6 +5120,33 @@ def tool_limpiar_log_errores() -> dict:
     clear_log()
     return {"success": True, "message": "Log de errores borrado."}
 
+
+def tool_leer_archivo(ruta: str) -> dict:
+    """Tool: Lee un archivo de texto del proyecto (markdown, csv, json).
+
+    Útil para consultar PROFILE.md, MEMORY.md, templates, o documentación.
+    Solo permite archivos dentro del directorio del proyecto (seguridad).
+    """
+    from pathlib import Path
+    base = Path(__file__).resolve().parent
+    target = (base / ruta).resolve()
+
+    # Seguridad: no permitir salir del proyecto
+    if not str(target).startswith(str(base)):
+        return {"success": False, "error": "Acceso denegado: ruta fuera del proyecto"}
+
+    if not target.exists():
+        return {"success": False, "error": f"Archivo no encontrado: {ruta}"}
+
+    try:
+        content = target.read_text(encoding="utf-8")
+        # Limitar a 5000 chars para no saturar el contexto
+        if len(content) > 5000:
+            content = content[:5000] + f"\n\n... (truncado, {len(content)} chars totales)"
+        return {"success": True, "path": ruta, "content": content}
+    except Exception as e:
+        return {"success": False, "error": str(e)}
+
 # Resolver el path del log una vez para tool_ver_log_errores
 from dexter.error_log import LOG_FILE as _LOG_FILE_FOR_TOOLS
 
@@ -5629,6 +5664,7 @@ TOOL_FUNCTIONS = {
     # Admin — log de errores
     "ver_log_errores": tool_ver_log_errores,
     "limpiar_log_errores": tool_limpiar_log_errores,
+    "leer_archivo": tool_leer_archivo,
 }
 
 
