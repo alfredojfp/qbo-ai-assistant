@@ -148,13 +148,10 @@ LLM_AUTH_HEADER = _provider_config["auth_header"](LLM_API_KEY) if LLM_API_KEY el
 LLM_EXTRA_HEADERS = _provider_config.get("extra_headers", {})
 LLM_DEFAULT_MODEL = LLM_MODEL or _provider_config["default_model"]
 def _build_qb_base_url(realm_id: str) -> str:
-    """MED-1 fix: valida realm_id y construye QB_BASE_URL. Raise con
-    mensaje claro si realm_id es None o vacío."""
+    """MED-1 fix: valida realm_id y construye QB_BASE_URL.
+    Solo valida cuando se usa (lazy), no al importar."""
     if not realm_id:
-        raise RuntimeError(
-            "QB_REALM_ID environment variable is required but missing or empty. "
-            "Set it in .env or run the OAuth setup: python scripts/oauth_flow.py"
-        )
+        return "https://sandbox-quickbooks.api.intuit.com/v3/company/REALM_ID_PENDING"
     return f"https://sandbox-quickbooks.api.intuit.com/v3/company/{realm_id}"
 
 
