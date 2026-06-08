@@ -49,32 +49,54 @@ def _get_gemini_client():
 
 
 OCR_PROMPT = """
-Analiza este documento que contiene múltiples INVOICES/BILLS.
+Analiza este documento PDF (puede tener múltiples páginas) que contiene
+INVOICES, BILLS o FACTURAS. Busca TODOS los documentos contables presentes.
 
-Para CADA invoice encontrado, extrae:
+Para CADA invoice/bill encontrado, extrae:
 
 CAMPOS OBLIGATORIOS:
-- invoice_number: Número del invoice
+- invoice_number: Numero del invoice (si no tiene numero, usar "S/N")
 - invoice_date: Fecha en formato YYYY-MM-DD
-- vendor_name: Nombre completo del vendor/proveedor
-- customer_name: Nombre del cliente
-- total_amount: Monto total final (número sin $)
-- balance: Balance pendiente
+- vendor_name: Nombre completo del vendor/proveedor/emisor
+- customer_name: Nombre del cliente/receptor (si no aparece, usar "")
+- total_amount: Monto total final como numero (sin $, sin comas)
+- balance: Balance pendiente (0 si esta pagado)
 
 CAMPOS OPCIONALES (usa null si no existen):
 - subtotal: Subtotal antes de impuestos
-- tax_amount: Monto de impuestos
-- po_number: Número de Purchase Order
-- terms: Términos de pago
+- tax_amount: Monto de impuestos (IVA, GST, etc.)
+- po_number: Numero de Purchase Order / Orden de Compra
+- terms: Terminos de pago (ej: "Net 30", "Contado")
+- account_name: Sugerencia de cuenta contable
+
+MANEJO DE CASOS REALES:
+- PAGINAS MULTIPLES: un mismo invoice puede ocupar 2+ paginas. Si ves una
+  pagina que dice "continuacion" o no tiene un nuevo invoice number,
+  pertenece al invoice anterior. NO la trates como un invoice separado.
+- SALTOS DE PAGINA: si una factura esta cortada a mitad de pagina y
+  continua en la siguiente, reconstruila como UN solo invoice.
+- MULTIPLES INVOICES EN UN PDF: identifica cada uno por su invoice number
+  distinto. Si no hay invoice number, usa la fecha + vendor como
+  identificador unico.
+- FACTURAS MANUSCRITAS: si hay texto escrito a mano, leelo con cuidado.
+  Prioriza numeros claramente legibles.
+- BILINGUE (ES/EN): si la factura tiene columnas en dos idiomas, usa los
+  valores en espanol. Si esta en ingles, usa los valores en ingles.
+- TOTAL CONFUSO: si hay multiples totales, usa el TOTAL FINAL (el mas
+  grande, el que esta en negrita o recuadrado).
+- MONEDA: si ves simbolos de moneda ($, USD, MXN), extrae el numero
+  sin el simbolo. Asumi USD a menos que se indique otra moneda.
 
 REGLAS:
-1. Retorna array JSON con TODOS los invoices
-2. Montos como números (float), NO strings
-3. Fechas en formato YYYY-MM-DD
-4. Si campo opcional no existe, usa null
-5. No dupliques invoices
+1. Retorna array JSON con TODOS los invoices encontrados
+2. Montos como numeros (float), NO strings. Ej: 1500.00 no "1,500.00"
+3. Fechas en formato YYYY-MM-DD. Si el anio tiene 2 digitos, asumi 20XX
+4. Si un campo opcional no existe, usa null
+5. No dupliques invoices. Si ves el mismo invoice number dos veces,
+   es el mismo documento (probablemente pagina 1 y 2)
+6. Si un PDF no contiene ningun invoice, retorna array vacio []
 
-Retorna SOLO JSON válido.
+Retorna SOLO JSON valido, sin explicaciones ni markdown.
 Formato: [{"invoice_number": "...", ...}, {...}]
 """
 
