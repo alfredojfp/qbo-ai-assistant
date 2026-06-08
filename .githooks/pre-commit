@@ -34,4 +34,26 @@ if ! python3 scripts/verify_tool_integrity.py --quiet; then
 fi
 
 echo "✓ Integridad OK"
+
+# ── Security check: no hardcoded secrets in staged files ──
+STAGED=$(git diff --cached --name-only --diff-filter=ACM | grep -v "\.githooks\|docs/archive\|tests/" || true)
+if [ -n "$STAGED" ]; then
+    # Buscar patrones comunes de API keys/tokens
+    LEAKS=$(echo "$STAGED" | xargs grep -lE \
+        'eyJ[A-Za-z0-9_-]{50,}' \
+        'sk-[A-Za-z0-9]{20,}' \
+        'AIza[0-9A-Za-z_-]{20,}' \
+        'client_secret["\s]*[=:]["\s]*[A-Za-z0-9]{10,}' \
+        2>/dev/null || true)
+    if [ -n "$LEAKS" ]; then
+        echo ""
+        echo "⚠️  ADVERTENCIA DE SEGURIDAD: posibles credenciales en:"
+        echo "$LEAKS" | while read f; do echo "   • $f"; done
+        echo ""
+        echo "Si son placeholders/documentación, ignorá esta advertencia."
+        echo "Si son credenciales REALES, cancelá el commit y rotalas."
+        echo ""
+    fi
+fi
+
 exit 0
