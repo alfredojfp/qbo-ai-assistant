@@ -505,7 +505,28 @@ def qbo_request(method: str, endpoint: str, data: dict = None, params: dict = No
             },
         )
 
+    # Audit logging: registrar toda operación QBO (Marketplace requirement)
+    _audit_log(method, endpoint, response.status_code, data)
+
     return response
+
+
+def _audit_log(method: str, endpoint: str, status_code: int, data: dict = None):
+    """Registra operación QBO en audit log (JSONL). Requisito QBO Marketplace."""
+    try:
+        from datetime import datetime
+        entry = {
+            "timestamp": datetime.now().isoformat(),
+            "method": method,
+            "endpoint": endpoint,
+            "status": status_code,
+            "company": (CURRENT_COMPANY or {}).get("name") if CURRENT_COMPANY else None,
+        }
+        with open("logs/audit.jsonl", "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry) + "\n")
+    except Exception:
+        pass  # audit log nunca debe romper la app
+
 
 def qbo_query(sql: str) -> dict:
     """Ejecuta query SQL en QuickBooks con auto-paginación (HIGH-8).
