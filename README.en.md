@@ -5,14 +5,14 @@
 [![Version](https://img.shields.io/badge/version-4.1.0_dev-blue)](https://github.com/alfredojfp/qbo-ai-assistant)
 [![Python](https://img.shields.io/badge/python-3.10+-blue)](https://python.org)
 [![Tests](https://img.shields.io/badge/tests-692_passing-green)](https://github.com/alfredojfp/qbo-ai-assistant/actions)
-[![Tools](https://img.shields.io/badge/tools-105-purple)](docs/SETUP.md)
+[![Tools](https://img.shields.io/badge/tools-106-purple)](docs/SETUP.md)
 [![License](https://img.shields.io/badge/license-Proprietary-red)](LICENSE)
 [![QBO API](https://img.shields.io/badge/QBO-v3-orange)](https://developer.intuit.com)
 [![Languages](https://img.shields.io/badge/languages-ES_|_EN-brightgreen)](docs/SETUP.md)
 
 **The most complete open-source AI agent for QuickBooks Online. Self-hosted. Private.**
 
-Talk to your accounting in natural language — **Spanish & English**. 105 tools across 21 domains.
+Talk to your accounting in natural language — **Spanish & English**. 106 tools across 21 domains.
 Multi-company. OCR. Persistent memory. Dry-run. Bank feed classification.
 
 [Setup Guide](docs/SETUP.md) · [Documentation](docs/) · [Market Comparison](docs/comparativa_mercado_2026.md)
@@ -96,7 +96,7 @@ Rich-powered UI: panels, colors, tool indicators. Every `⚡ tool_call` shows pa
 | Metric | Value |
 |---|---|
 | Tests | 692 passing |
-| QBO Tools | 105 in 21 modules |
+| QBO Tools | 106 in 21 modules |
 | QBO API Coverage | 93% |
 | Commits | 149 |
 | Companies Supported | Unlimited (isolated tokens) |
@@ -111,7 +111,7 @@ Rich-powered UI: panels, colors, tool indicators. Every `⚡ tool_call` shows pa
 Qbo Scripts/
 ├── main.py                    # Agent core
 ├── dexter/
-│   ├── tools/                 # 105 tools in 21 modules
+│   ├── tools/                 # 106 tools in 21 modules
 │   ├── core/                  # API helpers, memory, retry, safe_json
 │   ├── console.py             # Rich-powered CLI
 │   └── error_log.py           # Persistent JSONL error log

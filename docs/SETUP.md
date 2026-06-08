@@ -196,7 +196,7 @@ Dexter estudia QBO y genera un perfil automático. Regenerá con:
 ❯ Tú: /estudiar empresa
 ```
 
-### 8.5 OCR de Facturas
+### 8.5 OCR de Facturas y Estados de Cuenta
 ```
 # 1. Poné PDFs en Pending bills/
 # 2.
