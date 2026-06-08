@@ -5246,6 +5246,21 @@ def tool_procesar_csv_corregido(csv_path: str, crear_bills: bool = False) -> dic
                    else f"CSV procesado con {len(created)} bills.",
     }
 
+
+def tool_procesar_estado_cuenta(pdf_path: str, bank_name: str = None) -> dict:
+    """Tool: Convierte PDF de estado de cuenta bancario a CSV via OCR.
+
+    Compatible con cualquier banco (Santander, BBVA, Chase, etc.).
+    Genera CSV en data/ para usar con el motor de reconciliación.
+    """
+    try:
+        from scripts.bank_statement_ocr import process_bank_statement
+    except ImportError:
+        return {"success": False, "error": "Módulo bank_statement_ocr no disponible"}
+    tips = _get_provider_tips(bank_name) if bank_name else None
+    return process_bank_statement(pdf_path, bank_name=bank_name, provider_tips=tips)
+
+
 # Resolver el path del log una vez para tool_ver_log_errores
 from dexter.error_log import LOG_FILE as _LOG_FILE_FOR_TOOLS
 
@@ -5766,6 +5781,7 @@ TOOL_FUNCTIONS = {
     "leer_archivo": tool_leer_archivo,
     "registrar_provider_tip": tool_registrar_provider_tip,
     "procesar_csv_corregido": tool_procesar_csv_corregido,
+    "procesar_estado_cuenta": tool_procesar_estado_cuenta,
 }
 
 
