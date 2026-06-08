@@ -17,6 +17,8 @@ Multi-empresa. OCR. Memoria persistente. Dry-run. Clasificación bank feed.
 
 [Guía de Instalación](docs/SETUP.md) · [Documentación](docs/) · [Estudio de Mercado](docs/comparativa_mercado_2026.md)
 
+> 📖 *This document is also available in [English](README.en.md).*
+
 </div>
 
 ---
