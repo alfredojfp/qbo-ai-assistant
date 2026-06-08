@@ -1,0 +1,31 @@
+# Dexter — QuickBooks AI Agent
+
+## Proprietary License — All Rights Reserved
+
+Copyright (c) 2026 Alfredo. Todos los derechos reservados.
+
+### Lo que NO está permitido
+
+- ❌ Usar Dexter con fines comerciales sin autorización expresa
+- ❌ Redistribuir, vender, sublicenciar el código fuente
+- ❌ Modificar y ofrecer como producto propio
+- ❌ Integrar en productos comerciales sin licencia
+- ❌ Usar en entornos multi-usuario o SaaS sin autorización
+
+### Lo que SÍ está permitido
+
+- ✅ Estudiar el código con fines educativos
+- ✅ Usar para tu propia empresa (1 licencia = 1 empresa/entorno)
+- ✅ Contribuir mejoras al repositorio (pull requests)
+- ✅ Compartir capturas, documentación, experiencias
+
+### Licenciamiento Comercial
+
+Para usar Dexter en producción con clientes, múltiples empresas, o integrarlo
+en un producto comercial, se requiere una licencia comercial.
+
+Consultas: abrir un issue en este repositorio o contactar al autor.
+
+---
+
+**THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.**

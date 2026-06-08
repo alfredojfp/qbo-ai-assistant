@@ -7,7 +7,7 @@ name = "dexter-qbo-assistant"
 version = "4.1.0-dev"
 description = "Dexter — AI-powered QuickBooks Online assistant with 102 tools and multi-company support"
 readme = "README.md"
-license = {text = "MIT"}
+license = {text = "Proprietary — All Rights Reserved"}
 authors = [
     {name = "Alfredo", email = "alfredojfp@github.com"}
 ]
