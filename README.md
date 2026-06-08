@@ -38,6 +38,65 @@ pip install -r requirements.txt
 
 ---
 
+## 📸 Demo
+
+```
+┌──────────────────────────────────────────────────────────┐
+│          🧠  DEXTER  ·  QBO Assistant                     │
+│               v4.1.0-dev · Sandbox Company_US_1            │
+└──────────────────────────────────────────────────────────┘
+
+  Cargando contexto...
+  Contexto: 91 cuentas · 0 reportes · 0 reglas · ES
+
+  ✓ Conexión establecida
+
+  DEXTER listo. 'menu' para ayuda, 'salir' para terminar.
+
+❯ Tú: crea un cliente con nombre TechCorp
+
+  ⚡ buscar_cliente · nombre=TechCorp
+    ✓ 0 encontrados — procedo a crear
+
+  ⚡ crear_cliente · nombre=TechCorp
+    ✓ Cliente TechCorp creado (ID 73)
+
+  Dexter · Cliente TechCorp creado exitosamente con ID 73.
+           ¿Necesitás algo más?
+
+❯ Tú: crea un estimate para TechCorp por $5,000 --dry-run
+
+  ⚡ qbo_query · query=SELECT * FROM Customer WHERE...
+    ✓ Cliente encontrado (ID 73)
+
+  [DRY-RUN] Se simularía crear_estimate(cliente_id=73, monto=5000)
+            No se ejecutó nada en QBO.
+
+  Dexter · En simulación, crearía un estimate para TechCorp
+           por $5,000.00. Decime 'ejecutalo' para hacerlo real.
+
+❯ Tú: ejecutalo
+
+  [Ejecutando: "crea un estimate para TechCorp por $5,000"]
+
+  ⚡ crear_estimate · cliente_id=73, monto=5000
+    ✓ Estimate #96 creado — $5,000.00
+
+❯ Tú: dame el P&L de este mes
+
+  ⚡ generar_reporte_pl · start_date=2026-06-01
+
+  ┌──── Profit & Loss · Junio 2026 ────────────────────────┐
+  │ Ingresos:           $45,230.00                         │
+  │ Costo de Ventas:    $12,400.00                         │
+  │ Beneficio Bruto:    $32,830.00                         │
+  │ Gastos:             $18,200.00                         │
+  │ Ingreso Neto:       $14,630.00                         │
+  └────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## 🎯 ¿Qué hace Dexter?
 
 Dexter es un **agente de IA** que opera QuickBooks Online mediante lenguaje natural. No es un chatbot — es un asistente que ejecuta operaciones reales en QBO.

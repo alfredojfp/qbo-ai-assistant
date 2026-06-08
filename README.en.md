@@ -38,6 +38,53 @@ pip install -r requirements.txt
 
 ---
 
+## 📸 Demo
+
+```
+┌──────────────────────────────────────────────────────────┐
+│          🧠  DEXTER  ·  QBO Assistant                     │
+│               v4.1.0-dev · Sandbox Company_US_1            │
+└──────────────────────────────────────────────────────────┘
+
+  ✓ Connection established
+
+  DEXTER ready. Type 'help' for commands, 'exit' to quit.
+
+> create a client named TechCorp
+
+  ⚡ buscar_cliente · nombre=TechCorp
+    ✓ Client TechCorp created (ID 73)
+
+> create an estimate for TechCorp for $5,000 --dry-run
+
+  ⚡ qbo_query · query=SELECT * FROM Customer WHERE...
+    ✓ Client found (ID 73)
+
+  [DRY-RUN] Would create estimate for TechCorp (ID 73)
+            for $5,000.00. No QBO changes made.
+
+> run it
+
+  [Executing: "create an estimate for TechCorp for $5,000"]
+
+  ⚡ crear_estimate · cliente_id=73, monto=5000
+    ✓ Estimate #96 created — $5,000.00
+
+> give me this month's P&L
+
+  ⚡ generar_reporte_pl · start_date=2026-06-01
+
+  ┌──── Profit & Loss · June 2026 ────────────────────────┐
+  │ Income:             $45,230.00                         │
+  │ Cost of Goods Sold: $12,400.00                         │
+  │ Gross Profit:      $32,830.00                          │
+  │ Expenses:           $18,200.00                          │
+  │ Net Income:         $14,630.00                          │
+  └────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## 🎯 What Dexter Does
 
 Dexter is an **AI agent** that operates QuickBooks Online through natural language. It's not a chatbot — it's an assistant that executes real QBO operations.
