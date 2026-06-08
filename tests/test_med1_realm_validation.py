@@ -22,19 +22,18 @@ class TestBuildQbBaseUrl(unittest.TestCase):
         self.assertIn("9341455870833544", url)
         self.assertNotIn("None", url)
 
-    def test_missing_realm_id_raises_clear_error(self):
-        """RED: sin realm_id (None), debe raise con mensaje claro."""
+    def test_missing_realm_id_returns_placeholder(self):
+        """Sin realm_id, retorna URL placeholder (no crashea al importar)."""
         from main import _build_qb_base_url
-        with self.assertRaises(RuntimeError) as ctx:
-            _build_qb_base_url(None)
-        self.assertIn("QB_REALM_ID", str(ctx.exception))
+        result = _build_qb_base_url(None)
+        self.assertIn("REALM_ID_PENDING", result)
+        self.assertIn("sandbox-quickbooks", result)
 
-    def test_empty_realm_id_raises_clear_error(self):
-        """RED: realm_id vacío (''), debe raise con mensaje claro."""
+    def test_empty_realm_id_returns_placeholder(self):
+        """Realm_id vacío, retorna URL placeholder."""
         from main import _build_qb_base_url
-        with self.assertRaises(RuntimeError) as ctx:
-            _build_qb_base_url("")
-        self.assertIn("QB_REALM_ID", str(ctx.exception))
+        result = _build_qb_base_url("")
+        self.assertIn("REALM_ID_PENDING", result)
 
     def test_sandbox_url_pattern(self):
         """GREEN: el patrón URL es intuitivamente correcto."""
