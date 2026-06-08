@@ -94,10 +94,59 @@ QB_CLIENT_ID = os.getenv("QB_CLIENT_ID")
 QB_CLIENT_SECRET = os.getenv("QB_CLIENT_SECRET")
 QB_REALM_ID = os.getenv("QB_REALM_ID")
 
-# Credenciales OpenRouter
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+# Credenciales LLM — multi-proveedor
+LLM_PROVIDER = os.getenv("LLM_PROVIDER", "openrouter").lower()
+LLM_API_KEY = os.getenv("LLM_API_KEY") or os.getenv("OPENROUTER_API_KEY")  # backward compat
+LLM_MODEL = os.getenv("LLM_MODEL", "")
 
-# URLs QuickBooks
+# Proveedores LLM soportados
+_LLM_PROVIDERS = {
+    "openrouter": {
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "auth_header": lambda key: f"Bearer {key}",
+        "default_model": "deepseek/deepseek-chat",
+        "extra_headers": {
+            "HTTP-Referer": "https://github.com/alfredojfp/qbo-ai-assistant",
+            "X-Title": "Dexter QBO Agent",
+        },
+    },
+    "openai": {
+        "url": "https://api.openai.com/v1/chat/completions",
+        "auth_header": lambda key: f"Bearer {key}",
+        "default_model": "gpt-4o",
+    },
+    "deepseek": {
+        "url": "https://api.deepseek.com/v1/chat/completions",
+        "auth_header": lambda key: f"Bearer {key}",
+        "default_model": "deepseek-chat",
+    },
+    "gemini": {
+        "url": "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+        "auth_header": lambda key: f"Bearer {key}",
+        "default_model": "gemini-2.5-flash",
+    },
+    "groq": {
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "auth_header": lambda key: f"Bearer {key}",
+        "default_model": "llama-3.3-70b-versatile",
+    },
+    "custom": {
+        "url": os.getenv("LLM_API_URL", "https://api.openai.com/v1/chat/completions"),
+        "auth_header": lambda key: f"Bearer {key}",
+        "default_model": os.getenv("LLM_MODEL", "gpt-4o"),
+    },
+}
+
+# Resolver proveedor
+if LLM_PROVIDER not in _LLM_PROVIDERS:
+    print(f"⚠️  Proveedor '{LLM_PROVIDER}' no reconocido. Usando openrouter.")
+    LLM_PROVIDER = "openrouter"
+
+_provider_config = _LLM_PROVIDERS[LLM_PROVIDER]
+LLM_API_URL = _provider_config["url"]
+LLM_AUTH_HEADER = _provider_config["auth_header"](LLM_API_KEY) if LLM_API_KEY else ""
+LLM_EXTRA_HEADERS = _provider_config.get("extra_headers", {})
+LLM_DEFAULT_MODEL = LLM_MODEL or _provider_config["default_model"]
 def _build_qb_base_url(realm_id: str) -> str:
     """MED-1 fix: valida realm_id y construye QB_BASE_URL. Raise con
     mensaje claro si realm_id es None o vacío."""
@@ -3388,11 +3437,8 @@ def call_llm(user_message: str, tools: List[dict] = None, max_iterations: int = 
             *_history_window  # Ventana de contexto amplia
         ]
 
-        # Usar modelo pesado (DeepSeek) para TODAS las interacciones con tools.
-        # La diferencia de costo es mínima (~$0.001 por consulta) y la diferencia
-        # de calidad en function calling es enorme. Llama 3.1 8B ignora los tools
-        # y responde de memoria, causando datos incorrectos.
-        selected_model = LLM_MODEL_HEAVY
+        # Usar el modelo configurado del proveedor
+        selected_model = LLM_DEFAULT_MODEL
         if iteration == 1:
             self_model = selected_model
         else:
@@ -3409,11 +3455,10 @@ def call_llm(user_message: str, tools: List[dict] = None, max_iterations: int = 
             payload["tool_choice"] = "auto"
 
         headers = {
-            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+            "Authorization": LLM_AUTH_HEADER,
             "Content-Type": "application/json",
-            "HTTP-Referer": "https://github.com/alfredo-qbo-assistant",
-            "X-Title": "QuickBooks AI Assistant"
         }
+        headers.update(LLM_EXTRA_HEADERS)
 
         response = requests.post(LLM_API_URL, headers=headers, json=payload)
 
@@ -6738,8 +6783,8 @@ if __name__ == "__main__":
         missing_creds.append("QB_ACCESS_TOKEN")
     if not QB_REALM_ID:
         missing_creds.append("QB_REALM_ID")
-    if not OPENROUTER_API_KEY:
-        missing_creds.append("OPENROUTER_API_KEY")
+    if not LLM_API_KEY:
+        missing_creds.append("LLM_API_KEY")
 
     if missing_creds:
         print("❌ ERROR: Faltan credenciales en el archivo .env:")

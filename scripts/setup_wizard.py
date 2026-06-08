@@ -102,23 +102,42 @@ def run_setup():
         val = prompt("QB_CLIENT_SECRET", password=True)
         client_secret = validate_not_empty(val, "Client Secret")
 
-    # ── Paso 2: OpenRouter (LLM) ──
-    section("2/4 — OpenRouter API (Modelo LLM)")
+    # ── Paso 2: LLM Provider ──
+    section("2/4 — Proveedor LLM (Motor de IA)")
 
-    print("  Necesitás una API key de OpenRouter para que Dexter 'piense'.")
-    print("  Si no la tenés: https://openrouter.ai → Settings → API Keys")
-    print("  Cargá al menos $5 de saldo.")
+    print("  Elegí qué proveedor de IA usará Dexter para 'pensar':")
+    print()
+    print("  1. OpenRouter (recomendado) — acceso a 200+ modelos")
+    print("  2. OpenAI (ChatGPT) — gpt-4o, gpt-4o-mini")
+    print("  3. DeepSeek — deepseek-chat (V3)")
+    print("  4. Google Gemini — gemini-2.5-flash")
+    print("  5. Groq — llama-3.3-70b (rápido, barato)")
+    print("  6. Custom — tu propio endpoint compatible con OpenAI API")
     print()
 
-    openrouter_key = None
-    while not openrouter_key:
-        val = prompt("OPENROUTER_API_KEY")
-        if val and val.startswith("sk-or-"):
-            openrouter_key = val.strip()
-        elif val:
-            print("  ❌ La key debe empezar con 'sk-or-v1-'")
+    providers = {
+        "1": ("openrouter", "OpenRouter API Key (sk-or-v1-...)", "https://openrouter.ai → Settings → API Keys"),
+        "2": ("openai", "OpenAI API Key (sk-...)", "https://platform.openai.com/api-keys"),
+        "3": ("deepseek", "DeepSeek API Key (sk-...)", "https://platform.deepseek.com/api_keys"),
+        "4": ("gemini", "Google API Key (AIza...)", "https://aistudio.google.com/apikey"),
+        "5": ("groq", "Groq API Key (gsk_...)", "https://console.groq.com/keys"),
+        "6": ("custom", "API Key", "Tu propio endpoint"),
+    }
+
+    choice = prompt("Elegí (1-6) [1]", default="1")
+    provider_name, key_label, key_url = providers.get(choice, providers["1"])
+
+    print(f"\n  Proveedor: {provider_name}")
+    print(f"  Obtené tu API key en: {key_url}")
+    print()
+
+    llm_key = None
+    while not llm_key:
+        val = prompt(key_label)
+        if val and len(val) > 10:
+            llm_key = val.strip()
         else:
-            print("  ❌ API Key es obligatoria")
+            print("  ❌ API Key inválida o muy corta")
 
     # ── Paso 3: Gemini (OCR) ──
     section("3/4 — Google Gemini API (OCR de facturas, opcional)")
@@ -165,8 +184,9 @@ QB_REDIRECT_URI=http://localhost:8000/callback
 QB_ENV=development
 QB_MINOR_VERSION=70
 
-# ── OpenRouter (LLM) ──
-OPENROUTER_API_KEY={openrouter_key}
+# ── LLM (IA) ──
+LLM_PROVIDER={provider_name}
+LLM_API_KEY={llm_key}
 
 # ── Google Gemini (OCR) ──
 GOOGLE_GEMINI_API_KEY={gemini_key}

@@ -76,8 +76,10 @@ QB_REDIRECT_URI=http://localhost:8000/callback
 QB_ENV=development
 QB_MINOR_VERSION=70
 
-# ── OpenRouter (LLM) ──
-OPENROUTER_API_KEY=sk-or-v1-...  # De OpenRouter
+# ── LLM (Proveedor de IA) ──
+LLM_PROVIDER=openrouter         # openrouter | openai | deepseek | gemini | groq | custom
+LLM_API_KEY=sk-or-v1-...        # Tu API key del proveedor elegido
+LLM_MODEL=                      # Opcional: modelo específico (default del proveedor)
 
 # ── Google Gemini (OCR, opcional) ──
 GOOGLE_GEMINI_API_KEY=AIza...    # De Google AI Studio
