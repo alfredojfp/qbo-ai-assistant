@@ -1,31 +1,60 @@
-# Dexter — QuickBooks AI Agent
+# LICENSE — Dexter QuickBooks AI Agent
 
-## Proprietary License — All Rights Reserved
+Copyright © 2026 Alfredo. All Rights Reserved.
 
-Copyright (c) 2026 Alfredo. Todos los derechos reservados.
+## Proprietary Software License
 
-### Lo que NO está permitido
+This software and associated documentation files (the "Software") are the exclusive
+intellectual property of the copyright holder.
 
-- ❌ Usar Dexter con fines comerciales sin autorización expresa
-- ❌ Redistribuir, vender, sublicenciar el código fuente
-- ❌ Modificar y ofrecer como producto propio
-- ❌ Integrar en productos comerciales sin licencia
-- ❌ Usar en entornos multi-usuario o SaaS sin autorización
+### NO USE IS PERMITTED WITHOUT EXPRESS WRITTEN AUTHORIZATION
 
-### Lo que SÍ está permitido
+The Software is **not** open source. The source code is made available for
+transparency and review purposes only.
 
-- ✅ Estudiar el código con fines educativos
-- ✅ Usar para tu propia empresa (1 licencia = 1 empresa/entorno)
-- ✅ Contribuir mejoras al repositorio (pull requests)
-- ✅ Compartir capturas, documentación, experiencias
+**No person or entity may:**
 
-### Licenciamiento Comercial
+1. Use, copy, or execute the Software for any purpose whatsoever without prior
+   written authorization from the copyright holder
 
-Para usar Dexter en producción con clientes, múltiples empresas, o integrarlo
-en un producto comercial, se requiere una licencia comercial.
+2. Modify, adapt, translate, or create derivative works based on the Software
 
-Consultas: abrir un issue en este repositorio o contactar al autor.
+3. Distribute, sublicense, lease, rent, loan, or otherwise transfer the Software
+   to any third party
+
+4. Reverse engineer, decompile, disassemble, or attempt to derive the source
+   code, underlying ideas, algorithms, or structure of the Software
+
+5. Remove, obscure, or alter any copyright, trademark, or proprietary rights
+   notices contained in the Software
+
+6. Use the Software to provide services to third parties, whether commercial
+   or non-commercial
+
+7. Publish, post, upload, or otherwise make the Software available to any
+   third party, including but not limited to public code repositories, cloud
+   services, or shared servers
+
+### Obtaining Authorization
+
+To request a license for any use of the Software, contact the copyright holder.
+
+Unauthorized use, reproduction, or distribution of the Software constitutes
+copyright infringement and will be pursued to the fullest extent of the law.
+
+### No Warranty
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+
+### Governing Law
+
+This license shall be governed by the laws of the copyright holder's jurisdiction.
+Any unauthorized use constitutes infringement under applicable copyright laws,
+including but not limited to the Digital Millennium Copyright Act (DMCA) in
+the United States.
 
 ---
 
-**THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.**
+**© 2026 Alfredo. All Rights Reserved.**

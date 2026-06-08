@@ -150,9 +150,7 @@ Dexter is **100% self-hosted**. Your accounting data never leaves your machine. 
 
 ## 📄 License
 
-Proprietary — All Rights Reserved © Alfredo
-
-Educational and personal use allowed. Commercial use, multi-company, or product integration requires a license. See [LICENSE](LICENSE) for full details.
+**Proprietary — All Rights Reserved.** Use of this software requires express authorization from the owner. See [LICENSE](LICENSE) for full details.
 
 ---
 
