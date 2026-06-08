@@ -248,142 +248,79 @@ def procesar_lote_ocr(
     carpeta_fallidos: Optional[str] = None
 ) -> Dict:
     """
-    Procesa todos los PDFs de una carpeta en lote.
+    Procesa todos los PDFs en una carpeta con OCR Gemini.
 
-    Args:
-        carpeta: Carpeta con PDFs a procesar
-        mover_exitosos: Si True, mueve PDFs procesados a carpeta_procesados
-        carpeta_procesados: Destino de PDFs exitosos
-        carpeta_fallidos: Destino de PDFs fallidos (None = no mover)
-
-    Returns:
-        Dict con resumen: total_pdfs, bills_extraidos, errores, detalles, csv_path
+    Si ≤5 bills: muestra cada uno en terminal para revisión inline.
+    Si >5 bills: genera CSV preview para editar en Excel.
     """
-    print(f"\n📁 PROCESAMIENTO EN LOTE: {carpeta}")
-    print("=" * 70)
+    if not os.path.exists(carpeta):
+        return {"error": f"Carpeta '{carpeta}' no existe"}
 
     pdfs = listar_pdfs_en_carpeta(carpeta)
-
     if not pdfs:
-        print(f"⚠️  No se encontraron PDFs en '{carpeta}'")
-        return {
-            "total_pdfs": 0,
-            "bills_extraidos": 0,
-            "errores": 0,
-            "detalles": [],
-            "detalles_errores": [],
-            "csv_path": None
-        }
+        return {"error": f"No se encontraron PDFs en '{carpeta}'"}
 
-    print(f"📄 {len(pdfs)} PDF(s) encontrado(s)\n")
+    todos_los_bills = []
+    errores = []
 
-    todos_los_bills: List[Dict] = []
-    detalles: List[Dict] = []
-    detalles_errores: List[Dict] = []
-
-    for i, pdf_path in enumerate(pdfs, 1):
-        nombre = os.path.basename(pdf_path)
-        print(f"[{i}/{len(pdfs)}] {nombre}")
-
+    for pdf_filename in pdfs:
+        pdf_path = os.path.join(carpeta, pdf_filename)
         try:
             bills = extraer_bills_de_pdf(pdf_path)
-            todos_los_bills.extend(bills)
-            detalles.append({
-                "pdf": nombre,
-                "status": "ok",
-                "bills": len(bills)
-            })
-
-            if mover_exitosos:
-                _mover_pdf(pdf_path, carpeta_procesados)
-
+            if bills:
+                todos_los_bills.extend(bills)
+                print(f"  ✅ {pdf_filename}: {len(bills)} bill(s) extraídos")
+            else:
+                raise ValueError("No se pudo extraer información")
         except Exception as e:
-            print(f"   ❌ Error: {e}")
-            detalles_errores.append({
-                "pdf": nombre,
-                "error": str(e)
-            })
-            if carpeta_fallidos:
-                _mover_pdf(pdf_path, carpeta_fallidos)
+            error_msg = f"❌ {pdf_filename}: {e}"
+            print(f"  {error_msg}")
+            errores.append(error_msg)
 
-        print()
+    if not todos_los_bills:
+        return {"error": "No se pudo extraer información de ningún PDF", "errores": errores}
 
-    csv_path = None
-    if todos_los_bills:
-        csv_path = generar_csv_preview(todos_los_bills)
+    total_bills = len(todos_los_bills)
 
-    total = len(pdfs)
-    errores = len(detalles_errores)
-    exitosos = total - errores
+    # ≤5 bills: mostrar en terminal para revisión inline
+    if total_bills <= 5:
+        print(f"\n📋 {total_bills} bill(s) extraídos. Revisión inline:\n")
+        for i, bill in enumerate(todos_los_bills, 1):
+            print(f"  ┌─ Bill #{i} ─────────────────────────────")
+            for key in ['vendor_name', 'invoice_number', 'invoice_date',
+                        'total_amount', 'tax_amount', 'account_name']:
+                val = bill.get(key, '')
+                if val:
+                    print(f"  │ {key}: {val}")
+            print(f"  └──────────────────────────────────────────")
 
-    print("=" * 70)
-    print("📊 RESUMEN DEL LOTE")
-    print("=" * 70)
-    print(f"Total PDFs:           {total}")
-    print(f"✅ Exitosos:          {exitosos}")
-    print(f"❌ Con errores:       {errores}")
-    print(f"📋 Bills extraídos:   {len(todos_los_bills)}")
-    if csv_path:
-        print(f"📊 CSV consolidado:   {csv_path}")
-    print("=" * 70)
+        print(f"\n💡 Corregí los datos diciendo: 'bill #2 es de CFE, cuenta Equipment'")
+        print(f"   Cuando estén correctos: 'crea los {total_bills} bills'")
+
+        return {
+            "success": True,
+            "total_bills": total_bills,
+            "bills": todos_los_bills,
+            "mode": "inline",
+            "errores": errores if errores else None,
+        }
+
+    # >5 bills: generar CSV para editar en Excel
+    csv_path = generar_csv_preview(todos_los_bills)
+    print(f"\n📊 {total_bills} bills extraídos. CSV generado para editar:")
+    print(f"   {csv_path}")
+    print(f"\n💡 Editalo en Excel, luego decí: 'procesa el CSV corregido {csv_path}'")
 
     return {
-        "total_pdfs": total,
-        "bills_extraidos": len(todos_los_bills),
-        "errores": errores,
-        "detalles": detalles,
-        "detalles_errores": detalles_errores,
-        "csv_path": csv_path
+        "success": True,
+        "total_bills": total_bills,
+        "csv_path": csv_path,
+        "mode": "csv",
+        "errores": errores if errores else None,
     }
 
-
-def _mover_pdf(origen: str, destino_carpeta: str) -> None:
-    """Mueve un PDF a una carpeta destino, creándola si no existe."""
-    os.makedirs(destino_carpeta, exist_ok=True)
-    destino = os.path.join(destino_carpeta, os.path.basename(origen))
-    if os.path.exists(destino):
-        base, ext = os.path.splitext(destino)
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        destino = f"{base}_{timestamp}{ext}"
-    shutil.move(origen, destino)
-
-
-if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        arg = sys.argv[1]
-        if arg in ("--help", "-h"):
-            print("Uso:")
-            print("  python ocr_bills.py                          # procesa Pending bills/")
-            print("  python ocr_bills.py <pdf>                    # procesa un PDF")
-            print("  python ocr_bills.py --lote [carpeta]         # procesa toda la carpeta")
-            print("  python ocr_bills.py --lote --mover [carpeta] # mueve exitosos a Processed bills/")
-        elif arg == "--lote":
-            carpeta = sys.argv[2] if len(sys.argv) > 2 else "Pending bills"
-            mover = "--mover" in sys.argv
-            procesar_lote_ocr(
-                carpeta=carpeta,
-                mover_exitosos=mover,
-                carpeta_fallidos="_failed" if mover else None
-            )
-        else:
-            if os.path.exists(arg):
-                bills = extraer_bills_de_pdf(arg)
-                if bills:
-                    generar_csv_preview(bills)
-            else:
-                print(f"❌ Archivo no encontrado: {arg}")
-    else:
-        carpeta = "Pending bills"
-        if os.path.exists(carpeta):
-            pdfs = listar_pdfs_en_carpeta(carpeta)
-            if pdfs:
-                procesar_lote_ocr(carpeta=carpeta, mover_exitosos=False)
-            else:
-                print("❌ No hay PDFs en 'Pending bills/'")
-        else:
-            print("❌ Carpeta 'Pending bills' no existe")
-
-
+# ═══════════════════════════════════════════════════════════════════════
+# PROCESAR CSV CORREGIDO — flujo post-edición
 # ═══════════════════════════════════════════════════════════════════════
 # PROCESAR CSV CORREGIDO — flujo post-edición
 # ═══════════════════════════════════════════════════════════════════════
