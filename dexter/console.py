@@ -19,12 +19,23 @@ _theme = "dark"
 
 
 def banner(text: str, version: str = "4.1.0-dev", company: str = ""):
-    """Muestra el banner principal de Dexter."""
+    """Muestra el banner principal de Dexter con ASCII art."""
     subtitle = f"v{version}"
     if company:
         subtitle += f" · {company}"
+
+    ascii_art = """
+[bold cyan]   ██████╗ ███████╗██╗  ██╗████████╗███████╗██████╗[/bold cyan]
+[bold cyan]   ██╔══██╗██╔════╝╚██╗██╔╝╚══██╔══╝██╔════╝██╔══██╗[/bold cyan]
+[bold cyan]   ██║  ██║█████╗   ╚███╔╝    ██║   █████╗  ██████╔╝[/bold cyan]
+[bold cyan]   ██║  ██║██╔══╝   ██╔██╗    ██║   ██╔══╝  ██╔══██╗[/bold cyan]
+[bold cyan]   ██████╔╝███████╗██╔╝ ██╗   ██║   ███████╗██║  ██║[/bold cyan]
+[bold cyan]   ╚═════╝ ╚══════╝╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝[/bold cyan]"""
+
+    _console.print(ascii_art)
+    _console.print()
     panel = Panel(
-        f"[bold cyan]{text}[/bold cyan]",
+        f"[bold white]{text}[/bold white]",
         subtitle=f"[dim]{subtitle}[/dim]",
         border_style="cyan",
         box=box.ROUNDED,
