@@ -26,12 +26,14 @@ Multi-company. OCR. Persistent memory. Dry-run. Bank feed classification.
 ## ⚡ Quick Start
 
 ```bash
+# Option 1: Quick install (recommended)
+curl -fsSL https://raw.githubusercontent.com/alfredojfp/qbo-ai-assistant/main/install.sh | bash
+
+# Option 2: Manual
 git clone https://github.com/alfredojfp/qbo-ai-assistant.git
 cd qbo-ai-assistant
 pip install -r requirements.txt
-python3 scripts/oauth_flow.py          # authorize QBO
-echo 'OPENROUTER_API_KEY=sk-or-v1-...' >> .env
-./run_dexter.sh
+./run_dexter.sh              # first run: launches setup wizard
 ```
 
 ---

@@ -45,13 +45,22 @@ if [[ ! -f "main.py" ]]; then
     exit 1
 fi
 
-# Verificar .env (credenciales QBO)
+# Verificar .env (credenciales QBO). Si no existe, lanzar setup wizard.
 if [[ ! -f ".env" ]]; then
-    echo "ADVERTENCIA: .env no encontrado."
-    echo "  Crea .env con QB_ACCESS_TOKEN, QB_REFRESH_TOKEN, QB_CLIENT_ID,"
-    echo "  QB_CLIENT_SECRET, QB_REALM_ID, OPENROUTER_API_KEY."
     echo ""
-    read -rp "Presiona Enter para continuar de todos modos..." || true
+    echo "🔧 Primera ejecución detectada. Lanzando asistente de configuración..."
+    echo ""
+    $PYTHON scripts/setup_wizard.py
+    EXIT_CODE=$?
+    if [[ $EXIT_CODE -ne 0 ]] || [[ ! -f ".env" ]]; then
+        echo ""
+        echo "❌ Configuración cancelada o incompleta."
+        read -rp "Presiona Enter para cerrar..."
+        exit 1
+    fi
+    echo ""
+    echo "✅ Configuración completa. Iniciando Dexter..."
+    echo ""
 fi
 
 # Ejecutar la app
