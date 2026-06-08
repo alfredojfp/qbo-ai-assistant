@@ -13,6 +13,10 @@ from rich.table import Table
 from rich.text import Text
 from rich.markdown import Markdown
 from rich import box
+from rich.json import JSON
+from rich.status import Status
+from contextlib import contextmanager
+import time as _time
 
 _console = _RichConsole()
 _theme = "dark"
@@ -115,6 +119,36 @@ def divider():
 def status_msg(msg: str):
     """Mensaje de estado general."""
     _console.print(f"  [dim]{msg}[/dim]")
+
+
+def thinking_spinner(msg: str = "Pensando"):
+    """Context manager con spinner mientras el LLM procesa."""
+    return _console.status(f"[bold cyan]{msg}...[/bold cyan]", spinner="dots")
+
+
+def tool_result_pretty(result_str: str, success: bool = True):
+    """Muestra el resultado de un tool en JSON coloreado (primeros 200 chars)."""
+    icon = "[green]  ✓[/green]" if success else "[red]  ✗[/red]"
+    _console.print(f"{icon} ", end="")
+    try:
+        import json
+        data = json.loads(result_str)
+        # Mostrar keys principales en vez del JSON completo
+        preview = {k: v for k, v in data.items()
+                   if k not in ("dry_run_note",) and not isinstance(v, (list, dict))}
+        if not preview:
+            preview = {"resultado": str(data)[:80]}
+        _console.print(JSON.from_data(preview))
+    except Exception:
+        _console.print(f"[dim]{result_str[:100]}[/dim]")
+
+
+def elapsed_since(start: float) -> str:
+    """Formato legible de tiempo transcurrido."""
+    elapsed = _time.time() - start
+    if elapsed < 1:
+        return f"{elapsed*1000:.0f}ms"
+    return f"{elapsed:.1f}s"
 
 
 # Export para uso directo

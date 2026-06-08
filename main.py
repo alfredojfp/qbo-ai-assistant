@@ -3547,9 +3547,9 @@ def call_llm(user_message: str, tools: List[dict] = None, max_iterations: int = 
             if len(result_str) > 100:
                 summary += f"... ({len(result_str)} chars)"
             try:
-                from dexter.console import tool_result
+                from dexter.console import tool_result_pretty
                 is_ok = '"error"' not in result_str[:50].lower()
-                tool_result(summary, success=is_ok)
+                tool_result_pretty(result_str, success=is_ok)
             except ImportError:
                 print(f"       → {summary}")
 
