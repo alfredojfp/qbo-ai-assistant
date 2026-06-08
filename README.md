@@ -8,10 +8,11 @@
 [![Tools](https://img.shields.io/badge/tools-105-purple)](docs/SETUP.md)
 [![License](https://img.shields.io/badge/license-MIT-yellow)](LICENSE)
 [![QBO API](https://img.shields.io/badge/QBO-v3-orange)](https://developer.intuit.com)
+[![Idiomas](https://img.shields.io/badge/idiomas-ES_|_EN-brightgreen)](docs/SETUP.md)
 
 **El agente contable más completo para QuickBooks Online. Open source. Self-hosted. En español.**
 
-Habla con tu contabilidad en lenguaje natural. 105 herramientas en 21 dominios.
+Habla con tu contabilidad en lenguaje natural — **español e inglés**. 105 herramientas en 21 dominios.
 Multi-empresa. OCR. Memoria persistente. Dry-run. Clasificación bank feed.
 
 [Guía de Instalación](docs/SETUP.md) · [Documentación](docs/) · [Estudio de Mercado](docs/comparativa_mercado_2026.md)
@@ -62,6 +63,7 @@ Dexter es un **agente de IA** que opera QuickBooks Online mediante lenguaje natu
 | 📄 **OCR** | Extrae bills de PDFs, aprende formatos por proveedor |
 | 🏦 **Bank Feed** | Clasifica transacciones, aprende patrones, CSV batch |
 | 🔄 **Multi-Empresa** | Tokens, chart, memoria y clasificaciones aisladas por empresa |
+| 🌐 **Bilingüe** | Detecta español/inglés automáticamente, keywords en ambos idiomas |
 | 🛡️ **Seguridad** | Dry-run, modo confirmación, sin datos en la nube |
 
 ---
