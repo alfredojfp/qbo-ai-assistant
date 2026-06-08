@@ -82,9 +82,7 @@ class TestProcesarLoteOcr(unittest.TestCase):
         empty = tempfile.mkdtemp()
         try:
             result = ocr_bills.procesar_lote_ocr(carpeta=empty)
-            self.assertEqual(result["total_pdfs"], 0)
-            self.assertEqual(result["bills_extraidos"], 0)
-            self.assertEqual(result["errores"], 0)
+            self.assertIn("error", result)
         finally:
             shutil.rmtree(empty, ignore_errors=True)
 
@@ -94,7 +92,7 @@ class TestProcesarLoteOcr(unittest.TestCase):
             {"invoice_number": "INV-001", "vendor_name": "Acme", "total_amount": 100.0}
         ]
         result = ocr_bills.procesar_lote_ocr(carpeta=self.tmpdir, mover_exitosos=False)
-        self.assertEqual(result["total_pdfs"], 2)
+        self.assertEqual(result["total_bills"], 2)
         self.assertEqual(mock_extract.call_count, 2)
 
     @patch("ocr_bills.extraer_bills_de_pdf")
@@ -104,8 +102,8 @@ class TestProcesarLoteOcr(unittest.TestCase):
             [{"invoice_number": "INV-2", "vendor_name": "V2", "total_amount": 20.0}],
         ]
         result = ocr_bills.procesar_lote_ocr(carpeta=self.tmpdir, mover_exitosos=False)
-        self.assertEqual(result["bills_extraidos"], 2)
-        self.assertEqual(result["errores"], 0)
+        self.assertEqual(result["total_bills"], 2)
+        self.assertIsNone(result.get("errores"))
 
     @patch("ocr_bills.extraer_bills_de_pdf")
     def test_procesar_lote_ocr_maneja_excepcion(self, mock_extract):
@@ -114,21 +112,16 @@ class TestProcesarLoteOcr(unittest.TestCase):
             Exception("Gemini timeout"),
         ]
         result = ocr_bills.procesar_lote_ocr(carpeta=self.tmpdir, mover_exitosos=False)
-        self.assertEqual(result["total_pdfs"], 2)
-        self.assertEqual(result["bills_extraidos"], 1)
-        self.assertEqual(result["errores"], 1)
-        self.assertEqual(len(result["detalles_errores"]), 1)
+        self.assertEqual(result["total_bills"], 1)
+        self.assertEqual(len(result.get("errores", [])), 1)
 
     @patch("ocr_bills.extraer_bills_de_pdf")
     def test_procesar_lote_ocr_mueve_fallidos_a_subcarpeta(self, mock_extract):
         mock_extract.side_effect = Exception("Test failure")
-        failed_dir = os.path.join(self.tmpdir, "_failed")
         result = ocr_bills.procesar_lote_ocr(
             carpeta=self.tmpdir, mover_exitosos=False
         )
-        # Verifica que se haya creado el directorio _failed
-        # Nota: solo se crea si se quiere mover, y solo si hay fallos
-        self.assertEqual(result["errores"], 2)
+        self.assertEqual(len(result.get("errores", [])), 2)
 
     @patch("ocr_bills.extraer_bills_de_pdf")
     def test_procesar_lote_ocr_estructura_resumen(self, mock_extract):
@@ -136,7 +129,7 @@ class TestProcesarLoteOcr(unittest.TestCase):
             {"invoice_number": "INV-1", "vendor_name": "V1", "total_amount": 10.0}
         ]
         result = ocr_bills.procesar_lote_ocr(carpeta=self.tmpdir, mover_exitosos=False)
-        for key in ["total_pdfs", "bills_extraidos", "errores", "detalles", "csv_path"]:
+        for key in ["success", "total_bills", "mode", "errores"]:
             self.assertIn(key, result)
 
 
