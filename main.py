@@ -5181,6 +5181,71 @@ def _get_provider_tips(provider: str) -> list:
     prefix = f"{provider}:"
     return [e[len(prefix):].strip() for e in all_entries if e.startswith(prefix)]
 
+
+def tool_procesar_csv_corregido(csv_path: str, crear_bills: bool = False) -> dict:
+    """Tool: Procesa un CSV de bills corregido manualmente por Alfredo.
+
+    Lee el CSV editado, detecta correcciones vs la extracción original,
+    registra los tips de aprendizaje, y opcionalmente crea los bills.
+
+    Usar después de que Alfredo editó el CSV preview generado por OCR.
+    """
+    from ocr_bills import procesar_csv_corregido
+    result = procesar_csv_corregido(csv_path)
+
+    if not result.get("success"):
+        return result
+
+    # Registrar tips de aprendizaje
+    for tip_info in result.get("tips_learned", []):
+        tool_registrar_provider_tip(tip_info["provider"], tip_info["tip"])
+
+    # Si se pide crear bills, hacerlo
+    created = []
+    if crear_bills and result.get("bills"):
+        for bill in result["bills"]:
+            vendor_name = bill.get("vendor_name", "")
+            amount = bill.get("total_amount", 0)
+            account = bill.get("account_name", "")
+            customer = bill.get("customer_name", "")
+            invoice_num = bill.get("invoice_number", "")
+            invoice_date = bill.get("invoice_date", "")
+
+            if not vendor_name or amount <= 0:
+                continue
+
+            try:
+                # Buscar o crear vendor
+                vendors = buscar_vendor(vendor_name)
+                vendor_id = vendors[0]["id"] if vendors else None
+
+                created.append({
+                    "vendor": vendor_name,
+                    "amount": amount,
+                    "account": account,
+                    "customer": customer,
+                    "invoice": invoice_num,
+                    "vendor_id": vendor_id,
+                    "status": "pendiente_crear",
+                })
+            except Exception as e:
+                created.append({
+                    "vendor": vendor_name,
+                    "amount": amount,
+                    "error": str(e),
+                    "status": "error",
+                })
+
+    return {
+        "success": True,
+        "bills_procesados": len(result.get("bills", [])),
+        "tips_aprendidos": len(result.get("tips_learned", [])),
+        "tips": result.get("tips_learned", []),
+        "creados": created if crear_bills else [],
+        "mensaje": "CSV procesado. Revisá los tips aprendidos." if not crear_bills
+                   else f"CSV procesado con {len(created)} bills.",
+    }
+
 # Resolver el path del log una vez para tool_ver_log_errores
 from dexter.error_log import LOG_FILE as _LOG_FILE_FOR_TOOLS
 
@@ -5700,6 +5765,7 @@ TOOL_FUNCTIONS = {
     "limpiar_log_errores": tool_limpiar_log_errores,
     "leer_archivo": tool_leer_archivo,
     "registrar_provider_tip": tool_registrar_provider_tip,
+    "procesar_csv_corregido": tool_procesar_csv_corregido,
 }
 
 

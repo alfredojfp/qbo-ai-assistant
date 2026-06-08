@@ -382,3 +382,80 @@ if __name__ == "__main__":
                 print("❌ No hay PDFs en 'Pending bills/'")
         else:
             print("❌ Carpeta 'Pending bills' no existe")
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# PROCESAR CSV CORREGIDO — flujo post-edición
+# ═══════════════════════════════════════════════════════════════════════
+
+def procesar_csv_corregido(csv_path: str, cuenta_default: str = None) -> Dict:
+    """Lee el CSV editado por el usuario y extrae los bills corregidos.
+
+    Columnas esperadas en el CSV:
+      Status, Invoice_Number, Invoice_Date, Vendor_Name,
+      Customer_Name, Total_Amount, Tax_Amount, Account_Name,
+      Terms, Notes
+
+    Para cada fila donde Status != '✓' (corregida), registra un
+    provider tip con las diferencias encontradas.
+
+    Returns:
+        Dict con bills listos para crear y tips de aprendizaje.
+    """
+    import csv as csv_module
+    from pathlib import Path
+
+    if not Path(csv_path).exists():
+        return {"success": False, "error": f"CSV no encontrado: {csv_path}"}
+
+    bills = []
+    tips_learned = []
+
+    with open(csv_path, 'r', encoding='utf-8') as f:
+        reader = csv_module.DictReader(f)
+        for row in reader:
+            status = row.get('Status', '').strip()
+            vendor = row.get('Vendor_Name', '').strip()
+            amount = float(row.get('Total_Amount', 0))
+            account = row.get('Account_Name', '').strip() or cuenta_default or ''
+            customer = row.get('Customer_Name', '').strip()
+            invoice_num = row.get('Invoice_Number', '').strip()
+            invoice_date = row.get('Invoice_Date', '').strip()
+            notes = row.get('Notes', '').strip()
+
+            if not vendor or not amount:
+                continue
+
+            # Detectar campos corregidos por el usuario (Status != ✓)
+            if status and status != '✓':
+                corrections = []
+                if account:
+                    corrections.append(f"Cuenta contable: {account}")
+                if customer:
+                    corrections.append(f"Cliente: {customer}")
+                if notes:
+                    corrections.append(f"Notas: {notes}")
+                if corrections:
+                    tip = " | ".join(corrections)
+                    tips_learned.append({"provider": vendor, "tip": tip})
+
+            bills.append({
+                "vendor_name": vendor,
+                "invoice_number": invoice_num,
+                "invoice_date": invoice_date,
+                "total_amount": amount,
+                "tax_amount": row.get('Tax_Amount', ''),
+                "account_name": account,
+                "customer_name": customer,
+                "terms": row.get('Terms', ''),
+                "notes": notes,
+                "status": status,
+            })
+
+    return {
+        "success": True,
+        "bills": bills,
+        "total": len(bills),
+        "tips_learned": tips_learned,
+        "tips_count": len(tips_learned),
+    }
