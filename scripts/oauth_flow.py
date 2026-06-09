@@ -40,6 +40,23 @@ TOKEN_URL = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer"
 SCOPE = "com.intuit.quickbooks.accounting"
 
 
+def _ensure_tunnel(port: int):
+    """Verifica que el túnel HTTPS esté corriendo (cloudflared o ngrok)."""
+    import subprocess, shutil
+    # Intentar cloudflared
+    if shutil.which("cloudflared"):
+        print(f"   📡 Iniciando cloudflared tunnel en puerto {port}...")
+        print("   (Abrí OTRA terminal y ejecutá: cloudflared tunnel --url http://localhost:8000)")
+        print("   (O matá este proceso y corré cloudflared primero)")
+        return
+    if shutil.which("ngrok"):
+        print(f"   📡 Iniciá ngrok en otra terminal: ngrok http {port}")
+        return
+    print("   ⚠️  Necesitás cloudflared o ngrok para HTTPS. Instalá cloudflared:")
+    print("      curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared")
+    print("      chmod +x cloudflared && sudo mv cloudflared /usr/local/bin/")
+
+
 def parse_args():
     p = argparse.ArgumentParser(description="QuickBooks OAuth initial flow")
     p.add_argument(
@@ -112,6 +129,10 @@ def main():
 
     state = secrets.token_urlsafe(24)
     auth_url = build_auth_url(client_id, redirect_uri, state, args.environment)
+
+    # Si es producción con dominio externo (cloudflared/ngrok), verificar túnel
+    if args.environment == "production" and not parsed.hostname.startswith("localhost"):
+        _ensure_tunnel(port)
 
     # Result holder (compartido entre el handler y main)
     result = {"code": None, "realm_id": None, "error": None}

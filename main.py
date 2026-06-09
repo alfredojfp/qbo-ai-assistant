@@ -6756,6 +6756,26 @@ if __name__ == "__main__":
         QB_ACCESS_TOKEN = meta["access_token"]
         QB_REFRESH_TOKEN = meta["refresh_token"]
         print(f"🔑 Tokens cargados específicamente para {CURRENT_COMPANY['name']}")
+    else:
+        # Empresa nueva sin tokens — ofrecer OAuth automáticamente
+        print(f"\n🔑 {CURRENT_COMPANY['name']} no tiene tokens todavía.")
+        print(f"   Lanzando OAuth flow para autorizar...")
+        import subprocess
+        env_label = "production" if (os.getenv("QB_ENV") or "").lower() == "production" else "sandbox"
+        oauth_script = Path(__file__).resolve().parent / "scripts" / "oauth_flow.py"
+        proc = subprocess.run(
+            [sys.executable, str(oauth_script), "--environment", env_label],
+            cwd=str(Path(__file__).resolve().parent),
+        )
+        if proc.returncode == 0:
+            # Recargar tokens después de OAuth exitoso
+            from dotenv import load_dotenv
+            load_dotenv(override=True)
+            QB_ACCESS_TOKEN = os.getenv("QB_ACCESS_TOKEN", "")
+            QB_REFRESH_TOKEN = os.getenv("QB_REFRESH_TOKEN", "")
+            print(f"🔑 Tokens obtenidos para {CURRENT_COMPANY['name']}")
+        else:
+            info(f"OAuth cancelado. Podés ejecutarlo después con: python3 scripts/oauth_flow.py")
 
     # Cargar contexto de la empresa
     status_msg(f"Cargando contexto de {CURRENT_COMPANY['name']}...")
