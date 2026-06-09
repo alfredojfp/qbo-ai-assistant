@@ -4638,6 +4638,49 @@ def tool_actualizar_journalentry(journal_id: str, cambios: dict, sync_token: str
     return update_entity("journalentry", journal_id, cambios, sync_token, sparse=True)
 
 
+# ── Listing tools: listar sin filtro ──
+
+def tool_listar_items(max_results: int = 50) -> dict:
+    """Tool: Lista todos los items/servicios disponibles en QBO."""
+    result = qbo_query(f"SELECT * FROM Item MAXRESULTS {max_results}")
+    if "error" in result:
+        return result
+    rows = result.get("QueryResponse", {}).get("Item", [])
+    return {"total": len(rows), "items": [
+        {"id": r.get("Id"), "name": r.get("Name", "?"), "type": r.get("Type", "?"),
+         "unit_price": r.get("UnitPrice", 0), "active": r.get("Active", True)}
+        for r in rows
+    ]}
+
+
+def tool_listar_clientes(activos: bool = True, max_results: int = 50) -> dict:
+    """Tool: Lista todos los clientes en QBO."""
+    filter_clause = "WHERE Active = true" if activos else ""
+    result = qbo_query(f"SELECT * FROM Customer {filter_clause} MAXRESULTS {max_results}")
+    if "error" in result:
+        return result
+    rows = result.get("QueryResponse", {}).get("Customer", [])
+    return {"total": len(rows), "clientes": [
+        {"id": r.get("Id"), "name": r.get("DisplayName", "?"),
+         "balance": r.get("Balance", 0), "active": r.get("Active", True)}
+        for r in rows
+    ]}
+
+
+def tool_listar_vendors(activos: bool = True, max_results: int = 50) -> dict:
+    """Tool: Lista todos los proveedores en QBO."""
+    filter_clause = "WHERE Active = true" if activos else ""
+    result = qbo_query(f"SELECT * FROM Vendor {filter_clause} MAXRESULTS {max_results}")
+    if "error" in result:
+        return result
+    rows = result.get("QueryResponse", {}).get("Vendor", [])
+    return {"total": len(rows), "vendors": [
+        {"id": r.get("Id"), "name": r.get("DisplayName", "?"),
+         "balance": r.get("Balance", 0), "active": r.get("Active", True)}
+        for r in rows
+    ]}
+
+
 def tool_eliminar_transaccion(tipo: str, transaccion_id: str, sync_token: str) -> dict:
     """Tool: Elimina una transacción (Invoice, Bill, Payment, etc.) vía hard delete."""
     return delete_transaction(tipo, transaccion_id, sync_token)
@@ -5886,6 +5929,9 @@ TOOL_FUNCTIONS = {
     "ejecutar_batch": tool_ejecutar_batch,
     "cdc_query": tool_cdc_query,
     "crear_budget": tool_crear_budget,
+    "listar_items": tool_listar_items,
+    "listar_clientes": tool_listar_clientes,
+    "listar_vendors": tool_listar_vendors,
 
     # Admin — log de errores
     "ver_log_errores": tool_ver_log_errores,

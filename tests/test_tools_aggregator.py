@@ -81,8 +81,8 @@ class TestToolsAggregator(unittest.TestCase):
 
     def test_count_is_100(self):
         from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
-        self.assertEqual(len(ALL_SCHEMAS), 111)
-        self.assertEqual(len(ALL_FUNCTIONS), 111)
+        self.assertEqual(len(ALL_SCHEMAS), 114)
+        self.assertEqual(len(ALL_FUNCTIONS), 114)
 
     def test_no_duplicate_names(self):
         from dexter.tools import ALL_SCHEMAS
@@ -112,7 +112,7 @@ class TestAllDomainModules(unittest.TestCase):
     schema/func counts consistentes."""
 
     EXPECTED_DOMAINS = [
-        ("search", 4),
+        ("search", 7),
         ("transactions", 5),
         ("reports", 5),
         ("tokens", 2),
@@ -292,8 +292,8 @@ class TestSprint1COperations(unittest.TestCase):
 
     def test_operations_module_has_15_tools(self):
         from dexter.tools.operations import SCHEMA, FUNCTIONS
-        self.assertEqual(len(SCHEMA), 11)
-        self.assertEqual(len(FUNCTIONS), 11)
+        self.assertEqual(len(SCHEMA), 15)
+        self.assertEqual(len(FUNCTIONS), 15)
 
     def test_operations_all_registered(self):
         expected = [
@@ -474,8 +474,8 @@ class TestSprintTotalCoverage(unittest.TestCase):
 
     def test_total_100_tools(self):
         from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
-        self.assertEqual(len(ALL_SCHEMAS), 111)
-        self.assertEqual(len(ALL_FUNCTIONS), 111)
+        self.assertEqual(len(ALL_SCHEMAS), 114)
+        self.assertEqual(len(ALL_FUNCTIONS), 114)
 
     def test_total_21_modules(self):
         from dexter.tools import KEYWORDS_BY_MODULE
@@ -560,8 +560,8 @@ class TestP2OptionalReports(unittest.TestCase):
 
     def test_total_100_tools(self):
         from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
-        self.assertEqual(len(ALL_SCHEMAS), 111)
-        self.assertEqual(len(ALL_FUNCTIONS), 111)
+        self.assertEqual(len(ALL_SCHEMAS), 114)
+        self.assertEqual(len(ALL_FUNCTIONS), 114)
 
     def test_p2_reports_have_descriptions(self):
         from dexter.tools import ALL_SCHEMAS
