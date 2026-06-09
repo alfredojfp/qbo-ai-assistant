@@ -148,10 +148,12 @@ LLM_AUTH_HEADER = _provider_config["auth_header"](LLM_API_KEY) if LLM_API_KEY el
 LLM_EXTRA_HEADERS = _provider_config.get("extra_headers", {})
 LLM_DEFAULT_MODEL = LLM_MODEL or _provider_config["default_model"]
 def _build_qb_base_url(realm_id: str) -> str:
-    """MED-1 fix: valida realm_id y construye QB_BASE_URL.
-    Solo valida cuando se usa (lazy), no al importar."""
+    """Construye QB_BASE_URL según el entorno (sandbox o producción)."""
     if not realm_id:
         return "https://sandbox-quickbooks.api.intuit.com/v3/company/REALM_ID_PENDING"
+    env = (os.getenv("QB_ENV") or "").lower()
+    if env == "production":
+        return f"https://quickbooks.api.intuit.com/v3/company/{realm_id}"
     return f"https://sandbox-quickbooks.api.intuit.com/v3/company/{realm_id}"
 
 
@@ -5142,7 +5144,7 @@ def _cambiar_empresa_bloqueado(nombre: str) -> dict:
     meta = get_company_meta(target['name'])
     CURRENT_COMPANY = target
     QB_REALM_ID = target['realm_id']
-    QB_BASE_URL = f"https://sandbox-quickbooks.api.intuit.com/v3/company/{QB_REALM_ID}"
+    QB_BASE_URL = _build_qb_base_url(QB_REALM_ID)
 
     if meta.get("access_token") and meta.get("refresh_token"):
         QB_ACCESS_TOKEN = meta["access_token"]
@@ -6746,7 +6748,7 @@ if __name__ == "__main__":
     save_company_selection(CURRENT_COMPANY)
 
     QB_REALM_ID = CURRENT_COMPANY["realm_id"]
-    QB_BASE_URL = f"https://sandbox-quickbooks.api.intuit.com/v3/company/{QB_REALM_ID}"
+    QB_BASE_URL = _build_qb_base_url(QB_REALM_ID)
 
     # Cargar tokens específicos de la empresa si existen
     meta = get_company_meta(CURRENT_COMPANY['name'])
