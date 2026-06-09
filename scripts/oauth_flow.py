@@ -107,7 +107,7 @@ def main():
 
     # Extraer puerto del redirect URI
     parsed = urllib.parse.urlparse(redirect_uri)
-    port = parsed.port or (8000 if parsed.hostname in ("localhost", "127.0.0.1") else 443)
+    port = parsed.port or 8000  # Siempre 8000 (cloudflared/ngrok forwardean HTTPS→localhost:8000)
     path = parsed.path or "/callback"
 
     state = secrets.token_urlsafe(24)
