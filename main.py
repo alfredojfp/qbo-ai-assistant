@@ -3408,6 +3408,9 @@ def call_llm(user_message: str, tools: List[dict] = None, max_iterations: int = 
     # Construir el prompt del sistema local con los detalles necesarios
     current_lang = session_state.get("language", "es").upper()
     local_system_content = SYSTEM_PROMPT.replace("{idioma}", current_lang)
+    # Inyectar fecha actual para que el LLM no use fechas de entrenamiento (2024)
+    from datetime import datetime
+    local_system_content += f"\n\nFECHA ACTUAL: {datetime.now().strftime('%Y-%m-%d')} (hoy es {datetime.now().strftime('%A')})"
     
     if necesita_chart(user_message):
         local_system_content += chart_summary
