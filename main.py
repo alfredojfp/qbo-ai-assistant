@@ -6765,7 +6765,7 @@ if __name__ == "__main__":
         env_label = "production" if (os.getenv("QB_ENV") or "").lower() == "production" else "sandbox"
         oauth_script = Path(__file__).resolve().parent / "scripts" / "oauth_flow.py"
         proc = subprocess.run(
-            [sys.executable, str(oauth_script), "--environment", env_label],
+            [sys.executable, str(oauth_script), "--environment", env_label, "--no-browser"],
             cwd=str(Path(__file__).resolve().parent),
         )
         if proc.returncode == 0:
