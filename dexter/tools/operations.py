@@ -1,4 +1,4 @@
-"""dexter.tools.operations — 10 tools para actualizar/void/delete/deactivate/send."""
+"""dexter.tools.operations — 15 tools para actualizar/void/delete/deactivate/send."""
 from typing import Any, Dict, List
 
 from main import (
@@ -7,6 +7,10 @@ from main import (
     tool_actualizar_factura,
     tool_actualizar_bill,
     tool_actualizar_estimate,
+    tool_actualizar_payment,
+    tool_actualizar_deposit,
+    tool_actualizar_purchase,
+    tool_actualizar_journalentry,
     tool_eliminar_transaccion,
     tool_void_transaccion,
     tool_desactivar_cliente,
@@ -191,6 +195,70 @@ SCHEMA: List[Dict[str, Any]] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "actualizar_payment",
+            "description": "Actualiza un pago (Payment) en QuickBooks via sparse update. Solo envia campos en cambios.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "payment_id": {"type": "string", "description": "ID del pago"},
+                    "cambios": {"type": "object", "description": "Campos a modificar"},
+                    "sync_token": {"type": "string", "description": "Sync token (opcional)"},
+                },
+                "required": ["payment_id", "cambios"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "actualizar_deposit",
+            "description": "Actualiza un deposito (Deposit) en QuickBooks via sparse update.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "deposit_id": {"type": "string", "description": "ID del deposito"},
+                    "cambios": {"type": "object", "description": "Campos a modificar"},
+                    "sync_token": {"type": "string", "description": "Sync token (opcional)"},
+                },
+                "required": ["deposit_id", "cambios"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "actualizar_purchase",
+            "description": "Actualiza una compra (Purchase) en QuickBooks via sparse update.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "purchase_id": {"type": "string", "description": "ID de la compra"},
+                    "cambios": {"type": "object", "description": "Campos a modificar"},
+                    "sync_token": {"type": "string", "description": "Sync token (opcional)"},
+                },
+                "required": ["purchase_id", "cambios"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "actualizar_journalentry",
+            "description": "Actualiza un asiento contable (JournalEntry) en QuickBooks via sparse update.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "journal_id": {"type": "string", "description": "ID del asiento"},
+                    "cambios": {"type": "object", "description": "Campos a modificar"},
+                    "sync_token": {"type": "string", "description": "Sync token (opcional)"},
+                },
+                "required": ["journal_id", "cambios"],
+            },
+        },
+    },
 ]
 
 KEYWORDS: List[str] = [
@@ -211,6 +279,10 @@ FUNCTIONS: Dict[str, Any] = {
     "actualizar_factura": tool_actualizar_factura,
     "actualizar_bill": tool_actualizar_bill,
     "actualizar_estimate": tool_actualizar_estimate,
+    "actualizar_payment": tool_actualizar_payment,
+    "actualizar_deposit": tool_actualizar_deposit,
+    "actualizar_purchase": tool_actualizar_purchase,
+    "actualizar_journalentry": tool_actualizar_journalentry,
     "eliminar_transaccion": tool_eliminar_transaccion,
     "void_transaccion": tool_void_transaccion,
     "desactivar_cliente": tool_desactivar_cliente,

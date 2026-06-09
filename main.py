@@ -4610,6 +4610,26 @@ def tool_actualizar_estimate(estimate_id: str, cambios: dict, sync_token: str = 
     return update_entity("estimate", estimate_id, cambios, sync_token, sparse=True)
 
 
+def tool_actualizar_payment(payment_id: str, cambios: dict, sync_token: str = None) -> dict:
+    """Tool: Actualiza un pago (Payment) en QuickBooks. Usa sparse update."""
+    return update_entity("payment", payment_id, cambios, sync_token, sparse=True)
+
+
+def tool_actualizar_deposit(deposit_id: str, cambios: dict, sync_token: str = None) -> dict:
+    """Tool: Actualiza un depósito (Deposit) en QuickBooks. Usa sparse update."""
+    return update_entity("deposit", deposit_id, cambios, sync_token, sparse=True)
+
+
+def tool_actualizar_purchase(purchase_id: str, cambios: dict, sync_token: str = None) -> dict:
+    """Tool: Actualiza una compra (Purchase) en QuickBooks. Usa sparse update."""
+    return update_entity("purchase", purchase_id, cambios, sync_token, sparse=True)
+
+
+def tool_actualizar_journalentry(journal_id: str, cambios: dict, sync_token: str = None) -> dict:
+    """Tool: Actualiza un asiento contable (JournalEntry) en QuickBooks. Usa sparse update."""
+    return update_entity("journalentry", journal_id, cambios, sync_token, sparse=True)
+
+
 def tool_eliminar_transaccion(tipo: str, transaccion_id: str, sync_token: str) -> dict:
     """Tool: Elimina una transacción (Invoice, Bill, Payment, etc.) vía hard delete."""
     return delete_transaction(tipo, transaccion_id, sync_token)
@@ -5812,6 +5832,10 @@ TOOL_FUNCTIONS = {
     "actualizar_factura": tool_actualizar_factura,
     "actualizar_bill": tool_actualizar_bill,
     "actualizar_estimate": tool_actualizar_estimate,
+    "actualizar_payment": tool_actualizar_payment,
+    "actualizar_deposit": tool_actualizar_deposit,
+    "actualizar_purchase": tool_actualizar_purchase,
+    "actualizar_journalentry": tool_actualizar_journalentry,
     "eliminar_transaccion": tool_eliminar_transaccion,
     "void_transaccion": tool_void_transaccion,
     "desactivar_cliente": tool_desactivar_cliente,

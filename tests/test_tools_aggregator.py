@@ -81,8 +81,8 @@ class TestToolsAggregator(unittest.TestCase):
 
     def test_count_is_100(self):
         from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
-        self.assertEqual(len(ALL_SCHEMAS), 107)
-        self.assertEqual(len(ALL_FUNCTIONS), 107)
+        self.assertEqual(len(ALL_SCHEMAS), 111)
+        self.assertEqual(len(ALL_FUNCTIONS), 111)
 
     def test_no_duplicate_names(self):
         from dexter.tools import ALL_SCHEMAS
@@ -290,7 +290,7 @@ class TestSprint1BTransactionExtra(unittest.TestCase):
 class TestSprint1COperations(unittest.TestCase):
     """Sprint 1C: 10 tools de update/void/delete/deactivate/send."""
 
-    def test_operations_module_has_11_tools(self):
+    def test_operations_module_has_15_tools(self):
         from dexter.tools.operations import SCHEMA, FUNCTIONS
         self.assertEqual(len(SCHEMA), 11)
         self.assertEqual(len(FUNCTIONS), 11)
@@ -474,8 +474,8 @@ class TestSprintTotalCoverage(unittest.TestCase):
 
     def test_total_100_tools(self):
         from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
-        self.assertEqual(len(ALL_SCHEMAS), 107)
-        self.assertEqual(len(ALL_FUNCTIONS), 107)
+        self.assertEqual(len(ALL_SCHEMAS), 111)
+        self.assertEqual(len(ALL_FUNCTIONS), 111)
 
     def test_total_21_modules(self):
         from dexter.tools import KEYWORDS_BY_MODULE
@@ -560,8 +560,8 @@ class TestP2OptionalReports(unittest.TestCase):
 
     def test_total_100_tools(self):
         from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
-        self.assertEqual(len(ALL_SCHEMAS), 107)
-        self.assertEqual(len(ALL_FUNCTIONS), 107)
+        self.assertEqual(len(ALL_SCHEMAS), 111)
+        self.assertEqual(len(ALL_FUNCTIONS), 111)
 
     def test_p2_reports_have_descriptions(self):
         from dexter.tools import ALL_SCHEMAS
