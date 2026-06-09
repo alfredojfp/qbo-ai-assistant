@@ -6774,6 +6774,12 @@ if __name__ == "__main__":
             load_dotenv(override=True)
             QB_ACCESS_TOKEN = os.getenv("QB_ACCESS_TOKEN", "")
             QB_REFRESH_TOKEN = os.getenv("QB_REFRESH_TOKEN", "")
+            # Guardar también en meta.json para persistencia entre sesiones
+            from company_manager import save_company_meta
+            save_company_meta(
+                CURRENT_COMPANY["name"], CURRENT_COMPANY["realm_id"],
+                access_token=QB_ACCESS_TOKEN, refresh_token=QB_REFRESH_TOKEN,
+            )
             print(f"🔑 Tokens obtenidos para {CURRENT_COMPANY['name']}")
         else:
             print(f"⚠️  OAuth cancelado. Podés ejecutarlo después con: python3 scripts/oauth_flow.py")
