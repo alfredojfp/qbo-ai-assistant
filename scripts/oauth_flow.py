@@ -157,9 +157,9 @@ def main():
     path = parsed.path or "/callback"
 
     state = secrets.token_urlsafe(24)
-    auth_url = build_auth_url(client_id, redirect_uri, state, args.environment)
 
-    # Si es producción con dominio externo, verificar/crear túnel y actualizar .env
+    # Si es producción con dominio externo, verificar/crear túnel ANTES de
+    # construir la URL de autorización (para que coincidan redirect_uri)
     if args.environment == "production" and not parsed.hostname.startswith("localhost"):
         tunnel_url = _ensure_tunnel(port)
         if tunnel_url:
@@ -171,6 +171,8 @@ def main():
         else:
             print("   ❌ Sin túnel HTTPS no se puede continuar.")
             sys.exit(1)
+
+    auth_url = build_auth_url(client_id, redirect_uri, state, args.environment)
 
     # Result holder (compartido entre el handler y main)
     result = {"code": None, "realm_id": None, "error": None}
