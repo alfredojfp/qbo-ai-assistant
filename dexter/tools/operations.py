@@ -6,6 +6,7 @@ from main import (
     tool_actualizar_vendor,
     tool_actualizar_factura,
     tool_actualizar_bill,
+    tool_actualizar_estimate,
     tool_eliminar_transaccion,
     tool_void_transaccion,
     tool_desactivar_cliente,
@@ -79,6 +80,22 @@ SCHEMA: List[Dict[str, Any]] = [
                     "sync_token": {"type": "string"},
                 },
                 "required": ["bill_id", "cambios"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "actualizar_estimate",
+            "description": "Actualiza un estimate en QBO via sparse update. Solo envia los campos indicados en cambios. Ej: cambios={'TxnDate': '2026-05-31'}.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "estimate_id": {"type": "string", "description": "ID del estimate"},
+                    "cambios": {"type": "object", "description": "Campos a modificar"},
+                    "sync_token": {"type": "string", "description": "Sync token (opcional)"},
+                },
+                "required": ["estimate_id", "cambios"],
             },
         },
     },
@@ -193,6 +210,7 @@ FUNCTIONS: Dict[str, Any] = {
     "actualizar_vendor": tool_actualizar_vendor,
     "actualizar_factura": tool_actualizar_factura,
     "actualizar_bill": tool_actualizar_bill,
+    "actualizar_estimate": tool_actualizar_estimate,
     "eliminar_transaccion": tool_eliminar_transaccion,
     "void_transaccion": tool_void_transaccion,
     "desactivar_cliente": tool_desactivar_cliente,

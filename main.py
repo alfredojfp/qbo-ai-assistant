@@ -4601,6 +4601,15 @@ def tool_actualizar_bill(bill_id: str, cambios: dict, sync_token: str = None) ->
     return update_entity("bill", bill_id, cambios, sync_token, sparse=True)
 
 
+def tool_actualizar_estimate(estimate_id: str, cambios: dict, sync_token: str = None) -> dict:
+    """Tool: Actualiza un estimate (cotización) en QuickBooks.
+    
+    Usa sparse update: solo envía los campos en 'cambios'.
+    Ej: tool_actualizar_estimate('183', {'TxnDate': '2026-05-31'})
+    """
+    return update_entity("estimate", estimate_id, cambios, sync_token, sparse=True)
+
+
 def tool_eliminar_transaccion(tipo: str, transaccion_id: str, sync_token: str) -> dict:
     """Tool: Elimina una transacción (Invoice, Bill, Payment, etc.) vía hard delete."""
     return delete_transaction(tipo, transaccion_id, sync_token)
@@ -5802,6 +5811,7 @@ TOOL_FUNCTIONS = {
     "actualizar_vendor": tool_actualizar_vendor,
     "actualizar_factura": tool_actualizar_factura,
     "actualizar_bill": tool_actualizar_bill,
+    "actualizar_estimate": tool_actualizar_estimate,
     "eliminar_transaccion": tool_eliminar_transaccion,
     "void_transaccion": tool_void_transaccion,
     "desactivar_cliente": tool_desactivar_cliente,
