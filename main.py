@@ -6776,7 +6776,7 @@ if __name__ == "__main__":
             QB_REFRESH_TOKEN = os.getenv("QB_REFRESH_TOKEN", "")
             print(f"🔑 Tokens obtenidos para {CURRENT_COMPANY['name']}")
         else:
-            info(f"OAuth cancelado. Podés ejecutarlo después con: python3 scripts/oauth_flow.py")
+            print(f"⚠️  OAuth cancelado. Podés ejecutarlo después con: python3 scripts/oauth_flow.py")
 
     # Cargar contexto de la empresa
     status_msg(f"Cargando contexto de {CURRENT_COMPANY['name']}...")
