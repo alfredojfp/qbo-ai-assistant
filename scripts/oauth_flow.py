@@ -158,19 +158,19 @@ def main():
 
     state = secrets.token_urlsafe(24)
 
-    # Si es producción con dominio externo, verificar/crear túnel ANTES de
-    # construir la URL de autorización (para que coincidan redirect_uri)
+    # Si es producción con dominio externo, verificar que el túnel esté corriendo
+    # pero NO iniciar uno nuevo si ya hay una URL configurada
     if args.environment == "production" and not parsed.hostname.startswith("localhost"):
         tunnel_url = _ensure_tunnel(port)
-        if tunnel_url:
+        if tunnel_url and tunnel_url not in redirect_uri:
             redirect_uri = f"{tunnel_url}/callback"
             set_key(ENV_FILE, "QB_REDIRECT_URI", redirect_uri)
             print(f"   ✅ .env actualizado: QB_REDIRECT_URI={redirect_uri}")
-            print(f"   ⚠️  Actualizá este Redirect URI en Intuit Developer → tu app → Keys & Credentials:")
-            print(f"      {redirect_uri}")
-        else:
-            print("   ❌ Sin túnel HTTPS no se puede continuar.")
-            sys.exit(1)
+        if not tunnel_url:
+            print(f"   ⚠️  Usando redirect_uri actual: {redirect_uri}")
+            print(f"   Asegurate de que cloudflared esté corriendo y la URL coincida con Intuit Developer.")
+        print(f"   ⚠️  Verificá que este Redirect URI esté en Intuit Developer:")
+        print(f"      {redirect_uri}")
 
     auth_url = build_auth_url(client_id, redirect_uri, state, args.environment)
 
