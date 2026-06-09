@@ -41,20 +41,49 @@ SCOPE = "com.intuit.quickbooks.accounting"
 
 
 def _ensure_tunnel(port: int):
-    """Verifica que el túnel HTTPS esté corriendo (cloudflared o ngrok)."""
-    import subprocess, shutil
-    # Intentar cloudflared
+    """Verifica que el túnel HTTPS esté corriendo. Intenta detectar cloudflared."""
+    import subprocess, shutil, time, re
+
+    # Verificar si cloudflared YA está corriendo y obtener su URL
+    try:
+        import requests
+        r = requests.get("http://127.0.0.1:4040/api/tunnels", timeout=2)
+        if r.status_code == 200:
+            tunnels = r.json().get("tunnels", [])
+            for t in tunnels:
+                url = t.get("public_url", "")
+                if "trycloudflare.com" in url:
+                    print(f"   ✅ Túnel detectado: {url}")
+                    return url
+    except Exception:
+        pass
+
+    # Intentar iniciar cloudflared automáticamente
     if shutil.which("cloudflared"):
-        print(f"   📡 Iniciando cloudflared tunnel en puerto {port}...")
-        print("   (Abrí OTRA terminal y ejecutá: cloudflared tunnel --url http://localhost:8000)")
-        print("   (O matá este proceso y corré cloudflared primero)")
-        return
-    if shutil.which("ngrok"):
-        print(f"   📡 Iniciá ngrok en otra terminal: ngrok http {port}")
-        return
-    print("   ⚠️  Necesitás cloudflared o ngrok para HTTPS. Instalá cloudflared:")
-    print("      curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared")
-    print("      chmod +x cloudflared && sudo mv cloudflared /usr/local/bin/")
+        print(f"   📡 Iniciando cloudflared tunnel automáticamente...")
+        try:
+            proc = subprocess.Popen(
+                ["cloudflared", "tunnel", "--url", f"http://localhost:{port}"],
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                text=True, bufsize=1
+            )
+            # Esperar a que aparezca la URL (máx 15 segundos)
+            for _ in range(30):
+                line = proc.stdout.readline()
+                if not line:
+                    break
+                match = re.search(r'https://[a-zA-Z0-9.-]+\.trycloudflare\.com', line)
+                if match:
+                    url = match.group(0)
+                    print(f"   ✅ Túnel creado: {url}")
+                    return url
+                time.sleep(0.5)
+        except Exception as e:
+            print(f"   ⚠️  No se pudo iniciar cloudflared: {e}")
+
+    print("   ⚠️  No se detectó túnel HTTPS.")
+    print(f"   Iniciá cloudflared en otra terminal: cloudflared tunnel --url http://localhost:{port}")
+    return None
 
 
 def parse_args():
@@ -130,9 +159,18 @@ def main():
     state = secrets.token_urlsafe(24)
     auth_url = build_auth_url(client_id, redirect_uri, state, args.environment)
 
-    # Si es producción con dominio externo (cloudflared/ngrok), verificar túnel
+    # Si es producción con dominio externo, verificar/crear túnel y actualizar .env
     if args.environment == "production" and not parsed.hostname.startswith("localhost"):
-        _ensure_tunnel(port)
+        tunnel_url = _ensure_tunnel(port)
+        if tunnel_url:
+            redirect_uri = f"{tunnel_url}/callback"
+            set_key(ENV_FILE, "QB_REDIRECT_URI", redirect_uri)
+            print(f"   ✅ .env actualizado: QB_REDIRECT_URI={redirect_uri}")
+            print(f"   ⚠️  Actualizá este Redirect URI en Intuit Developer → tu app → Keys & Credentials:")
+            print(f"      {redirect_uri}")
+        else:
+            print("   ❌ Sin túnel HTTPS no se puede continuar.")
+            sys.exit(1)
 
     # Result holder (compartido entre el handler y main)
     result = {"code": None, "realm_id": None, "error": None}
