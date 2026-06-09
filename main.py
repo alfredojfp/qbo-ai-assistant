@@ -6761,6 +6761,7 @@ if __name__ == "__main__":
         print(f"\n🔑 {CURRENT_COMPANY['name']} no tiene tokens todavía.")
         print(f"   Lanzando OAuth flow para autorizar...")
         import subprocess
+        from pathlib import Path
         env_label = "production" if (os.getenv("QB_ENV") or "").lower() == "production" else "sandbox"
         oauth_script = Path(__file__).resolve().parent / "scripts" / "oauth_flow.py"
         proc = subprocess.run(
