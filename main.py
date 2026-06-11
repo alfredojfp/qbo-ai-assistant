@@ -4683,6 +4683,156 @@ def tool_listar_vendors(activos: bool = True, max_results: int = 50) -> dict:
     ]}
 
 
+# ── Skill: Distribuir gasto en el tiempo (prepaid expense amortization) ──
+
+def tool_calcular_distribucion(monto: float, cuenta_origen: str,
+                               meses: int = 12, cuenta_puente: str = None,
+                               fecha_inicio: str = None) -> dict:
+    """Tool: Calcula la distribución de un gasto en N meses.
+
+    Paso 1 de 2. Muestra el plan de amortización ANTES de crear nada en QBO.
+    Retorna el plan de journal entries necesarias.
+
+    Args:
+        monto: Monto total a distribuir
+        cuenta_origen: Nombre o ID de la cuenta de donde sale el gasto
+        meses: Número de meses (default 12)
+        cuenta_puente: Nombre de la cuenta puente (Prepaid Expenses, etc.)
+        fecha_inicio: Fecha del primer movimiento (YYYY-MM-DD)
+
+    Returns:
+        Dict con el plan de amortización y las cuentas involucradas.
+    """
+    if cuenta_puente is None:
+        return {
+            "success": False,
+            "necesita_cuenta_puente": True,
+            "mensaje": "Necesito saber la cuenta puente. Ej: 'Prepaid Expenses', 'Deferred Charges'. "
+                       "El gasto se mueve de la cuenta origen a esta cuenta puente, "
+                       "y luego se distribuye mes a mes."
+        }
+
+    from datetime import datetime, timedelta
+    if fecha_inicio is None:
+        fecha_inicio = datetime.now().strftime("%Y-%m-01")
+
+    # Buscar cuentas
+    origen = buscar_cuenta(cuenta_origen)
+    puente = buscar_cuenta(cuenta_puente)
+
+    if origen.get("encontrados", 0) == 0:
+        return {"success": False, "error": f"Cuenta origen '{cuenta_origen}' no encontrada"}
+    if puente.get("encontrados", 0) == 0:
+        return {"success": False, "error": f"Cuenta puente '{cuenta_puente}' no encontrada"}
+
+    origen_id = origen["cuentas"][0]["id"]
+    origen_name = origen["cuentas"][0]["name"]
+    puente_id = puente["cuentas"][0]["id"]
+    puente_name = puente["cuentas"][0]["name"]
+
+    monto_mensual = round(monto / meses, 2)
+    ajuste_ultimo = round(monto - monto_mensual * (meses - 1), 2)
+
+    # Plan de journal entries
+    plan = {
+        "paso_1": {
+            "descripcion": f"Mover ${monto:,.2f} de {origen_name} → {puente_name}",
+            "debito": {"cuenta": puente_name, "cuenta_id": puente_id, "monto": monto},
+            "credito": {"cuenta": origen_name, "cuenta_id": origen_id, "monto": monto},
+        },
+        "paso_2_amortizacion": [],
+    }
+
+    start_date = datetime.strptime(fecha_inicio, "%Y-%m-%d")
+    for i in range(meses):
+        mes_fecha = start_date + timedelta(days=32 * i)
+        mes_fecha = mes_fecha.replace(day=1)
+        monto_este_mes = ajuste_ultimo if i == meses - 1 else monto_mensual
+        plan["paso_2_amortizacion"].append({
+            "mes": i + 1,
+            "fecha": mes_fecha.strftime("%Y-%m-%d"),
+            "debito": {"cuenta": origen_name, "cuenta_id": origen_id, "monto": monto_este_mes},
+            "credito": {"cuenta": puente_name, "cuenta_id": puente_id, "monto": monto_este_mes},
+        })
+
+    return {
+        "success": True,
+        "plan": plan,
+        "resumen": {
+            "monto_total": monto,
+            "meses": meses,
+            "monto_mensual": monto_mensual,
+            "ajuste_ultimo_mes": ajuste_ultimo,
+            "cuenta_origen": origen_name,
+            "cuenta_puente": puente_name,
+            "fecha_inicio": fecha_inicio,
+        },
+        "siguiente_paso": "Para ejecutar, usá tool_ejecutar_distribucion con este plan."
+    }
+
+
+def tool_ejecutar_distribucion(plan: dict) -> dict:
+    """Tool: Ejecuta el plan de distribución de gasto (crea journal entries).
+
+    Paso 2 de 2. Recibe el plan generado por tool_calcular_distribucion
+    y crea las journal entries en QBO. Requiere confirmación previa del usuario.
+    """
+    if not plan.get("success"):
+        return {"success": False, "error": "Plan inválido"}
+
+    resumen = plan.get("resumen", {})
+    detalles = plan.get("plan", {})
+
+    entries_creadas = []
+
+    # Paso 1: Mover monto total a cuenta puente
+    paso1 = detalles.get("paso_1", {})
+    if paso1:
+        try:
+            result = create_journal_entry(
+                date=resumen.get("fecha_inicio"),
+                lines=[
+                    {"type": "Debit", "account_id": paso1["debito"]["cuenta_id"],
+                     "amount": paso1["debito"]["monto"],
+                     "description": paso1["descripcion"]},
+                    {"type": "Credit", "account_id": paso1["credito"]["cuenta_id"],
+                     "amount": paso1["credito"]["monto"],
+                     "description": paso1["descripcion"]},
+                ],
+                memo=f"Distribución: ${resumen.get('monto_total',0):,.2f} en {resumen.get('meses',12)} meses"
+            )
+            entries_creadas.append({"paso": 1, "result": result})
+        except Exception as e:
+            return {"success": False, "error": f"Error en paso 1: {e}"}
+
+    # Paso 2: Amortización mensual
+    for amort in detalles.get("paso_2_amortizacion", []):
+        try:
+            result = create_journal_entry(
+                date=amort["fecha"],
+                lines=[
+                    {"type": "Debit", "account_id": amort["debito"]["cuenta_id"],
+                     "amount": amort["debito"]["monto"],
+                     "description": f"Amortización mes {amort['mes']}/{resumen.get('meses',12)}"},
+                    {"type": "Credit", "account_id": amort["credito"]["cuenta_id"],
+                     "amount": amort["credito"]["monto"],
+                     "description": f"Amortización mes {amort['mes']}/{resumen.get('meses',12)}"},
+                ],
+                memo=f"Amortización {amort['mes']}/{resumen.get('meses',12)}: "
+                     f"${resumen.get('monto_total',0):,.2f} de {resumen.get('cuenta_origen','?')}"
+            )
+            entries_creadas.append({"paso": f"2.{amort['mes']}", "result": result})
+        except Exception as e:
+            return {"success": False, "error": f"Error en mes {amort['mes']}: {e}"}
+
+    return {
+        "success": True,
+        "journal_entries_creadas": len(entries_creadas),
+        "detalle": entries_creadas[:3],  # primeros 3 como preview
+        "resumen": resumen,
+    }
+
+
 def tool_eliminar_transaccion(tipo: str, transaccion_id: str, sync_token: str) -> dict:
     """Tool: Elimina una transacción (Invoice, Bill, Payment, etc.) vía hard delete."""
     return delete_transaction(tipo, transaccion_id, sync_token)
@@ -5934,6 +6084,8 @@ TOOL_FUNCTIONS = {
     "listar_items": tool_listar_items,
     "listar_clientes": tool_listar_clientes,
     "listar_vendors": tool_listar_vendors,
+    "calcular_distribucion": tool_calcular_distribucion,
+    "ejecutar_distribucion": tool_ejecutar_distribucion,
 
     # Admin — log de errores
     "ver_log_errores": tool_ver_log_errores,

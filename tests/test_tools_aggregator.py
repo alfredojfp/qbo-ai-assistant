@@ -81,8 +81,8 @@ class TestToolsAggregator(unittest.TestCase):
 
     def test_count_is_100(self):
         from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
-        self.assertEqual(len(ALL_SCHEMAS), 114)
-        self.assertEqual(len(ALL_FUNCTIONS), 114)
+        self.assertEqual(len(ALL_SCHEMAS), 116)
+        self.assertEqual(len(ALL_FUNCTIONS), 116)
 
     def test_no_duplicate_names(self):
         from dexter.tools import ALL_SCHEMAS
@@ -430,10 +430,10 @@ class TestSprint2Recurring(unittest.TestCase):
 class TestSprint3Advanced(unittest.TestCase):
     """Sprint 3: 6 tools P2 (TaxCode, TaxRate, ExchangeRate, Batch, CDC, Budget)."""
 
-    def test_advanced_module_has_6_tools(self):
+    def test_advanced_module_has_8_tools(self):
         from dexter.tools.advanced import SCHEMA, FUNCTIONS
-        self.assertEqual(len(SCHEMA), 6)
-        self.assertEqual(len(FUNCTIONS), 6)
+        self.assertEqual(len(SCHEMA), 8)
+        self.assertEqual(len(FUNCTIONS), 8)
 
     def test_advanced_all_registered(self):
         expected = [
@@ -474,8 +474,8 @@ class TestSprintTotalCoverage(unittest.TestCase):
 
     def test_total_100_tools(self):
         from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
-        self.assertEqual(len(ALL_SCHEMAS), 114)
-        self.assertEqual(len(ALL_FUNCTIONS), 114)
+        self.assertEqual(len(ALL_SCHEMAS), 116)
+        self.assertEqual(len(ALL_FUNCTIONS), 116)
 
     def test_total_21_modules(self):
         from dexter.tools import KEYWORDS_BY_MODULE
@@ -560,8 +560,8 @@ class TestP2OptionalReports(unittest.TestCase):
 
     def test_total_100_tools(self):
         from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
-        self.assertEqual(len(ALL_SCHEMAS), 114)
-        self.assertEqual(len(ALL_FUNCTIONS), 114)
+        self.assertEqual(len(ALL_SCHEMAS), 116)
+        self.assertEqual(len(ALL_FUNCTIONS), 116)
 
     def test_p2_reports_have_descriptions(self):
         from dexter.tools import ALL_SCHEMAS

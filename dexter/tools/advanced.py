@@ -1,4 +1,4 @@
-"""dexter.tools.advanced — 6 tools P2: TaxCode, TaxRate, ExchangeRate, Batch, CDC, Budget."""
+"""dexter.tools.advanced — 8 tools: Tax, Exchange, Batch, CDC, Budget, Amortización."""
 from typing import Any, Dict, List
 
 from main import (
@@ -8,6 +8,8 @@ from main import (
     tool_ejecutar_batch,
     tool_cdc_query,
     tool_crear_budget,
+    tool_calcular_distribucion,
+    tool_ejecutar_distribucion,
 )
 
 SCHEMA: List[Dict[str, Any]] = [
@@ -128,6 +130,38 @@ SCHEMA: List[Dict[str, Any]] = [
             },
         },
     },
+    {
+        "type": "function",
+        "function": {
+            "name": "calcular_distribucion",
+            "description": "Calcula un plan de amortizacion para distribuir un gasto en N meses. Paso 1 de 2. No crea nada en QBO. Pregunta la cuenta puente (Prepaid Expenses). Ej: distribuir $1200 de 'Travel' en 12 meses via 'Prepaid Expenses'.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "monto": {"type": "number", "description": "Monto total a distribuir"},
+                    "cuenta_origen": {"type": "string", "description": "Nombre de la cuenta de gasto"},
+                    "meses": {"type": "integer", "description": "Meses (default 12)"},
+                    "cuenta_puente": {"type": "string", "description": "Cuenta puente (Prepaid Expenses, Deferred Charges)"},
+                    "fecha_inicio": {"type": "string", "description": "Fecha inicio YYYY-MM-DD (default: 1er dia del mes actual)"},
+                },
+                "required": ["monto", "cuenta_origen"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "ejecutar_distribucion",
+            "description": "Ejecuta el plan de amortizacion generado por calcular_distribucion. Paso 2 de 2. Crea journal entries en QBO.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "plan": {"type": "object", "description": "Plan generado por calcular_distribucion"},
+                },
+                "required": ["plan"],
+            },
+        },
+    },
 ]
 
 KEYWORDS: List[str] = [
@@ -147,4 +181,6 @@ FUNCTIONS: Dict[str, Any] = {
     "ejecutar_batch": tool_ejecutar_batch,
     "cdc_query": tool_cdc_query,
     "crear_budget": tool_crear_budget,
+    "calcular_distribucion": tool_calcular_distribucion,
+    "ejecutar_distribucion": tool_ejecutar_distribucion,
 }
