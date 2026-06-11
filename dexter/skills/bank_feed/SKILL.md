@@ -1,7 +1,7 @@
-# Amortización de Gastos
+# Bank Feed Intelligence
 **Versión:** 1.0.0 | **Dominio:** Dexter v5.0
 
-Distribuye gastos en el tiempo vía Prepaid Expenses. Crea journal entries automáticas. Flujo: monto → cuenta puente → plan mensual → ejecución.
+Clasifica transacciones bancarias con aprendizaje automático. Aprende patrones por empresa. Herramientas: analizarbankfeed, registrarclasificacion, estadisticasclasificacion, buscarpatron, procesar_bank_feed_csv.
 
 ## Cuándo Usar
 Consultá el system prompt o preguntale a Dexter. Esta skill se activa automáticamente cuando el LLM detecta keywords relevantes.

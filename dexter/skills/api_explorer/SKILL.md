@@ -1,7 +1,7 @@
-# Amortización de Gastos
+# API Explorer
 **Versión:** 1.0.0 | **Dominio:** Dexter v5.0
 
-Distribuye gastos en el tiempo vía Prepaid Expenses. Crea journal entries automáticas. Flujo: monto → cuenta puente → plan mensual → ejecución.
+Explora la API de QBO, busca en documentación, internet, y ejecuta requests genéricos. Herramientas: buscarenweb, buscardocsqbo, qborequestgenerico, listarendpointsqbo, infoendpointqbo.
 
 ## Cuándo Usar
 Consultá el system prompt o preguntale a Dexter. Esta skill se activa automáticamente cuando el LLM detecta keywords relevantes.

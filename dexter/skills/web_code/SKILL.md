@@ -1,7 +1,7 @@
-# Amortización de Gastos
+# Web y Código
 **Versión:** 1.0.0 | **Dominio:** Dexter v5.0
 
-Distribuye gastos en el tiempo vía Prepaid Expenses. Crea journal entries automáticas. Flujo: monto → cuenta puente → plan mensual → ejecución.
+Búsqueda web, documentación QBO, ejecución de Python en sandbox. Herramientas: buscarenweb, buscardocsqbo, ejecutarcodigo.
 
 ## Cuándo Usar
 Consultá el system prompt o preguntale a Dexter. Esta skill se activa automáticamente cuando el LLM detecta keywords relevantes.

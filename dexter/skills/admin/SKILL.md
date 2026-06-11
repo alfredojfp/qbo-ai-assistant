@@ -1,7 +1,7 @@
-# Amortización de Gastos
+# Administración
 **Versión:** 1.0.0 | **Dominio:** Dexter v5.0
 
-Distribuye gastos en el tiempo vía Prepaid Expenses. Crea journal entries automáticas. Flujo: monto → cuenta puente → plan mensual → ejecución.
+Gestiona empresas, refresca chart of accounts, logs de errores, memoria persistente. Herramientas clave: gestionar_empresas, refrescar_chart_accounts, ver_log_errores, gestionar_memoria, leer_archivo, registrar_provider_tip.
 
 ## Cuándo Usar
 Consultá el system prompt o preguntale a Dexter. Esta skill se activa automáticamente cuando el LLM detecta keywords relevantes.

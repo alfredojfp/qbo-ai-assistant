@@ -1,7 +1,7 @@
-# Amortización de Gastos
+# OCR de Documentos
 **Versión:** 1.0.0 | **Dominio:** Dexter v5.0
 
-Distribuye gastos en el tiempo vía Prepaid Expenses. Crea journal entries automáticas. Flujo: monto → cuenta puente → plan mensual → ejecución.
+Procesa PDFs de facturas y estados de cuenta. Gemini Flash. Aprendizaje por proveedor. Herramientas: procesar_lote_bills, procesar_csv_corregido, procesar_estado_cuenta.
 
 ## Cuándo Usar
 Consultá el system prompt o preguntale a Dexter. Esta skill se activa automáticamente cuando el LLM detecta keywords relevantes.

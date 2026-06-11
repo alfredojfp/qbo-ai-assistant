@@ -1,7 +1,7 @@
-# Amortización de Gastos
+# Reconciliación Bancaria
 **Versión:** 1.0.0 | **Dominio:** Dexter v5.0
 
-Distribuye gastos en el tiempo vía Prepaid Expenses. Crea journal entries automáticas. Flujo: monto → cuenta puente → plan mensual → ejecución.
+BNK-RECON tag-only: marca transacciones sin crear duplicados. Herramientas: procesar_reconciliacion_bancaria, limpiar_tags.
 
 ## Cuándo Usar
 Consultá el system prompt o preguntale a Dexter. Esta skill se activa automáticamente cuando el LLM detecta keywords relevantes.

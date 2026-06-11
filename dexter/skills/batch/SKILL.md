@@ -1,7 +1,7 @@
-# Amortización de Gastos
+# Motor Batch
 **Versión:** 1.0.0 | **Dominio:** Dexter v5.0
 
-Distribuye gastos en el tiempo vía Prepaid Expenses. Crea journal entries automáticas. Flujo: monto → cuenta puente → plan mensual → ejecución.
+Procesamiento por lotes de depósitos, reconciliación, y operaciones masivas. Dry-run obligatorio antes de ejecutar.
 
 ## Cuándo Usar
 Consultá el system prompt o preguntale a Dexter. Esta skill se activa automáticamente cuando el LLM detecta keywords relevantes.

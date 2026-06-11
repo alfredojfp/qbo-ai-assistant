@@ -1,7 +1,7 @@
-# Amortización de Gastos
+# Reportes Financieros
 **Versión:** 1.0.0 | **Dominio:** Dexter v5.0
 
-Distribuye gastos en el tiempo vía Prepaid Expenses. Crea journal entries automáticas. Flujo: monto → cuenta puente → plan mensual → ejecución.
+P&L, Balance Sheet. Herramientas: generar_reporte_pl, generar_balance_sheet.
 
 ## Cuándo Usar
 Consultá el system prompt o preguntale a Dexter. Esta skill se activa automáticamente cuando el LLM detecta keywords relevantes.

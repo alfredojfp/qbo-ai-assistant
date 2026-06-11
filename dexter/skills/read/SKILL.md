@@ -1,7 +1,7 @@
-# Amortización de Gastos
+# Lectura Directa
 **Versión:** 1.0.0 | **Dominio:** Dexter v5.0
 
-Distribuye gastos en el tiempo vía Prepaid Expenses. Crea journal entries automáticas. Flujo: monto → cuenta puente → plan mensual → ejecución.
+Lee información de empresa, preferencias, y ejecuta consultas SQL en QBO. Herramientas: leer_companyinfo, leer_preferencias, consulta_avanzada, qbo_query.
 
 ## Cuándo Usar
 Consultá el system prompt o preguntale a Dexter. Esta skill se activa automáticamente cuando el LLM detecta keywords relevantes.

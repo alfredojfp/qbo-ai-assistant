@@ -6000,6 +6000,18 @@ TOOL_FUNCTIONS = {
     "procesar_estado_cuenta": tool_procesar_estado_cuenta,
 }
 
+# ── Auto-poblar desde skills (v5.0) ──────────────────────────────────
+# Cualquier skill registrada en dexter/skills/ que no esté ya en
+# TOOL_FUNCTIONS se agrega automáticamente. Esto elimina la necesidad
+# de registro manual para skills nuevas.
+try:
+    from dexter.skills import ALL_FUNCTIONS as _SKILL_FUNCTIONS
+    for _name, _fn in _SKILL_FUNCTIONS.items():
+        if _name not in TOOL_FUNCTIONS:
+            TOOL_FUNCTIONS[_name] = _fn
+except ImportError:
+    pass
+
 
 def _quick_match(text: str, keyword: str) -> bool:
     """Matching case + accent insensitive con word boundary.

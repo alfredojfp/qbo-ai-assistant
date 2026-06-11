@@ -1,7 +1,7 @@
-# Amortización de Gastos
+# Datos Maestros
 **Versión:** 1.0.0 | **Dominio:** Dexter v5.0
 
-Distribuye gastos en el tiempo vía Prepaid Expenses. Crea journal entries automáticas. Flujo: monto → cuenta puente → plan mensual → ejecución.
+Crea clientes, vendors, cuentas, items, empleados, clases, departamentos, términos, métodos de pago. 8 herramientas.
 
 ## Cuándo Usar
 Consultá el system prompt o preguntale a Dexter. Esta skill se activa automáticamente cuando el LLM detecta keywords relevantes.
