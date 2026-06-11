@@ -232,6 +232,7 @@ def _execute_tool(function_name: str, arguments: dict):
     En dry-run, tools de solo-lectura se ejecutan normalmente.
     Tools de escritura retornan un mensaje simulado.
     """
+    _merge_skills_into_tools()  # asegurar skills auto-descubiertas disponibles
     if function_name in TOOL_FUNCTIONS:
         if DRY_RUN_ACTIVE and function_name not in _READ_ONLY_TOOLS:
             args_str = ", ".join(f"{k}={v}" for k, v in arguments.items())
@@ -6001,16 +6002,23 @@ TOOL_FUNCTIONS = {
 }
 
 # ── Auto-poblar desde skills (v5.0) ──────────────────────────────────
-# Cualquier skill registrada en dexter/skills/ que no esté ya en
-# TOOL_FUNCTIONS se agrega automáticamente. Esto elimina la necesidad
-# de registro manual para skills nuevas.
-try:
-    from dexter.skills import ALL_FUNCTIONS as _SKILL_FUNCTIONS
-    for _name, _fn in _SKILL_FUNCTIONS.items():
-        if _name not in TOOL_FUNCTIONS:
-            TOOL_FUNCTIONS[_name] = _fn
-except ImportError:
-    pass
+# Inicializado como False. Se activa en call_llm() al primer uso.
+# (Lazy loading evita circular import: main → skills → tools → main)
+_SKILLS_MERGED = False
+
+def _merge_skills_into_tools():
+    """Auto-puebla TOOL_FUNCTIONS con skills no registradas manualmente."""
+    global _SKILLS_MERGED, TOOL_FUNCTIONS
+    if _SKILLS_MERGED:
+        return
+    try:
+        from dexter.skills import ALL_FUNCTIONS as _SF
+        for _name, _fn in _SF.items():
+            if _name not in TOOL_FUNCTIONS:
+                TOOL_FUNCTIONS[_name] = _fn
+        _SKILLS_MERGED = True
+    except ImportError:
+        pass
 
 
 def _quick_match(text: str, keyword: str) -> bool:
