@@ -73,6 +73,23 @@ for _module in _MODULES:
         ALL_SCHEMAS.append(_schema)
         ALL_FUNCTIONS[_name] = _module.FUNCTIONS[_name]
 
+# ── v5.0: Importar skills auto-descubiertas ────────────────────────────
+# Cualquier skill en dexter/skills/ que no esté ya registrada
+# se agrega automáticamente (sin registro manual).
+try:
+    from dexter.skills import ALL_SCHEMAS as _SKILL_ALL_SCHEMAS
+    from dexter.skills import ALL_FUNCTIONS as _SKILL_ALL_FUNCTIONS
+    _existing = set(ALL_FUNCTIONS.keys())
+    for _name, _fn in _SKILL_ALL_FUNCTIONS.items():
+        if _name not in _existing:
+            ALL_FUNCTIONS[_name] = _fn
+    for _schema in _SKILL_ALL_SCHEMAS:
+        _sname = _extract_name(_schema)
+        if _sname and _sname not in _existing:
+            ALL_SCHEMAS.append(_schema)
+except ImportError:
+    pass  # skills system no disponible (pre-v5.0)
+
 
 def _sname_to_schema(name: str, schemas: list) -> dict | None:
     """Busca un schema por nombre. Retorna el dict del schema o None."""
