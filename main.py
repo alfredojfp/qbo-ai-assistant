@@ -4690,7 +4690,8 @@ def tool_calcular_distribucion(monto: float, cuenta_origen: str,
                                fecha_inicio: str = None,
                                distribucion: str = "equitativa",
                                montos_personalizados: list = None,
-                               dia_mes: int = 1) -> dict:
+                               dia_mes: int = 1,
+                               vendor: str = None) -> dict:
     """Tool: Calcula la distribución de un gasto en N meses.
 
     Paso 1 de 2. Muestra el plan de amortización ANTES de crear nada en QBO.
@@ -4741,6 +4742,15 @@ def tool_calcular_distribucion(monto: float, cuenta_origen: str,
     puente_id = puente["cuentas"][0]["id"]
     puente_name = puente["cuentas"][0]["name"]
 
+    # Vendor opcional
+    vendor_id = None
+    vendor_name = None
+    if vendor:
+        v = buscar_vendor(vendor)
+        if v and isinstance(v, list) and len(v) > 0:
+            vendor_id = v[0].get("id")
+            vendor_name = v[0].get("name", vendor)
+
     # Calcular montos mensuales
     if distribucion == "personalizada" and montos_personalizados:
         montos = montos_personalizados[:meses]
@@ -4784,7 +4794,10 @@ def tool_calcular_distribucion(monto: float, cuenta_origen: str,
             "ajuste_ultimo_mes": ajuste_ultimo,
             "cuenta_origen": origen_name,
             "cuenta_puente": puente_name,
+            "vendor": vendor_name,
+            "vendor_id": vendor_id,
             "fecha_inicio": fecha_inicio,
+            "dia_mes": dia_mes,
         },
         "siguiente_paso": "Para ejecutar, usá tool_ejecutar_distribucion con este plan."
     }
