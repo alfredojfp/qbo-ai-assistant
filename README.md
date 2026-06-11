@@ -5,14 +5,14 @@
 [![Version](https://img.shields.io/badge/version-4.1.0_dev-blue)](https://github.com/alfredojfp/qbo-ai-assistant)
 [![Python](https://img.shields.io/badge/python-3.10+-blue)](https://python.org)
 [![Tests](https://img.shields.io/badge/tests-692_passing-green)](https://github.com/alfredojfp/qbo-ai-assistant/actions)
-[![Tools](https://img.shields.io/badge/tools-106-purple)](docs/SETUP.md)
+[![Tools](https://img.shields.io/badge/tools-116-purple)](docs/SETUP.md)
 [![License](https://img.shields.io/badge/license-Proprietary-red)](LICENSE)
 [![QBO API](https://img.shields.io/badge/QBO-v3-orange)](https://developer.intuit.com)
 [![Idiomas](https://img.shields.io/badge/idiomas-ES_|_EN-brightgreen)](docs/SETUP.md)
 
 **El agente contable más completo para QuickBooks Online. Open source. Self-hosted. En español.**
 
-Habla con tu contabilidad en lenguaje natural — **español e inglés**. 106 herramientas en 21 dominios.
+Habla con tu contabilidad en lenguaje natural — **español e inglés**. 116 herramientas en 21 dominios.
 Multi-empresa. OCR. Memoria persistente. Dry-run. Clasificación bank feed.
 
 [Guía de Instalación](docs/SETUP.md) · [Documentación](docs/) · [Estudio de Mercado](docs/comparativa_mercado_2026.md)
@@ -172,7 +172,7 @@ Interfaz con Rich: paneles, colores, indicadores de herramientas. Cada `⚡ tool
 Qbo Scripts/
 ├── main.py                    # Core del agente
 ├── dexter/
-│   ├── tools/                 # 106 herramientas en 21 módulos
+│   ├── skills/                 # 116 herramientas en 21 módulos
 │   ├── core/                  # API helpers, memoria, retry, safe_json
 │   ├── console.py             # UI con Rich
 │   └── error_log.py           # Log persistente JSONL
