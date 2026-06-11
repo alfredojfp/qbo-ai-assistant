@@ -26,6 +26,12 @@ class TestChartCacheSchemaVersion(unittest.TestCase):
         import os
         os.environ.setdefault("QB_ACCESS_TOKEN", "fake-token-for-test")
         os.environ.setdefault("QB_REALM_ID", "9341455870833544")
+        import main
+        # Borrar cualquier caché residual que otros tests hayan escrito
+        if os.path.exists(main.FILE_CHART_CACHE):
+            try: os.remove(main.FILE_CHART_CACHE)
+            except OSError: pass
+        main.session_state["chart_of_accounts"] = {}
 
     def test_schema_version_constant_exists(self):
         """RED: main debe exportar CHART_SCHEMA_VERSION."""
