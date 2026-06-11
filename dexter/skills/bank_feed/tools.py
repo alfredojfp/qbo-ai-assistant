@@ -1,12 +1,16 @@
-"""dexter.skills.bank_feed.tools — 5 herramientas."""
-# Auto-generado. Las implementaciones reales están en main.py
-# para backward compat. Este archivo existe para que la skill
-# sea auto-contenida.
+"""dexter.skills.bank_feed.tools — 1 tool implementations."""
+# NOTA: estas implementaciones fueron movidas desde main.py
+# como parte del refactor v5.0 (sistema de skills).
 
-from main import (
-    tool_analyze_bank_feed_for_classification,
-    tool_find_pattern_for_transaction,
-    tool_get_classification_history_stats,
-    tool_procesar_bank_feed_csv,
-    tool_record_bank_feed_classification,
-)
+def tool_procesar_bank_feed_csv(archivo_csv: str) -> dict:
+    """Tool: Procesa CSV de Bank Feed con splits.
+
+    MED-8 fix: usa verbose=False y captura log en list para que el
+    LLM reciba el progreso en el dict (no en stdout mezclado).
+    """
+    log_lines: list = []
+    result = procesar_csv_bank_feed(archivo_csv, verbose=False, log=log_lines)
+    result.setdefault("log_lines", log_lines)
+    return result
+
+
