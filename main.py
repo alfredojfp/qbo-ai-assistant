@@ -4687,21 +4687,29 @@ def tool_listar_vendors(activos: bool = True, max_results: int = 50) -> dict:
 
 def tool_calcular_distribucion(monto: float, cuenta_origen: str,
                                meses: int = 12, cuenta_puente: str = None,
-                               fecha_inicio: str = None) -> dict:
+                               fecha_inicio: str = None,
+                               distribucion: str = "equitativa",
+                               montos_personalizados: list = None,
+                               dia_mes: int = 1) -> dict:
     """Tool: Calcula la distribución de un gasto en N meses.
 
     Paso 1 de 2. Muestra el plan de amortización ANTES de crear nada en QBO.
-    Retorna el plan de journal entries necesarias.
+
+    SIEMPRE preguntá al usuario antes de llamar este tool:
+      1. ¿Cuenta puente? (Prepaid Expenses, Deferred Charges, etc.)
+      2. ¿Distribución? 'equitativa' (montos iguales) o 'personalizada'
+      3. ¿Día del mes? 1=principio, 15=mitad, 28=final
+      4. ¿Fecha de inicio? (YYYY-MM-DD, default: 1er día del mes actual)
 
     Args:
         monto: Monto total a distribuir
-        cuenta_origen: Nombre o ID de la cuenta de donde sale el gasto
-        meses: Número de meses (default 12)
-        cuenta_puente: Nombre de la cuenta puente (Prepaid Expenses, etc.)
-        fecha_inicio: Fecha del primer movimiento (YYYY-MM-DD)
-
-    Returns:
-        Dict con el plan de amortización y las cuentas involucradas.
+        cuenta_origen: Nombre de la cuenta de gasto
+        meses: Número de meses
+        cuenta_puente: Nombre de la cuenta puente
+        fecha_inicio: Fecha YYYY-MM-DD
+        distribucion: 'equitativa' o 'personalizada'
+        montos_personalizados: Lista de montos por mes (si personalizada)
+        dia_mes: Día del mes para cada JE (1-28)
     """
     if cuenta_puente is None:
         return {
@@ -4715,6 +4723,9 @@ def tool_calcular_distribucion(monto: float, cuenta_origen: str,
     from datetime import datetime, timedelta
     if fecha_inicio is None:
         fecha_inicio = datetime.now().strftime("%Y-%m-01")
+
+    # Validar dia_mes (1-28 para evitar problemas con febrero)
+    dia_mes = max(1, min(dia_mes or 1, 28))
 
     # Buscar cuentas
     origen = buscar_cuenta(cuenta_origen)
@@ -4730,8 +4741,13 @@ def tool_calcular_distribucion(monto: float, cuenta_origen: str,
     puente_id = puente["cuentas"][0]["id"]
     puente_name = puente["cuentas"][0]["name"]
 
-    monto_mensual = round(monto / meses, 2)
-    ajuste_ultimo = round(monto - monto_mensual * (meses - 1), 2)
+    # Calcular montos mensuales
+    if distribucion == "personalizada" and montos_personalizados:
+        montos = montos_personalizados[:meses]
+    else:
+        monto_mensual = round(monto / meses, 2)
+        montos = [monto_mensual] * meses
+        montos[-1] = round(monto - monto_mensual * (meses - 1), 2)
 
     # Plan de journal entries
     plan = {
@@ -4743,11 +4759,14 @@ def tool_calcular_distribucion(monto: float, cuenta_origen: str,
         "paso_2_amortizacion": [],
     }
 
-    start_date = datetime.strptime(fecha_inicio, "%Y-%m-%d")
+    start_date = datetime.strptime(fecha_inicio[:7] + "-01", "%Y-%m-%d")
     for i in range(meses):
         mes_fecha = start_date + timedelta(days=32 * i)
-        mes_fecha = mes_fecha.replace(day=1)
-        monto_este_mes = ajuste_ultimo if i == meses - 1 else monto_mensual
+        try:
+            mes_fecha = mes_fecha.replace(day=min(dia_mes, 28))
+        except ValueError:
+            mes_fecha = mes_fecha.replace(day=28)
+        monto_este_mes = montos[i]
         plan["paso_2_amortizacion"].append({
             "mes": i + 1,
             "fecha": mes_fecha.strftime("%Y-%m-%d"),
