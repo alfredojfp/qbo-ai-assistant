@@ -4819,19 +4819,22 @@ def tool_ejecutar_distribucion(plan: dict) -> dict:
 
     # Paso 1: Mover monto total a cuenta puente
     paso1 = detalles.get("paso_1", {})
+    vendor_ref = f" [{resumen.get('vendor', '')}]" if resumen.get("vendor") else ""
     if paso1:
         try:
             result = create_journal_entry(
-                date=resumen.get("fecha_inicio"),
+                txn_date=resumen.get("fecha_inicio"),
                 lines=[
-                    {"type": "Debit", "account_id": paso1["debito"]["cuenta_id"],
+                    {"account_id": paso1["debito"]["cuenta_id"],
                      "amount": paso1["debito"]["monto"],
-                     "description": paso1["descripcion"]},
-                    {"type": "Credit", "account_id": paso1["credito"]["cuenta_id"],
+                     "posting_type": "Debit",
+                     "description": paso1["descripcion"] + vendor_ref},
+                    {"account_id": paso1["credito"]["cuenta_id"],
                      "amount": paso1["credito"]["monto"],
-                     "description": paso1["descripcion"]},
+                     "posting_type": "Credit",
+                     "description": paso1["descripcion"] + vendor_ref},
                 ],
-                memo=f"Distribución: ${resumen.get('monto_total',0):,.2f} en {resumen.get('meses',12)} meses"
+                memo=f"Distribución: ${resumen.get('monto_total',0):,.2f} en {resumen.get('meses',12)} meses{vendor_ref}"
             )
             entries_creadas.append({"paso": 1, "result": result})
         except Exception as e:
@@ -4840,15 +4843,18 @@ def tool_ejecutar_distribucion(plan: dict) -> dict:
     # Paso 2: Amortización mensual
     for amort in detalles.get("paso_2_amortizacion", []):
         try:
+            desc = f"Amortización mes {amort['mes']}/{resumen.get('meses',12)}"
             result = create_journal_entry(
-                date=amort["fecha"],
+                txn_date=amort["fecha"],
                 lines=[
-                    {"type": "Debit", "account_id": amort["debito"]["cuenta_id"],
+                    {"account_id": amort["debito"]["cuenta_id"],
                      "amount": amort["debito"]["monto"],
-                     "description": f"Amortización mes {amort['mes']}/{resumen.get('meses',12)}"},
-                    {"type": "Credit", "account_id": amort["credito"]["cuenta_id"],
+                     "posting_type": "Debit",
+                     "description": desc},
+                    {"account_id": amort["credito"]["cuenta_id"],
                      "amount": amort["credito"]["monto"],
-                     "description": f"Amortización mes {amort['mes']}/{resumen.get('meses',12)}"},
+                     "posting_type": "Credit",
+                     "description": desc},
                 ],
                 memo=f"Amortización {amort['mes']}/{resumen.get('meses',12)}: "
                      f"${resumen.get('monto_total',0):,.2f} de {resumen.get('cuenta_origen','?')}"
