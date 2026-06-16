@@ -16,42 +16,51 @@ from dexter.core.batch import (
 
 
 class MockQBOClient:
-    """Mock del cliente QBO para tests."""
+    """Mock del cliente QBO para tests — usa keys mayúsculas como QBO real."""
 
     def __init__(self, existing_customers=None):
-        self.existing = {c["name"]: c for c in (existing_customers or [])}
+        self.existing = {}
+        for c in (existing_customers or []):
+            name = c.get("DisplayName", c.get("name", ""))
+            self.existing[name] = c
         self.created = []
         self.deposits_created = []
         self._next_id = 1000
 
     def search_customer(self, name):
         results = []
-        for c in self.existing.values():
-            if c["name"].lower() == name.lower():
-                results.append(c)
+        for key, c in self.existing.items():
+            cname = c.get("DisplayName", c.get("name", key))
+            if cname.lower() == name.lower():
+                results.append({
+                    "id": c.get("Id", c.get("id", "")),
+                    "name": cname,
+                })
         return results
 
     def create_customer(self, data):
         cid = str(self._next_id)
         self._next_id += 1
+        display_name = data.get("DisplayName", data.get("name", "?"))
         new = {
-            "id": cid,
-            "name": data["name"],
-            "email": data.get("email", ""),
+            "Id": cid,
+            "DisplayName": display_name,
         }
-        self.existing[data["name"]] = new
+        self.existing[display_name] = new
         self.created.append(new)
         return new
 
     def create_deposit(self, date, account_id, lines, memo=None):
         did = str(self._next_id)
         self._next_id += 1
+        total = sum(l["amount"] for l in lines)
         d = {
-            "id": did,
+            "deposit_id": did,
+            "total": total,
             "date": date,
-            "account_id": account_id,
-            "lines": lines,
-            "memo": memo,
+            "_account_id": account_id,
+            "_lines": lines,
+            "_memo": memo,
         }
         self.deposits_created.append(d)
         return d
@@ -142,7 +151,7 @@ class TestDepositSkillValidation(unittest.TestCase):
             result = skill.validate(bid)
             self.assertEqual(result["ready"], 1)
             self.assertEqual(len(qbo.created), 1)
-            self.assertEqual(qbo.created[0]["name"], "Maria")
+            self.assertEqual(qbo.created[0]["DisplayName"], "Maria")
         finally:
             shutil.rmtree(tmpdir, ignore_errors=True)
 
@@ -204,8 +213,10 @@ class TestDepositSkillExecute(unittest.TestCase):
             skill.engine.dry_run(bid)
             skill.engine.confirm(bid)
             result = skill.execute(bid)
+            # HIGH-2 grouping: mismo date+bank → 1 depósito con 2 líneas
             self.assertEqual(result["executed"], 2)
-            self.assertEqual(len(qbo.deposits_created), 2)
+            self.assertEqual(len(qbo.deposits_created), 1)
+            self.assertEqual(len(qbo.deposits_created[0]["_lines"]), 2)
         finally:
             shutil.rmtree(tmpdir, ignore_errors=True)
 
@@ -232,7 +243,7 @@ class TestDepositSkillExecute(unittest.TestCase):
             skill.engine.dry_run(bid)
             skill.engine.confirm(bid)
             skill.execute(bid)
-            self.assertEqual(qbo.deposits_created[0]["lines"][0]["from_account_id"],
+            self.assertEqual(qbo.deposits_created[0]["_lines"][0]["from_account_id"],
                           "income_special")
         finally:
             shutil.rmtree(tmpdir, ignore_errors=True)

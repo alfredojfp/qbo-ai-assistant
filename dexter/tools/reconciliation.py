@@ -1,4 +1,9 @@
-"""dexter.tools.reconciliation — 3 tools."""
+"""dexter.tools.reconciliation — 3 tools.
+
+⚠️  Importa desde main.py (shims), NO desde dexter/skills/reconciliation/tools.py.
+Esto es necesario para evitar circular import durante _discover_skills().
+Si modificás una implementación, editala en main.py.
+"""
 from typing import Any, Dict, List
 
 from main import (

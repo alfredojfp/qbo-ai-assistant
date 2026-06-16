@@ -1,9 +1,10 @@
 """dexter.skills.search.tools — 7 tool implementations."""
 # NOTA: estas implementaciones fueron movidas desde main.py
 # como parte del refactor v5.0 (sistema de skills).
+# HIGH-1: search_customer / search_vendor ahora viven en fuzzy.py (≥85% match).
 
-from main import buscar_cliente, buscar_vendor, buscar_cuenta, buscar_item
-from main import qbo_query
+from main import qbo_query, find_account, search_item, session_state
+from dexter.skills.search.fuzzy import search_customer, search_vendor
 
 def tool_buscar_cliente(nombre: str, exacto: bool = False) -> dict:
     """Tool: Busca cliente por nombre"""

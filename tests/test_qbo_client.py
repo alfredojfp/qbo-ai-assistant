@@ -370,14 +370,12 @@ class TestQBOClientCreateDeposit(unittest.TestCase):
         self.assertEqual(payload["TxnDate"], "2026-06-15")
         self.assertEqual(payload["PrivateNote"], "BNK-RECON")
         self.assertEqual(len(payload["Line"]), 2)
-        # Primera línea tiene customer
         first = payload["Line"][0]
         self.assertEqual(first["Amount"], 100.0)
-        self.assertEqual(
-            first["DepositLineDetail"]["Entity"]["EntityRef"]["value"],
-            "cust_1",
-        )
-        # Segunda línea sin customer
+        # HIGH-2: Entity usa formato plano {value, type}, no {Type, EntityRef}
+        entity = first["DepositLineDetail"].get("Entity", {})
+        self.assertEqual(entity.get("value"), "cust_1")
+        self.assertEqual(entity.get("type"), "Customer")
         second = payload["Line"][1]
         self.assertNotIn("Entity", second["DepositLineDetail"])
 

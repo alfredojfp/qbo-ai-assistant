@@ -48,7 +48,8 @@ class QBOClientProtocol:
         self,
         txn_type: str,
         txn_id: str,
-        fields: Dict[str, Any]
+        fields: Dict[str, Any],
+        sync_token: str = "0",
     ) -> Dict[str, Any]:
         """Actualiza campos de una transaction (Memo, PrivateNote, etc.)."""
         ...
@@ -239,62 +240,142 @@ class ReconciliationTaggerSkill:
 
     def run(self, batch_id: str) -> Dict[str, Any]:
         """
-        Ejecuta el flujo completo:
-        1. Descarga QBO transactions
-        2. Matchea con CSV
-        3. Aplica tags a matches
-        4. Genera reporte
+        Ejecuta el flujo completo con state machine:
+        1. validate() — descarga QBO y matchea
+        2. engine.dry_run() — muestra resumen
+        3. engine.confirm() — usuario confirma
+        4. execute() — aplica tags
 
         Returns:
             Dict con matched, unmatched, errors, report_path
         """
+        self.validate(batch_id)
+
+        batch = self.engine.storage.get_batch(batch_id)
+        summary = batch.get("summary", {})
+        matched_count = summary.get("matched", 0)
+        unmatched_count = summary.get("unmatched", 0)
+
+        if matched_count == 0:
+            self.engine.storage.update_batch_state(batch_id, BatchState.EXECUTED,
+                summary={"matched": 0, "unmatched": unmatched_count, "executed": 0, "failed": 0})
+            return {"matched": 0, "exact": 0, "fuzzy": 0, "unmatched": unmatched_count,
+                    "errors": 0, "report_path": "", "tag_prefix": self.tag_prefix}
+
+        self.engine.dry_run(batch_id)
+        self.engine.confirm(batch_id)
+        return self.execute(batch_id)
+
+    def validate(self, batch_id: str) -> Dict[str, Any]:
+        self.engine._assert_transition(batch_id, BatchState.VALIDATED)
         items = self.engine.storage.get_items(batch_id)
         csv_items = [item["input"] for item in items]
         qbo_txns = self.fetch_qbo_transactions()
 
         matched, unmatched = self.find_matches(csv_items, qbo_txns)
+        ready = 0
 
-        # Aplica tags
+        for item in items:
+            inp = item["input"]
+            found = any(m.csv_row is inp for m in matched)
+            if found:
+                self.engine.storage.update_item(item["id"], ItemState.READY)
+                ready += 1
+            else:
+                self.engine.storage.update_item(item["id"], ItemState.FAILED,
+                    error="No match encontrado en QBO")
+
+        self.engine.storage.update_batch_context(batch_id, {
+            "_matched": [{"qbo_id": m.qbo_id, "qbo_type": m.qbo_type,
+                          "match_type": m.match_type, "confidence": m.confidence,
+                          "csv_row": m.csv_row} for m in matched],
+            "_unmatched": unmatched,
+        })
+        self.engine.storage.update_batch_state(batch_id, BatchState.VALIDATED,
+            summary={"matched": len(matched), "ready": ready, "unmatched": len(unmatched)})
+        return {"matched": len(matched), "ready": ready, "unmatched": len(unmatched)}
+
+    def execute(self, batch_id: str) -> Dict[str, Any]:
+        self.engine._assert_transition(batch_id, BatchState.EXECUTING)
+        self.engine.storage.update_batch_state(batch_id, BatchState.EXECUTING)
+
+        ctx = self.engine.storage.get_batch(batch_id).get("context", {})
+        matched = ctx.get("_matched", [])
+        unmatched = ctx.get("_unmatched", [])
+
         results: List[Dict[str, Any]] = []
         errors: List[Dict[str, Any]] = []
+        executed = 0
+        failed = 0
+        items = self.engine.storage.get_items(batch_id)
+
         for match in matched:
-            tag = self._generate_tag(match.csv_row)
-            field = TAG_FIELD_BY_TYPE.get(match.qbo_type, "PrivateNote")
+            tag = self._generate_tag(match["csv_row"])
+            field = TAG_FIELD_BY_TYPE.get(match["qbo_type"], "PrivateNote")
             try:
                 self.qbo.update_transaction(
-                    match.qbo_type, match.qbo_id, {field: tag}
+                    match["qbo_type"], match["qbo_id"], {field: tag}
                 )
                 results.append({
-                    "csv_date": match.csv_row["date"],
-                    "csv_amount": match.csv_row["amount"],
-                    "csv_description": match.csv_row.get("description", ""),
+                    "csv_date": match["csv_row"]["date"],
+                    "csv_amount": match["csv_row"]["amount"],
+                    "csv_description": match["csv_row"].get("description", ""),
                     "tag": tag,
-                    "qbo_id": match.qbo_id,
-                    "qbo_type": match.qbo_type,
+                    "qbo_id": match["qbo_id"],
+                    "qbo_type": match["qbo_type"],
                     "field_updated": field,
-                    "match_type": match.match_type,
-                    "confidence": match.confidence,
+                    "match_type": match["match_type"],
+                    "confidence": match["confidence"],
                 })
+                executed += 1
             except Exception as e:
+                failed += 1
                 errors.append({
-                    "csv_row": match.csv_row,
-                    "qbo_id": match.qbo_id,
+                    "csv_row": match["csv_row"],
+                    "qbo_id": match["qbo_id"],
                     "error": str(e),
                 })
+
+        # Mark items
+        for item in items:
+            inp = item["input"]
+            was_matched = any(
+                m["csv_row"]["date"] == inp["date"]
+                and m["csv_row"]["amount"] == inp["amount"]
+                and m["csv_row"].get("description") == inp.get("description")
+                for m in matched
+            )
+            if was_matched:
+                tag_errored = any(
+                    e["csv_row"]["date"] == inp["date"]
+                    and e["csv_row"]["amount"] == inp["amount"]
+                    for e in errors
+                )
+                if tag_errored:
+                    self.engine.storage.update_item(item["id"], ItemState.FAILED,
+                        error="Error aplicando tag")
+                else:
+                    self.engine.storage.update_item(item["id"], ItemState.EXECUTED)
+            # FAILED items already marked by validate
 
         report_path = self._write_report(batch_id, results, unmatched, errors)
         self.engine.storage.update_batch_context(
             batch_id, {"report_path": report_path}
         )
+
+        final_state = BatchState.EXECUTED if failed == 0 else BatchState.FAILED
         summary = {
             "matched": len(results),
             "exact": sum(1 for r in results if r["match_type"] == "exact"),
             "fuzzy": sum(1 for r in results if r["match_type"] == "fuzzy"),
             "unmatched": len(unmatched),
             "errors": len(errors),
+            "executed": executed,
+            "failed": failed,
             "report_path": report_path,
             "tag_prefix": self.tag_prefix,
         }
+        self.engine.storage.update_batch_state(batch_id, final_state, summary=summary)
         return summary
 
     def _write_report(

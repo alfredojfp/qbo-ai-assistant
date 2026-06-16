@@ -284,6 +284,11 @@ def similarity_score(a: str, b: str) -> float:
     """Calcula similitud entre dos strings (0-1)"""
     return SequenceMatcher(None, a.lower(), b.lower()).ratio()
 
+
+# HIGH-1: fuzzy matching de clientes/vendors ≥85% — delegado a dexter.skills.search.fuzzy.
+# Se importa lazy para evitar circular import (_discover_skills se dispara al tocar dexter.skills).
+
+
 def update_env_file(key: str, value: str):
     """Actualiza una variable en el archivo .env de forma atómica.
 
@@ -923,61 +928,43 @@ def generate_token_report():
 
 # ==================== BÚSQUEDAS EN QUICKBOOKS ====================
 
-def search_customer(search_term: str, exact: bool = False) -> List[dict]:
-    """Busca clientes en QuickBooks"""
+def search_customer(search_term: str, exact: bool = False, fuzzy_fallback: bool = True) -> List[dict]:
+    """Busca clientes en QuickBooks con fuzzy fallback ≥85%.
+
+    Delega a dexter.skills.search.fuzzy (HIGH-1). Lazy import para evitar circular."""
     log_operation("searches")
+    from dexter.skills.search.fuzzy import search_customer as _fuzzy_sc
+    return _fuzzy_sc(search_term, exact=exact, fuzzy_fallback=fuzzy_fallback)
 
-    if exact:
-        sql = f"SELECT * FROM Customer WHERE DisplayName = '{search_term}'"
-    else:
-        sql = f"SELECT * FROM Customer WHERE DisplayName LIKE '%{search_term}%'"
 
-    result = qbo_query(sql)
+def search_vendor(search_term: str, exact: bool = False, fuzzy_fallback: bool = True) -> List[dict]:
+    """Busca vendors en QuickBooks con fuzzy fallback ≥85%.
 
-    if "error" in result:
-        return []
-
-    customers = result.get("QueryResponse", {}).get("Customer", [])
-    results = []
-
-    for c in customers:
-        results.append({
-            "id": c.get("Id"),
-            "name": c.get("DisplayName"),
-            "company": c.get("CompanyName", ""),
-            "balance": float(c.get("Balance", 0)),
-            "active": c.get("Active", True)
-        })
-
-    return results
-
-def search_vendor(search_term: str, exact: bool = False) -> List[dict]:
-    """Busca vendors en QuickBooks"""
+    Delega a dexter.skills.search.fuzzy (HIGH-1). Lazy import para evitar circular."""
     log_operation("searches")
+    from dexter.skills.search.fuzzy import search_vendor as _fuzzy_sv
+    return _fuzzy_sv(search_term, exact=exact, fuzzy_fallback=fuzzy_fallback)
 
-    if exact:
-        sql = f"SELECT * FROM Vendor WHERE DisplayName = '{search_term}'"
-    else:
-        sql = f"SELECT * FROM Vendor WHERE DisplayName LIKE '%{search_term}%'"
 
-    result = qbo_query(sql)
+def find_similar_customers(name: str, threshold: float = None, max_results: int = 5) -> List[dict]:
+    from dexter.skills.search.fuzzy import find_similar_customers as _fn
+    return _fn(name, threshold=threshold, max_results=max_results)
 
-    if "error" in result:
-        return []
 
-    vendors = result.get("QueryResponse", {}).get("Vendor", [])
-    results = []
+def find_similar_vendors(name: str, threshold: float = None, max_results: int = 5) -> List[dict]:
+    from dexter.skills.search.fuzzy import find_similar_vendors as _fn
+    return _fn(name, threshold=threshold, max_results=max_results)
 
-    for v in vendors:
-        results.append({
-            "id": v.get("Id"),
-            "name": v.get("DisplayName"),
-            "company": v.get("CompanyName", ""),
-            "balance": float(v.get("Balance", 0)),
-            "active": v.get("Active", True)
-        })
 
-    return results
+def invalidate_customer_cache():
+    from dexter.skills.search.fuzzy import invalidate_customer_cache as _fn
+    return _fn()
+
+
+def invalidate_vendor_cache():
+    from dexter.skills.search.fuzzy import invalidate_vendor_cache as _fn
+    return _fn()
+
 
 def search_item(search_term: str) -> List[dict]:
     """Busca items/servicios en QuickBooks"""
@@ -1119,6 +1106,7 @@ def create_customer(display_name: str, email: str = None, phone: str = None,
 
     if response.status_code == 200:
         customer = response.json()["Customer"]
+        invalidate_customer_cache()
         return {
             "success": True,
             "customer_id": customer["Id"],
@@ -2828,20 +2816,27 @@ def process_deposits_csv(csv_path: str) -> dict:
     }
 
 def create_deposits_template():
-    """Crea archivo CSV template para depósitos"""
+    """Crea archivo CSV template para depósitos multi-cliente.
+
+    HIGH-2: columnas opcionales bank_account y line_account para control
+    por línea. Compatible con el nuevo DepositBatchSkill.
+    """
     template_data = {
-        "customer_name": ["Cliente Ejemplo 1", "Cliente Ejemplo 2"],
-        "amount": [1500.00, 2300.50],
-        "from_account": ["Client Retainers", "Prepaid Labour"],
-        "to_account": ["Checking Account", "Checking Account"],
-        "date": ["2026-01-15", "2026-01-16"],
-        "memo": ["Anticipo proyecto A", "Prepago servicios enero"]
+        "date": ["2026-01-15", "2026-01-15", "2026-01-16"],
+        "client_name": ["Cliente Ejemplo 1", "Cliente Ejemplo 2", "Cliente Ejemplo 3"],
+        "amount": [1000.00, 1000.00, 1000.00],
+        "bank_account": ["Business Account", "Business Account", "Checking"],
+        "line_account": ["Customer Deposits", "Customer Deposits", "Sales"],
+        "memo": ["Anticipo proyecto A", "Prepago servicios", "Factura #1042"],
     }
 
     df = pd.DataFrame(template_data)
     df.to_csv(FILE_DEPOSITS_TEMPLATE, index=False)
 
     print(f"✅ Template creado: {FILE_DEPOSITS_TEMPLATE}")
+    print("   Columnas: date, client_name, amount, bank_account, line_account, memo")
+    print("   bank_account: (opcional) cuenta bancaria → DepositToAccountRef")
+    print("   line_account: (opcional) cuenta contable → AccountRef (puede ser Income, Liability, etc.)")
 
 # ==================== BANK FEED PROCESSING ====================
 
@@ -5610,22 +5605,24 @@ def tool_depositar_lote_csv(
 ) -> dict:
     """
     Tool: Procesa CSV de deposits multi-cliente con el motor batch.
-    Usa el Sprint 2 (DepositBatchSkill) con state machine,
-    disambiguación interactiva y dry-run obligatorio.
+
+    HIGH-2: columnas opcionales bank_account y line_account por línea.
+    Si se especifican, buscan la cuenta por nombre (cualquier tipo: Bank,
+    Income, Liability, etc.). Si no, usan los defaults auto-detectados.
 
     Args:
-        ruta_archivo: Ruta al CSV (columnas: date, client_name, amount).
-            Opcionales: terms, memo.
-        cuenta_banco_id: ID de la cuenta bancaria. Si no se da, se auto-detecta.
-        cuenta_ingreso_id: ID de la cuenta de income default. Si no se da,
-            se auto-detecta buscando cuentas tipo INGRESO.
+        ruta_archivo: Ruta al CSV.
+            Columnas requeridas: date, client_name, amount.
+            Columnas opcionales: bank_account, line_account, terms, memo.
+        cuenta_banco_id: ID default de la cuenta bancaria (override).
+        cuenta_ingreso_id: ID default de la cuenta de income (override).
         confirmar: Si True, pide confirmación antes de ejecutar.
             Si False, solo corre el dry-run (no crea nada en QBO).
     """
     from dexter.core.batch import (
         BatchEngine, BatchStorage, Disambiguator, DepositBatchSkill,
     )
-    from dexter.core.qbo_client import make_deposit_qbo_client
+    from dexter.core.qbo_client import make_deposit_qbo_client, find_bank_account_id
 
     if not os.path.exists(ruta_archivo):
         return {"success": False, "error": f"Archivo no encontrado: {ruta_archivo}"}
@@ -5662,55 +5659,57 @@ def tool_depositar_lote_csv(
         qbo_client=qbo,
         bank_account_id=cuenta_banco_id,
         income_account_id=cuenta_ingreso_id,
+        account_finder=find_account,
     )
     batch_id = skill.from_csv(ruta_archivo)
+    items = storage.get_items(batch_id)
 
-    # Dry-run: validar sin crear
     print(f"\n📋 BATCH {batch_id} CREADO")
-    print(f"   Items: {len(storage.get_items(batch_id))}")
-    print(f"   Cuenta banco: {cuenta_banco_id}")
-    print(f"   Cuenta income: {cuenta_ingreso_id}")
+    print(f"   Items: {len(items)}")
+
+    # Validar: resuelve clientes (fuzzy ≥85%) + cuentas (bank_account / line_account)
+    validation = skill.validate(batch_id)
+
+    # Mostrar cuentas resueltas por línea
+    resolved_accounts = validation.get("resolved_accounts", {})
+    if resolved_accounts:
+        print("   Cuentas resueltas desde CSV:")
+        for name, info in resolved_accounts.items():
+            print(f"     {name} → {info['id']} ({info.get('type', '?')})")
+
+    print(f"   Cuenta banco default: {cuenta_banco_id}")
+    print(f"   Cuenta line default: {cuenta_ingreso_id}")
+    print(f"   Clientes resueltos: {validation.get('resolved_clients', {})}")
 
     if not confirmar:
         return {
             "success": True,
             "batch_id": batch_id,
             "dry_run": True,
-            "message": "Batch creado. Revisa con 'listar batches' antes de confirmar.",
+            "ready": validation.get("ready", 0),
+            "failed": validation.get("failed", 0),
+            "message": "Batch creado y validado. Revisa con 'listar batches' antes de confirmar.",
         }
 
-    # Confirmar y ejecutar
-    if not disambiguator.confirm_batch(batch_id):
+    # Dry-run + confirmación
+    dry_run_summary = engine.dry_run(batch_id)
+    if not disambiguator.confirm_batch(dry_run_summary):
         return {
             "success": False,
             "batch_id": batch_id,
             "message": "Operación cancelada por el usuario.",
         }
 
+    engine.confirm(batch_id)
     summary = skill.execute(batch_id)
     return {
         "success": summary.get("executed", 0) > 0,
         "batch_id": batch_id,
         "executed": summary.get("executed", 0),
         "failed": summary.get("failed", 0),
+        "total": summary.get("total", 0),
         "errors": summary.get("errors", []),
     }
-
-    skill = ReconciliationTaggerSkill(
-        engine=engine,
-        qbo_client=qbo,
-        period_start=period_start,
-        period_end=period_start,
-        account_id="",
-    )
-    result = skill.cleanup_tags(batch_id)
-    return {
-        "success": True,
-        "removed": result.get("removed", 0),
-        "errors": result.get("errors", []),
-    }
-
-# Mapeo de nombres de tools a funciones
 
 
 def buscar_pdf_en_pending_bills(nombre_archivo: str = None) -> str:

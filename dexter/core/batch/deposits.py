@@ -50,6 +50,7 @@ class DepositBatchSkill:
     """Skill de bank deposits multi-cliente."""
 
     REQUIRED_CSV_FIELDS = ["date", "client_name", "amount"]
+    OPTIONAL_CSV_FIELDS = ["bank_account", "line_account", "terms", "memo"]
 
     def __init__(
         self,
@@ -58,7 +59,8 @@ class DepositBatchSkill:
         qbo_client: QBOClientProtocol,
         classifier: Optional[Callable[[str, float], Dict[str, Any]]] = None,
         bank_account_id: str = "default_bank",
-        income_account_id: str = "default_income"
+        income_account_id: str = "default_income",
+        account_finder: Optional[Callable[..., List[Dict[str, Any]]]] = None,
     ):
         self.engine = engine
         self.disambiguator = disambiguator
@@ -66,6 +68,7 @@ class DepositBatchSkill:
         self.classifier = classifier
         self.bank_account_id = bank_account_id
         self.income_account_id = income_account_id
+        self._account_finder = account_finder
 
     def from_csv(self, csv_path: str) -> str:
         """
@@ -85,7 +88,7 @@ class DepositBatchSkill:
         with open(csv_path, 'r', encoding='utf-8') as f:
             reader = csv.DictReader(f)
             missing = [fld for fld in self.REQUIRED_CSV_FIELDS
-                       if fld not in reader.fieldnames]
+                       if fld not in (reader.fieldnames or [])]
             if missing:
                 raise ValueError(f"Columnas faltantes en CSV: {missing}")
             for row in reader:
@@ -93,13 +96,22 @@ class DepositBatchSkill:
                     amount = float(row["amount"])
                 except (ValueError, KeyError):
                     raise ValueError(f"Monto inválido: {row.get('amount')}")
-                items.append({
+                item = {
                     "date": row["date"].strip(),
                     "client_name": row["client_name"].strip(),
                     "amount": amount,
                     "terms": row.get("terms", "").strip() or None,
                     "memo": row.get("memo", "").strip() or None,
-                })
+                    "bank_account": row.get("bank_account", "").strip() or None,
+                    "line_account": row.get("line_account", "").strip() or None,
+                }
+                # backward compat: if old template has 'to_account', treat as bank_account
+                if not item["bank_account"] and row.get("to_account", "").strip():
+                    item["bank_account"] = row["to_account"].strip()
+                # backward compat: if old template has 'from_account', treat as line_account
+                if not item["line_account"] and row.get("from_account", "").strip():
+                    item["line_account"] = row["from_account"].strip()
+                items.append(item)
         if not items:
             raise ValueError("CSV sin filas")
         return items
@@ -107,7 +119,8 @@ class DepositBatchSkill:
     def resolve_clients(self, batch_id: str) -> Dict[str, Any]:
         """
         Para cada item del batch, busca el cliente en QBO.
-        Si no existe, pregunta al usuario si quiere crearlo.
+        Si no existe y hay 2+, pregunta en lote (sin pedir email/terms).
+        Si es solo 1, usa el flujo interactivo con datos opcionales.
         Guarda el resultado en el contexto del batch.
 
         Returns:
@@ -116,30 +129,66 @@ class DepositBatchSkill:
         items = self.engine.storage.get_items(batch_id)
         resolved: Dict[str, str] = {}
         errors: List[Dict[str, Any]] = []
+        unfound: List[str] = []
+        # Mapa: client_name → primer index_num donde aparece
+        client_to_index: Dict[str, int] = {}
 
+        # Primera pasada: buscar clientes, separar encontrados de no encontrados
         for item in items:
             client_name = item["input"]["client_name"]
+            if client_name not in client_to_index:
+                client_to_index[client_name] = item["index_num"]
             if client_name in resolved:
                 continue
             candidates = self.qbo.search_customer(client_name)
             if candidates:
                 chosen_id = self._pick_from_candidates(client_name, candidates)
-                if chosen_id:
+                if chosen_id == "__NEW__":
+                    unfound.append(client_name)
+                elif chosen_id:
                     resolved[client_name] = chosen_id
                 else:
                     errors.append({
-                        "index": item["index_num"],
+                        "index": client_to_index[client_name],
                         "error": f"Usuario saltó selección para '{client_name}'"
                     })
             else:
-                customer_id = self._create_new_customer(client_name)
-                if customer_id:
-                    resolved[client_name] = customer_id
-                else:
+                unfound.append(client_name)
+
+        # Segunda pasada: crear clientes no encontrados
+        if not unfound:
+            self.engine.storage.update_batch_context(batch_id, {
+                "resolved_clients": resolved
+            })
+            return {"resolved": resolved, "errors": errors}
+
+        if len(unfound) >= 2:
+            to_create = self.disambiguator.ask_bulk_new_customers(unfound)
+            if to_create:
+                for name in to_create:
+                    cid = self._create_customer_minimal(name)
+                    if cid:
+                        resolved[name] = cid
+                    else:
+                        errors.append({
+                            "index": client_to_index[name],
+                            "error": f"No se pudo crear '{name}'"
+                        })
+            else:
+                for name in unfound:
                     errors.append({
-                        "index": item["index_num"],
-                        "error": f"Cliente '{client_name}' no resuelto"
+                        "index": client_to_index[name],
+                        "error": f"Usuario canceló creación de '{name}'"
                     })
+        else:
+            cid = self._create_new_customer(unfound[0])
+            if cid:
+                resolved[unfound[0]] = cid
+            else:
+                errors.append({
+                    "index": client_to_index[unfound[0]],
+                    "error": f"Cliente '{unfound[0]}' no resuelto"
+                })
 
         self.engine.storage.update_batch_context(batch_id, {
             "resolved_clients": resolved
@@ -151,12 +200,17 @@ class DepositBatchSkill:
         client_name: str,
         candidates: List[Dict[str, Any]]
     ) -> Optional[str]:
-        """Elige un candidato. Si hay uno solo, lo toma. Si hay varios, pregunta."""
-        if len(candidates) == 1:
+        """Elige un candidato. Si es fuzzy (≥85%), siempre pregunta al usuario."""
+        is_fuzzy = any("_fuzzy_score" in c for c in candidates)
+
+        if len(candidates) == 1 and not is_fuzzy:
             self.disambiguator.output(
                 f"  ✓ Cliente encontrado: {client_name} → ID {candidates[0]['id']}"
             )
             return candidates[0]["id"]
+
+        if is_fuzzy:
+            return self.disambiguator.ask_fuzzy_customer_match(client_name, candidates)
 
         options = [f"{c.get('name', '?')} (ID: {c.get('id', '?')})"
                    for c in candidates]
@@ -178,26 +232,115 @@ class DepositBatchSkill:
         new_data = self.disambiguator.ask_new_customer(client_name)
         if new_data is None:
             return None
+        return self._create_qbo_customer(new_data)
+
+    def _create_customer_minimal(self, client_name: str) -> Optional[str]:
+        """Crea un cliente en QBO solo con DisplayName, sin preguntar info opcional."""
         try:
-            created = self.qbo.create_customer(new_data)
+            created = self.qbo.create_customer({"DisplayName": client_name})
+            cid = created.get("Id", created.get("id", ""))
             self.disambiguator.output(
-                f"  ✓ Cliente creado: {client_name} → ID {created['id']}"
+                f"  ✓ Cliente creado: {client_name} → ID {cid}"
             )
-            return created["id"]
+            return cid
         except Exception as e:
             self.disambiguator.show_error(
                 f"Error creando cliente '{client_name}'", str(e)
             )
             return None
 
+    def _create_qbo_customer(self, new_data: Dict[str, Any]) -> Optional[str]:
+        """Crea un cliente en QBO con los datos del disambiguator."""
+        try:
+            qbo_payload = {"DisplayName": new_data["name"]}
+            if new_data.get("email"):
+                qbo_payload["PrimaryEmailAddr"] = new_data["email"]
+            if new_data.get("company"):
+                qbo_payload["CompanyName"] = new_data["company"]
+            created = self.qbo.create_customer(qbo_payload)
+            cid = created.get("Id", created.get("id", ""))
+            self.disambiguator.output(
+                f"  ✓ Cliente creado: {new_data['name']} → ID {cid}"
+            )
+            return cid
+        except Exception as e:
+            self.disambiguator.show_error(
+                f"Error creando cliente '{new_data.get('name', '?')}'", str(e)
+            )
+            return None
+
+    def resolve_accounts(self, items: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+        """
+        Resuelve nombres de cuenta (bank_account, line_account) a IDs.
+        HIGH-2: soporta cuentas de cualquier tipo (Bank, Income, Liability, etc.).
+
+        Returns:
+            Dict mapeando nombre de cuenta → {"id": str, "name": str, "type": str}
+        """
+        if not self._account_finder:
+            return {}
+
+        resolved: Dict[str, Dict[str, Any]] = {}
+        names = set()
+        for item in items:
+            inp = item.get("input", item)
+            for col in ("bank_account", "line_account"):
+                name = inp.get(col) or ""
+                if name:
+                    names.add(name)
+
+        for name in sorted(names):
+            candidates = self._account_finder(name, False, None)
+            if not candidates:
+                self.disambiguator.output(
+                    f"  ⚠️  Cuenta '{name}' no encontrada en el Chart of Accounts"
+                )
+                continue
+            if len(candidates) == 1:
+                resolved[name] = {
+                    "id": candidates[0]["id"],
+                    "name": candidates[0]["name"],
+                    "type": candidates[0].get("type", ""),
+                }
+                self.disambiguator.output(
+                    f"  ✓ Cuenta encontrada: {name} → {candidates[0]['id']} ({candidates[0]['name']})"
+                )
+            else:
+                choice = self.disambiguator.ask_account(
+                    f"Cuenta '{name}' tiene {len(candidates)} coincidencias",
+                    candidates,
+                )
+                if choice:
+                    match = next((c for c in candidates if c.get("id") == choice), None)
+                    resolved[name] = {
+                        "id": choice,
+                        "name": match["name"] if match else name,
+                        "type": match.get("type", "") if match else "",
+                    }
+                else:
+                    self.disambiguator.output(
+                        f"  ⚠️  Cuenta '{name}' — usuario no seleccionó ninguna"
+                    )
+
+        return resolved
+
     def validate(self, batch_id: str) -> Dict[str, Any]:
         """
         Valida el batch completo:
         1. Resuelve clientes (busca o crea)
-        2. Marca items como READY o FAILED
+        2. Resuelve cuentas (bank_account / line_account) HIGH-2
+        3. Marca items como READY o FAILED
         """
+        self.engine._assert_transition(batch_id, BatchState.VALIDATED)
         result = self.resolve_clients(batch_id)
         items = self.engine.storage.get_items(batch_id)
+        resolved_accounts = self.resolve_accounts(items)
+
+        self.engine.storage.update_batch_context(batch_id, {
+            "resolved_clients": result["resolved"],
+            "resolved_accounts": resolved_accounts,
+        })
+
         ready = 0
         failed_indices = {e["index"] for e in result["errors"]}
 
@@ -222,52 +365,115 @@ class DepositBatchSkill:
             summary={
                 "ready": ready,
                 "failed": len(failed_indices),
-                "resolved_clients": result["resolved"]
+                "resolved_clients": result["resolved"],
             }
         )
         return {
             "ready": ready,
             "failed": len(failed_indices),
-            "resolved_clients": result["resolved"]
+            "resolved_clients": result["resolved"],
+            "resolved_accounts": resolved_accounts,
         }
 
     def execute(self, batch_id: str) -> Dict[str, Any]:
         """
-        Ejecuta el batch: crea un deposit por cada item en QBO.
+        Ejecuta el batch agrupando items con mismo date+bank_account
+        en UN solo depósito multi-línea (HIGH-2 grouping).
+
         Asume que ya pasó por validate + dry_run + confirm.
         """
-        return self.engine.execute(batch_id, self._executor_for(batch_id))
+        self.engine._assert_transition(batch_id, BatchState.EXECUTING)
+        self.engine.storage.update_batch_state(batch_id, BatchState.EXECUTING)
 
-    def _executor_for(self, batch_id: str):
-        def executor(item_input: Dict[str, Any]) -> tuple:
-            client_name = item_input["client_name"]
-            batch = self.engine.storage.get_batch(batch_id)
-            resolved = batch.get("context", {}).get("resolved_clients", {})
-            customer_id = resolved.get(client_name)
+        items = self.engine.storage.get_items(batch_id)
+        ready_items = [i for i in items if i["state"] == ItemState.READY.value]
+        if not ready_items:
+            self.engine.storage.update_batch_state(batch_id, BatchState.EXECUTED,
+                summary={"executed": 0, "failed": 0, "total": len(items)})
+            return {"executed": 0, "failed": 0, "total": len(items), "errors": []}
 
-            if not customer_id:
-                return (None, f"Cliente '{client_name}' no resuelto")
+        batch = self.engine.storage.get_batch(batch_id)
+        ctx = batch.get("context", {})
+        resolved_clients = ctx.get("resolved_clients", {})
+        resolved_accounts = ctx.get("resolved_accounts", {})
 
-            description = item_input.get("memo") or f"Deposit from {client_name}"
-            account_id = self.income_account_id
-            if self.classifier:
-                suggestion = self.classifier(description, item_input["amount"])
-                if suggestion.get("account_id"):
-                    account_id = suggestion["account_id"]
+        from collections import defaultdict
+        groups = defaultdict(list)
+        for item in ready_items:
+            inp = item["input"]
+            bank = inp.get("bank_account") or ""
+            bank_id = resolved_accounts.get(bank, {}).get("id") or self.bank_account_id if bank else self.bank_account_id
+            key = (inp["date"], bank_id)
+            groups[key].append(item)
 
+        executed = 0
+        failed = 0
+        errors = []
+
+        for (date, bank_account_id), group_items in groups.items():
+            lines = []
+            group_item_ids = []
+            group_inputs = []
+            batch_memo_parts = []
+
+            for item in group_items:
+                inp = item["input"]
+                client_name = inp["client_name"]
+                customer_id = resolved_clients.get(client_name)
+                if not customer_id:
+                    failed += 1
+                    errors.append({"index": item["index_num"], "client": client_name, "error": "Cliente no resuelto"})
+                    self.engine.storage.update_item(item["id"], ItemState.FAILED, error="Cliente no resuelto")
+                    continue
+
+                line_acc = self.income_account_id
+                la = inp.get("line_account") or ""
+                if la and la in resolved_accounts:
+                    line_acc = resolved_accounts[la]["id"]
+
+                description = inp.get("memo") or client_name
+                if self.classifier and not la:
+                    suggestion = self.classifier(description, inp["amount"])
+                    if suggestion.get("account_id"):
+                        line_acc = suggestion["account_id"]
+
+                lines.append({
+                    "amount": inp["amount"],
+                    "from_account_id": line_acc,
+                    "customer_id": customer_id,
+                    "description": description,
+                })
+                group_item_ids.append(item["id"])
+                group_inputs.append(inp)
+                batch_memo_parts.append(client_name)
+
+            if not lines:
+                continue
+
+            memo = f"Batch {batch_id[:8]} — {len(group_items)} clientes"
             try:
                 result = self.qbo.create_deposit(
-                    date=item_input["date"],
-                    account_id=self.bank_account_id,
-                    lines=[{
-                        "amount": item_input["amount"],
-                        "from_account_id": account_id,
-                        "customer_id": customer_id,
-                        "description": description,
-                    }],
-                    memo=f"Batch {batch_id[:8]} - {client_name}"
+                    date=date,
+                    account_id=bank_account_id,
+                    lines=lines,
+                    memo=memo,
                 )
-                return ({"qbo_deposit_id": result.get("id")}, None)
+                deposit_id = result.get("deposit_id", result.get("Id", result.get("id", "")))
+                output = {"qbo_deposit_id": deposit_id, "lines": len(lines)}
+                for item_id, inp in zip(group_item_ids, group_inputs):
+                    self.engine.storage.update_item(item_id, ItemState.EXECUTED, output=output)
+                    executed += 1
+                self.disambiguator.output(
+                    f"  ✓ Depósito creado: {date} | {bank_account_id} | ${sum(l['amount'] for l in lines):.2f} | {len(lines)} clientes → ID {deposit_id}"
+                )
             except Exception as e:
-                return (None, f"Error QBO: {e}")
-        return executor
+                err_msg = f"Error creando depósito agrupado ({len(group_items)} items, {date}): {e}"
+                for item_id, inp in zip(group_item_ids, group_inputs):
+                    self.engine.storage.update_item(item_id, ItemState.FAILED, error=err_msg)
+                    failed += 1
+                errors.append({"date": date, "bank": bank_account_id, "clients": batch_memo_parts, "error": str(e)})
+
+        final_state = BatchState.EXECUTED if failed == 0 else BatchState.FAILED
+        self.engine.storage.update_batch_state(batch_id, final_state,
+            summary={"executed": executed, "failed": failed, "total": len(items), "errors": errors})
+        return {"executed": executed, "failed": failed, "total": len(items), "errors": errors}

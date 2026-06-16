@@ -62,6 +62,42 @@ class Disambiguator:
                 pass
             self.output(f"  ⚠️  Opción inválida. Intenta de nuevo.")
 
+    def ask_fuzzy_customer_match(
+        self,
+        name: str,
+        candidates: List[Dict[str, Any]]
+    ) -> Optional[str]:
+        """
+        Pregunta si el nombre ingresado coincide con algún candidato fuzzy (≥85%).
+
+        Returns:
+            ID del cliente seleccionado, '__NEW__' para crear uno nuevo, o None para saltar.
+        """
+        self._header(f"Cliente '{name}' no encontrado exactamente")
+        self.output("  Pero encontré estas coincidencias similares:")
+        self.output("")
+        for i, c in enumerate(candidates, 1):
+            score = c.get("_fuzzy_score", 0)
+            pct = int(score * 100)
+            self.output(f"  [{i}] {c['name']} ({pct}% similar) — ID: {c.get('id', '?')}")
+        self.output(f"  [N] Ninguno — crear '{name}' como nuevo cliente")
+        self.output(f"  [S] Saltar este item")
+        self.output("")
+
+        while True:
+            choice = self.input("Tu elección: ").strip().lower()
+            if choice in ("s", "skip", "salir"):
+                return None
+            if choice in ("n", "new", "nuevo"):
+                return "__NEW__"
+            try:
+                idx = int(choice) - 1
+                if 0 <= idx < len(candidates):
+                    return candidates[idx]["id"]
+            except ValueError:
+                pass
+            self.output(f"  ⚠️  Opción inválida. Intenta de nuevo.")
+
     def ask_new_customer(self, name: str) -> Optional[Dict[str, Any]]:
         """
         Pide datos para crear un cliente nuevo.
@@ -77,11 +113,7 @@ class Disambiguator:
         if confirm in ("n", "no"):
             return None
 
-        email = self.input("  Email: ").strip()
-        if not email:
-            self.output("  ⚠️  Email es obligatorio")
-            return None
-
+        email = self.input("  Email (opcional): ").strip()
         terms = self.input("  Términos de pago [Net 30/Net 15/Due on receipt]: ").strip()
         if not terms:
             terms = "Net 30"
@@ -91,7 +123,7 @@ class Disambiguator:
 
         result: Dict[str, Any] = {
             "name": name,
-            "email": email,
+            "email": email or "",
             "terms": terms,
         }
         if phone:
@@ -99,6 +131,33 @@ class Disambiguator:
         if company:
             result["company"] = company
         return result
+
+    def ask_bulk_new_customers(self, names: List[str]) -> Optional[List[str]]:
+        """
+        Presenta una lista de clientes no encontrados y pregunta si crearlos todos.
+
+        HIGH-2: cuando son 2+ clientes nuevos, no pregunta info opcional.
+        Solo nombre basta. Retorna la lista de nombres a crear, o None si cancela.
+
+        Returns:
+            Lista de nombres a crear, o None si el usuario cancela.
+        """
+        self._header(f"Clientes no encontrados ({len(names)})")
+        self.output("  Los siguientes clientes no están registrados en QBO:")
+        self.output("")
+        for i, name in enumerate(names, 1):
+            self.output(f"  [{i}] {name}")
+        self.output("")
+        self.output("  Se crearán solo con el nombre (email y demás campos vacíos).")
+        self.output("")
+
+        while True:
+            choice = self.input("¿Crear todos? (S/n/saltar): ").strip().lower()
+            if choice in ("s", "si", "yes", "y", ""):
+                return names
+            if choice in ("n", "no", "saltar"):
+                return None
+            self.output("  ⚠️  Responde S (crear todos), N (no crear ninguno), o 'saltar' para omitir")
 
     def ask_account(
         self,

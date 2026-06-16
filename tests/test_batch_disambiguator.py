@@ -72,10 +72,13 @@ class TestAskNewCustomer(unittest.TestCase):
         self.assertEqual(result["email"], "maria@x.com")
         self.assertEqual(result["terms"], "Net 30")
 
-    def test_email_vacio_retorna_none(self):
-        d, io = make_disambiguator(["", "", ""])
+    def test_email_vacio_ahora_es_opcional(self):
+        d, io = make_disambiguator(["", "", "", "", ""])
         result = d.ask_new_customer("Maria")
-        self.assertIsNone(result)
+        self.assertIsNotNone(result)
+        self.assertEqual(result["name"], "Maria")
+        self.assertEqual(result["email"], "")
+        self.assertEqual(result["terms"], "Net 30")
 
     def test_usuario_rechaza_crear(self):
         d, io = make_disambiguator(["n"])

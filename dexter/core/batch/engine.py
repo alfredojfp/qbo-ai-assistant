@@ -162,6 +162,7 @@ class BatchEngine:
         items = self.storage.get_items(batch_id)
         executed = 0
         failed = 0
+        errors: List[Dict[str, Any]] = []
 
         for item in items:
             if item["state"] != ItemState.READY.value:
@@ -171,12 +172,14 @@ class BatchEngine:
                 if error:
                     self.storage.update_item(item["id"], ItemState.FAILED, error=error)
                     failed += 1
+                    errors.append({"index": item["index_num"], "client": item["input"].get("client_name", "?"), "error": error})
                 else:
                     self.storage.update_item(item["id"], ItemState.EXECUTED, output=output)
                     executed += 1
             except Exception as e:
                 self.storage.update_item(item["id"], ItemState.FAILED, error=str(e))
                 failed += 1
+                errors.append({"index": item["index_num"], "client": item["input"].get("client_name", "?"), "error": str(e)})
 
         if failed == 0:
             final_state = BatchState.EXECUTED
@@ -184,9 +187,9 @@ class BatchEngine:
             final_state = BatchState.FAILED
         self.storage.update_batch_state(
             batch_id, final_state,
-            summary={"executed": executed, "failed": failed, "total": len(items)}
+            summary={"executed": executed, "failed": failed, "total": len(items), "errors": errors}
         )
-        return {"executed": executed, "failed": failed, "total": len(items)}
+        return {"executed": executed, "failed": failed, "total": len(items), "errors": errors}
 
     def cancel(self, batch_id: str) -> None:
         """Cancela un batch en cualquier estado pre-ejecución."""
@@ -205,12 +208,12 @@ class BatchEngine:
         current = self.storage.get_batch(batch_id)
         if not current:
             raise ValueError(f"Batch no existe: {batch_id}")
-        if current["state"] != BatchState.FAILED.value:
+        if current.get("state") != BatchState.FAILED.value:
             raise InvalidStateTransition(
-                f"Solo se puede reintentar un batch en estado FAILED (actual: {current['state']})"
+                f"Solo se puede reintentar un batch en estado FAILED (actual: {current.get('state')})"
             )
         return self.create_batch(
-            skill=current["skill"],
+            skill=current.get("skill", "unknown"),
             items=[i["input"] for i in self.storage.get_items(batch_id)],
-            context=current["context"]
+            context=current.get("context", {})
         )

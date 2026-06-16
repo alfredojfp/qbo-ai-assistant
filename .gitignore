@@ -237,6 +237,11 @@ manual-completo-final.pdf
 manual-completo-final.tex
 
 # =================================================================
+# CONTENIDO PUBLICITARIO (LinkedIn promo de Dexter)
+# =================================================================
+linkedin-promo/
+
+# =================================================================
 # GIT WORKTREES (refactors aislados)
 # =================================================================
 .worktrees/
@@ -274,3 +279,4 @@ COMPETITIVE_OBJECTIONS.md
 CONTRATO_PROPIEDAD_INTELECTUAL.md
 CONTRATO_PROPIEDAD_INTELECTUAL_EN.md
 *.py[cod]
+docs/superpowers/

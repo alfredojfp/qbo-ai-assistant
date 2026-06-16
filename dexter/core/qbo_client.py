@@ -123,22 +123,20 @@ class QBOClientImpl:
         self,
         txn_type: str,
         txn_id: str,
-        fields: Dict[str, Any]
+        fields: Dict[str, Any],
+        sync_token: str = "0",
     ) -> Dict[str, Any]:
         """
         Actualiza un campo (Memo o PrivateNote) en una transaction.
         QBO requiere POST con `?operation=sparseUpdate` en la URL
         y los campos a actualizar en el body. SyncToken es obligatorio
-        (usamos "0" como fallback, QBO lo aceptará en la primera update).
+        (default "0" para primera update).
         """
-        # Construir payload con el type discriminador
         payload = {
-            "Id": txn_id,
             **fields,
+            "Id": txn_id,
+            "SyncToken": sync_token,
         }
-        # syncToken puede ser necesario; usamos "0" como fallback
-        # (QBO lo aceptará si es la primera actualización, fallará si no)
-        payload["SyncToken"] = "0"
 
         response = self._request(
             "POST",
@@ -228,8 +226,8 @@ class QBOClientImpl:
             }
             if item.get("customer_id"):
                 line["DepositLineDetail"]["Entity"] = {
-                    "Type": "Customer",
-                    "EntityRef": {"value": item["customer_id"]},
+                    "value": item["customer_id"],
+                    "type": "Customer",
                 }
             if item.get("description"):
                 line["Description"] = item["description"]
@@ -324,7 +322,7 @@ def _wrap_search_customer(search_customer_fn):
             "QueryResponse": {
                 "Customer": [
                     {
-                        "Id": c["id"],
+                        "Id": c.get("id", c.get("Id", "")),
                         "DisplayName": c.get("name", ""),
                         "CompanyName": c.get("company", ""),
                         "Balance": c.get("balance", 0),
