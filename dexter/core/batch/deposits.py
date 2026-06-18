@@ -233,11 +233,17 @@ class DepositBatchSkill:
         if is_fuzzy:
             if rules.get("fuzzy_auto_select") == "true" and candidates:
                 best = candidates[0]
-                self.disambiguator.output(
-                    f"  ✓ Fuzzy auto-select: {client_name} → {best['name']} "
-                    f"({int(best.get('_fuzzy_score', 0) * 100)}%) → ID {best['id']}"
-                )
-                return best["id"]
+                best_score = best.get("_fuzzy_score", 0)
+                if best_score >= 0.95:
+                    self.disambiguator.output(
+                        f"  ✓ Fuzzy auto-select (≥95%): {client_name} → {best['name']} "
+                        f"({int(best_score * 100)}%) → ID {best['id']}"
+                    )
+                    return best["id"]
+                else:
+                    self.disambiguator.output(
+                        f"  ⚠️  Fuzzy match bajo ({int(best_score * 100)}% < 95%) para '{client_name}', preguntando..."
+                    )
             return self.disambiguator.ask_fuzzy_customer_match(client_name, candidates)
 
         options = [f"{c.get('name', '?')} (ID: {c.get('id', '?')})"

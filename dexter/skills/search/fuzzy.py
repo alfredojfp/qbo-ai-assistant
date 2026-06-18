@@ -148,9 +148,13 @@ def find_similar_customers(name: str, threshold: float = None, max_results: int 
     if threshold is None:
         threshold = FUZZY_THRESHOLD
     scored = []
+    seen_ids = set()
     for c in _get_all_customers():
+        if c["id"] in seen_ids:
+            continue
         score = _name_similarity(name, c["name"])
         if score >= threshold:
+            seen_ids.add(c["id"])
             scored.append({**c, "_fuzzy_score": round(score, 2)})
     scored.sort(key=lambda x: x["_fuzzy_score"], reverse=True)
     return scored[:max_results]
@@ -160,9 +164,13 @@ def find_similar_vendors(name: str, threshold: float = None, max_results: int = 
     if threshold is None:
         threshold = FUZZY_THRESHOLD
     scored = []
+    seen_ids = set()
     for v in _get_all_vendors():
+        if v["id"] in seen_ids:
+            continue
         score = _name_similarity(name, v["name"])
         if score >= threshold:
+            seen_ids.add(v["id"])
             scored.append({**v, "_fuzzy_score": round(score, 2)})
     scored.sort(key=lambda x: x["_fuzzy_score"], reverse=True)
     return scored[:max_results]
