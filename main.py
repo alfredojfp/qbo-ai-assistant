@@ -5670,6 +5670,18 @@ def tool_depositar_lote_csv(
     if not os.path.exists(ruta_archivo):
         return {"success": False, "error": f"Archivo no encontrado: {ruta_archivo}"}
 
+    # HIGH-2b: cargar defaults de memoria (banco_default / deposito_default)
+    memory = _get_memory()
+    memory_defaults = memory.parse_defaults()
+
+    if not cuenta_banco_id and "banco_default" in memory_defaults:
+        cuenta_banco_id = memory_defaults["banco_default"]
+        print(f"   Banco default (memoria): {cuenta_banco_id}")
+
+    if not cuenta_ingreso_id and "deposito_default" in memory_defaults:
+        cuenta_ingreso_id = memory_defaults["deposito_default"]
+        print(f"   Línea default (memoria): {cuenta_ingreso_id}")
+
     if not cuenta_banco_id:
         cuenta_banco_id = find_bank_account_id(find_account)
         if not cuenta_banco_id:

@@ -108,6 +108,24 @@ class PersistentMemory:
 
     # --- Formato para system prompt ---
 
+    def parse_defaults(self) -> Dict[str, str]:
+        """Extrae entradas de memoria con formato 'clave: valor'.
+
+        Las entradas de MEMORY.md que contienen ':' se interpretan
+        como pares clave-valor estructurados. El resto son notas libres.
+        Retorna un dict con las claves encontradas y sus valores.
+        """
+        defaults: Dict[str, str] = {}
+        for entry in self.get_memory_entries():
+            if ":" not in entry:
+                continue
+            key, _, value = entry.partition(":")
+            key = key.strip().lower()
+            value = value.strip()
+            if key and value:
+                defaults[key] = value
+        return defaults
+
     def usage_percent(self, target: str) -> float:
         path = self._get_path(target)
         limit = self._get_limit(target)

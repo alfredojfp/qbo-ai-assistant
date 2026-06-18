@@ -136,3 +136,59 @@ class TestPersistentMemory(unittest.TestCase):
         usage = mem.usage_percent("memory")
         self.assertGreater(usage, 80,
                           f"Expected >80% usage, got {usage}%")
+
+
+class TestParseDefaults(unittest.TestCase):
+    """HIGH-2b: PersistentMemory.parse_defaults() para cuentas default."""
+
+    def setUp(self):
+        from dexter.core.memory import PersistentMemory
+        self.tmp = tempfile.mkdtemp()
+        import os
+        self.path = os.path.join(self.tmp, "MEMORY.md")
+        self.PersistentMemory = PersistentMemory
+
+    def test_parses_key_value_entries(self):
+        mem = self.PersistentMemory(memory_path=self.path)
+        mem.add("memory", "banco_default: 226")
+        mem.add("memory", "deposito_default: 250")
+        defaults = mem.parse_defaults()
+        self.assertEqual(defaults.get("banco_default"), "226")
+        self.assertEqual(defaults.get("deposito_default"), "250")
+
+    def test_ignores_unstructured_entries(self):
+        mem = self.PersistentMemory(memory_path=self.path)
+        mem.add("memory", "El cliente John Smith paga puntual")
+        mem.add("memory", "banco_default: 226")
+        defaults = mem.parse_defaults()
+        self.assertEqual(len(defaults), 1)
+        self.assertNotIn("el cliente john smith paga puntual", defaults)
+
+    def test_empty_memory_returns_empty_dict(self):
+        mem = self.PersistentMemory(memory_path=self.path)
+        defaults = mem.parse_defaults()
+        self.assertEqual(defaults, {})
+
+    def test_key_without_colon_ignored(self):
+        mem = self.PersistentMemory(memory_path=self.path)
+        mem.add("memory", "una nota sin dos puntos")
+        defaults = mem.parse_defaults()
+        self.assertEqual(defaults, {})
+
+    def test_value_without_key_ignored(self):
+        mem = self.PersistentMemory(memory_path=self.path)
+        mem.add("memory", ": valor sin clave")
+        defaults = mem.parse_defaults()
+        self.assertEqual(defaults, {})
+
+    def test_multiple_defaults_and_notes_mixed(self):
+        mem = self.PersistentMemory(memory_path=self.path)
+        mem.add("memory", "El invoice #1042 está pendiente")
+        mem.add("memory", "banco_default: 92")
+        mem.add("memory", "deposito_default: 250")
+        mem.add("memory", "vendor_preferido: Office Depot")
+        defaults = mem.parse_defaults()
+        self.assertEqual(defaults["banco_default"], "92")
+        self.assertEqual(defaults["deposito_default"], "250")
+        self.assertEqual(defaults["vendor_preferido"], "Office Depot")
+        self.assertEqual(len(defaults), 3)
