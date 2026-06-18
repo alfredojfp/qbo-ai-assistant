@@ -200,3 +200,54 @@ class TestParseDefaults(unittest.TestCase):
         defaults = mem.parse_defaults()
         self.assertIn("banco_default", defaults)
         self.assertIn("vendor_preferido", defaults)
+
+
+class TestParseRules(unittest.TestCase):
+    """HIGH-2b: PersistentMemory.parse_rules() — reglas de comportamiento."""
+
+    def setUp(self):
+        from dexter.core.memory import PersistentMemory
+        self.tmp = tempfile.mkdtemp()
+        import os
+        self.path = os.path.join(self.tmp, "MEMORY.md")
+        self.PersistentMemory = PersistentMemory
+
+    def test_parses_simple_rule(self):
+        mem = self.PersistentMemory(memory_path=self.path)
+        mem.add("memory", "regla: crear_clientes_sin_preguntar = true")
+        rules = mem.parse_rules()
+        self.assertEqual(rules.get("crear_clientes_sin_preguntar"), "true")
+
+    def test_parses_multiple_rules(self):
+        mem = self.PersistentMemory(memory_path=self.path)
+        mem.add("memory", "regla: crear_clientes_sin_preguntar = true")
+        mem.add("memory", "regla: fuzzy_auto_select = true")
+        rules = mem.parse_rules()
+        self.assertEqual(rules["crear_clientes_sin_preguntar"], "true")
+        self.assertEqual(rules["fuzzy_auto_select"], "true")
+
+    def test_ignores_non_rule_entries(self):
+        mem = self.PersistentMemory(memory_path=self.path)
+        mem.add("memory", "Una nota normal")
+        mem.add("memory", "banco_default: 226")
+        mem.add("memory", "regla: crear_sin_preguntar = true")
+        rules = mem.parse_rules()
+        self.assertEqual(len(rules), 1)
+        self.assertEqual(rules["crear_sin_preguntar"], "true")
+
+    def test_empty_memory_returns_empty(self):
+        mem = self.PersistentMemory(memory_path=self.path)
+        self.assertEqual(mem.parse_rules(), {})
+
+    def test_rule_colon_or_equals(self):
+        """Regla con : o = funcionan igual."""
+        mem = self.PersistentMemory(memory_path=self.path)
+        mem.add("memory", "regla: fuzzy_auto_select: true")
+        rules = mem.parse_rules()
+        self.assertEqual(rules.get("fuzzy_auto_select"), "true")
+
+    def test_false_rule(self):
+        mem = self.PersistentMemory(memory_path=self.path)
+        mem.add("memory", "regla: crear_clientes_sin_preguntar = false")
+        rules = mem.parse_rules()
+        self.assertEqual(rules["crear_clientes_sin_preguntar"], "false")

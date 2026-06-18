@@ -5673,6 +5673,7 @@ def tool_depositar_lote_csv(
     # HIGH-2b: cargar defaults de memoria (banco_default / deposito_default)
     memory = _get_memory()
     memory_defaults = memory.parse_defaults(["banco_default", "deposito_default"])
+    memory_rules = memory.parse_rules()
 
     if not cuenta_banco_id and "banco_default" in memory_defaults:
         cuenta_banco_id = memory_defaults["banco_default"]
@@ -5730,7 +5731,8 @@ def tool_depositar_lote_csv(
     print(f"   Items: {len(items)}")
 
     # Validar: resuelve clientes (fuzzy ≥85%) + cuentas (bank_account / line_account)
-    validation = skill.validate(batch_id)
+    # HIGH-2b: pasa reglas de memoria para crear_clientes_sin_preguntar, etc.
+    validation = skill.validate(batch_id, rules=memory_rules)
 
     # Mostrar cuentas resueltas por línea
     resolved_accounts = validation.get("resolved_accounts", {})

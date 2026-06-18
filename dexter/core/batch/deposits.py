@@ -116,21 +116,25 @@ class DepositBatchSkill:
             raise ValueError("CSV sin filas")
         return items
 
-    def resolve_clients(self, batch_id: str) -> Dict[str, Any]:
+    def resolve_clients(self, batch_id: str, rules: Dict[str, str] = None) -> Dict[str, Any]:
         """
         Para cada item del batch, busca el cliente en QBO.
         Si no existe y hay 2+, pregunta en lote (sin pedir email/terms).
         Si es solo 1, usa el flujo interactivo con datos opcionales.
-        Guarda el resultado en el contexto del batch.
+
+        HIGH-2b: si `crear_clientes_sin_preguntar = true` en las reglas,
+        crea clientes automáticamente sin preguntar.
 
         Returns:
             Dict con: resolved, errors
         """
+        rules = rules or {}
+        auto_create = rules.get("crear_clientes_sin_preguntar") == "true"
+
         items = self.engine.storage.get_items(batch_id)
         resolved: Dict[str, str] = {}
         errors: List[Dict[str, Any]] = []
         unfound: List[str] = []
-        # Mapa: client_name → primer index_num donde aparece
         client_to_index: Dict[str, int] = {}
 
         # Primera pasada: buscar clientes, separar encontrados de no encontrados
@@ -142,7 +146,7 @@ class DepositBatchSkill:
                 continue
             candidates = self.qbo.search_customer(client_name)
             if candidates:
-                chosen_id = self._pick_from_candidates(client_name, candidates)
+                chosen_id = self._pick_from_candidates(client_name, candidates, rules)
                 if chosen_id == "__NEW__":
                     unfound.append(client_name)
                 elif chosen_id:
@@ -155,14 +159,26 @@ class DepositBatchSkill:
             else:
                 unfound.append(client_name)
 
-        # Segunda pasada: crear clientes no encontrados
         if not unfound:
             self.engine.storage.update_batch_context(batch_id, {
                 "resolved_clients": resolved
             })
             return {"resolved": resolved, "errors": errors}
 
-        if len(unfound) >= 2:
+        if auto_create:
+            for name in unfound:
+                cid = self._create_customer_minimal(name)
+                if cid:
+                    resolved[name] = cid
+                    self.disambiguator.output(
+                        f"  ✓ Cliente auto-creado: {name} → ID {cid}"
+                    )
+                else:
+                    errors.append({
+                        "index": client_to_index[name],
+                        "error": f"No se pudo crear '{name}' automáticamente"
+                    })
+        elif len(unfound) >= 2:
             to_create = self.disambiguator.ask_bulk_new_customers(unfound)
             if to_create:
                 for name in to_create:
@@ -198,9 +214,14 @@ class DepositBatchSkill:
     def _pick_from_candidates(
         self,
         client_name: str,
-        candidates: List[Dict[str, Any]]
+        candidates: List[Dict[str, Any]],
+        rules: Dict[str, str] = None,
     ) -> Optional[str]:
-        """Elige un candidato. Si es fuzzy (≥85%), siempre pregunta al usuario."""
+        """Elige un candidato. Si es fuzzy (≥85%), pregunta al usuario.
+
+        HIGH-2b: si `fuzzy_auto_select = true`, usa el mejor fuzzy match sin preguntar.
+        """
+        rules = rules or {}
         is_fuzzy = any("_fuzzy_score" in c for c in candidates)
 
         if len(candidates) == 1 and not is_fuzzy:
@@ -210,6 +231,13 @@ class DepositBatchSkill:
             return candidates[0]["id"]
 
         if is_fuzzy:
+            if rules.get("fuzzy_auto_select") == "true" and candidates:
+                best = candidates[0]
+                self.disambiguator.output(
+                    f"  ✓ Fuzzy auto-select: {client_name} → {best['name']} "
+                    f"({int(best.get('_fuzzy_score', 0) * 100)}%) → ID {best['id']}"
+                )
+                return best["id"]
             return self.disambiguator.ask_fuzzy_customer_match(client_name, candidates)
 
         options = [f"{c.get('name', '?')} (ID: {c.get('id', '?')})"
@@ -324,15 +352,15 @@ class DepositBatchSkill:
 
         return resolved
 
-    def validate(self, batch_id: str) -> Dict[str, Any]:
+    def validate(self, batch_id: str, rules: Dict[str, str] = None) -> Dict[str, Any]:
         """
         Valida el batch completo:
-        1. Resuelve clientes (busca o crea)
+        1. Resuelve clientes (busca o crea) — aplica reglas de memoria
         2. Resuelve cuentas (bank_account / line_account) HIGH-2
         3. Marca items como READY o FAILED
         """
         self.engine._assert_transition(batch_id, BatchState.VALIDATED)
-        result = self.resolve_clients(batch_id)
+        result = self.resolve_clients(batch_id, rules=rules)
         items = self.engine.storage.get_items(batch_id)
         resolved_accounts = self.resolve_accounts(items)
 

@@ -157,6 +157,40 @@ class PersistentMemory:
                         break
         return defaults
 
+    def parse_rules(self) -> Dict[str, str]:
+        """Extrae reglas de comportamiento desde la memoria.
+
+        Formato en MEMORY.md:
+          regla: nombre_de_regla = valor
+          regla: nombre_de_regla: valor
+
+        Prefiere '=' como separador; si no hay, usa ':'.
+        """
+        rules: Dict[str, str] = {}
+        for entry in self.get_memory_entries():
+            norm = self._normalize_key(entry)
+            if not norm.startswith("regla_"):
+                continue
+            body = entry.strip()
+            # Find separator: prefer '=', fallback to ':'
+            sep = "=" if "=" in body else ":"
+            # Split on the separator that comes AFTER the "regla:" prefix
+            # Find the LAST occurrence of the separator to handle values with colons
+            sep_idx = body.rfind(sep)
+            if sep_idx < 0:
+                continue
+            # Extract key: everything between "regla:" and the separator
+            key_raw = body[:sep_idx].strip()
+            if ":" in key_raw:
+                key_raw = key_raw.split(":", 1)[-1].strip()
+            elif key_raw.lower().startswith("regla"):
+                key_raw = key_raw[5:].strip().lstrip(":").strip()
+            value = body[sep_idx + 1:].strip()
+            key = self._normalize_key(key_raw)
+            if key and value:
+                rules[key] = value
+        return rules
+
     def usage_percent(self, target: str) -> float:
         path = self._get_path(target)
         limit = self._get_limit(target)
