@@ -17,7 +17,7 @@ from collections import deque
 from datetime import datetime, timedelta
 import glob
 import shutil
-from ocr_bills import extraer_bills_de_pdf, generar_csv_preview
+from scripts.ocr_bills import extraer_bills_de_pdf, generar_csv_preview
 
 # ============================================================================
 # AUTONOMÍA Y APRENDIZAJE - AUTO-INSTALADO 2026-01-21 22:13:27
@@ -5435,7 +5435,7 @@ def tool_procesar_csv_corregido(csv_path: str, crear_bills: bool = False) -> dic
 
     Usar después de que Alfredo editó el CSV preview generado por OCR.
     """
-    from ocr_bills import procesar_csv_corregido
+    from scripts.ocr_bills import procesar_csv_corregido
     result = procesar_csv_corregido(csv_path)
 
     if not result.get("success"):

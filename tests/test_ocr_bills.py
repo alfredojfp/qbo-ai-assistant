@@ -11,7 +11,7 @@ import tempfile
 import unittest
 from unittest.mock import patch, MagicMock
 
-import ocr_bills
+import scripts.ocr_bills as ocr_bills
 
 
 class TestListarPdfs(unittest.TestCase):
@@ -86,7 +86,7 @@ class TestProcesarLoteOcr(unittest.TestCase):
         finally:
             shutil.rmtree(empty, ignore_errors=True)
 
-    @patch("ocr_bills.extraer_bills_de_pdf")
+    @patch("scripts.ocr_bills.extraer_bills_de_pdf")
     def test_procesar_lote_ocr_llama_por_cada_pdf(self, mock_extract):
         mock_extract.return_value = [
             {"invoice_number": "INV-001", "vendor_name": "Acme", "total_amount": 100.0}
@@ -95,7 +95,7 @@ class TestProcesarLoteOcr(unittest.TestCase):
         self.assertEqual(result["total_bills"], 2)
         self.assertEqual(mock_extract.call_count, 2)
 
-    @patch("ocr_bills.extraer_bills_de_pdf")
+    @patch("scripts.ocr_bills.extraer_bills_de_pdf")
     def test_procesar_lote_ocr_agrega_resultados(self, mock_extract):
         mock_extract.side_effect = [
             [{"invoice_number": "INV-1", "vendor_name": "V1", "total_amount": 10.0}],
@@ -105,7 +105,7 @@ class TestProcesarLoteOcr(unittest.TestCase):
         self.assertEqual(result["total_bills"], 2)
         self.assertIsNone(result.get("errores"))
 
-    @patch("ocr_bills.extraer_bills_de_pdf")
+    @patch("scripts.ocr_bills.extraer_bills_de_pdf")
     def test_procesar_lote_ocr_maneja_excepcion(self, mock_extract):
         mock_extract.side_effect = [
             [{"invoice_number": "INV-1", "vendor_name": "V1", "total_amount": 10.0}],
@@ -115,7 +115,7 @@ class TestProcesarLoteOcr(unittest.TestCase):
         self.assertEqual(result["total_bills"], 1)
         self.assertEqual(len(result.get("errores", [])), 1)
 
-    @patch("ocr_bills.extraer_bills_de_pdf")
+    @patch("scripts.ocr_bills.extraer_bills_de_pdf")
     def test_procesar_lote_ocr_mueve_fallidos_a_subcarpeta(self, mock_extract):
         mock_extract.side_effect = Exception("Test failure")
         result = ocr_bills.procesar_lote_ocr(
@@ -123,7 +123,7 @@ class TestProcesarLoteOcr(unittest.TestCase):
         )
         self.assertEqual(len(result.get("errores", [])), 2)
 
-    @patch("ocr_bills.extraer_bills_de_pdf")
+    @patch("scripts.ocr_bills.extraer_bills_de_pdf")
     def test_procesar_lote_ocr_estructura_resumen(self, mock_extract):
         mock_extract.return_value = [
             {"invoice_number": "INV-1", "vendor_name": "V1", "total_amount": 10.0}

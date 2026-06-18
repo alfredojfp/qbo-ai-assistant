@@ -13,7 +13,7 @@ def tool_procesar_csv_corregido(csv_path: str, crear_bills: bool = False) -> dic
 
     Usar después de que Alfredo editó el CSV preview generado por OCR.
     """
-    from ocr_bills import procesar_csv_corregido
+    from scripts.ocr_bills import procesar_csv_corregido
     result = procesar_csv_corregido(csv_path)
 
     if not result.get("success"):

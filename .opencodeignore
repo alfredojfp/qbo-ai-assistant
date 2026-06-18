@@ -1,0 +1,9 @@
+/data/
+/logs/
+/__pycache__/
+/.git/
+/Pending bills/
+/Processed bills/
+/outputs/
+/companies/
+/Test/
