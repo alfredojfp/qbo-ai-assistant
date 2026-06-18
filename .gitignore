@@ -274,10 +274,9 @@ data/chart_of_accounts.json
 data/bank_feed_classification_history.json
 data/saved_reports.json
 docs/MONETIZACION.md
-QBO_MARKETPLACE_CHECKLIST.md
-COMPETITIVE_OBJECTIONS.md
-CONTRATO_PROPIEDAD_INTELECTUAL.md
-CONTRATO_PROPIEDAD_INTELECTUAL_EN.md
-*.py[cod]
+docs/QBO_MARKETPLACE_CHECKLIST.md
+docs/COMPETITIVE_OBJECTIONS.md
+docs/CONTRATO_PROPIEDAD_INTELECTUAL.md
+docs/CONTRATO_PROPIEDAD_INTELECTUAL_EN.md
 docs/superpowers/
 vendor/
