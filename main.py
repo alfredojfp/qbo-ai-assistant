@@ -5672,7 +5672,7 @@ def tool_depositar_lote_csv(
 
     # HIGH-2b: cargar defaults de memoria (banco_default / deposito_default)
     memory = _get_memory()
-    memory_defaults = memory.parse_defaults()
+    memory_defaults = memory.parse_defaults(["banco_default", "deposito_default"])
 
     if not cuenta_banco_id and "banco_default" in memory_defaults:
         cuenta_banco_id = memory_defaults["banco_default"]

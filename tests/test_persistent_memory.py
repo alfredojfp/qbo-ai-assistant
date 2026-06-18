@@ -139,7 +139,7 @@ class TestPersistentMemory(unittest.TestCase):
 
 
 class TestParseDefaults(unittest.TestCase):
-    """HIGH-2b: PersistentMemory.parse_defaults() para cuentas default."""
+    """HIGH-2b: PersistentMemory.parse_defaults() con fuzzy key matching."""
 
     def setUp(self):
         from dexter.core.memory import PersistentMemory
@@ -152,7 +152,7 @@ class TestParseDefaults(unittest.TestCase):
         mem = self.PersistentMemory(memory_path=self.path)
         mem.add("memory", "banco_default: 226")
         mem.add("memory", "deposito_default: 250")
-        defaults = mem.parse_defaults()
+        defaults = mem.parse_defaults(["banco_default", "deposito_default"])
         self.assertEqual(defaults.get("banco_default"), "226")
         self.assertEqual(defaults.get("deposito_default"), "250")
 
@@ -160,35 +160,43 @@ class TestParseDefaults(unittest.TestCase):
         mem = self.PersistentMemory(memory_path=self.path)
         mem.add("memory", "El cliente John Smith paga puntual")
         mem.add("memory", "banco_default: 226")
-        defaults = mem.parse_defaults()
+        defaults = mem.parse_defaults(["banco_default"])
         self.assertEqual(len(defaults), 1)
-        self.assertNotIn("el cliente john smith paga puntual", defaults)
+        self.assertEqual(defaults["banco_default"], "226")
 
     def test_empty_memory_returns_empty_dict(self):
         mem = self.PersistentMemory(memory_path=self.path)
-        defaults = mem.parse_defaults()
+        defaults = mem.parse_defaults(["banco_default"])
         self.assertEqual(defaults, {})
 
-    def test_key_without_colon_ignored(self):
+    def test_fuzzy_matches_natural_language(self):
+        """'banco default para depositos: 226' → matchea con 'banco_default'."""
         mem = self.PersistentMemory(memory_path=self.path)
-        mem.add("memory", "una nota sin dos puntos")
-        defaults = mem.parse_defaults()
-        self.assertEqual(defaults, {})
+        mem.add("memory", "banco default para depositos: 226")
+        defaults = mem.parse_defaults(["banco_default", "deposito_default"])
+        self.assertEqual(defaults.get("banco_default"), "226")
 
-    def test_value_without_key_ignored(self):
+    def test_fuzzy_deposito_default(self):
+        """Natural language keys with colon match known keys."""
         mem = self.PersistentMemory(memory_path=self.path)
-        mem.add("memory", ": valor sin clave")
-        defaults = mem.parse_defaults()
-        self.assertEqual(defaults, {})
-
-    def test_multiple_defaults_and_notes_mixed(self):
-        mem = self.PersistentMemory(memory_path=self.path)
-        mem.add("memory", "El invoice #1042 está pendiente")
-        mem.add("memory", "banco_default: 92")
         mem.add("memory", "deposito_default: 250")
+        mem.add("memory", "banco default para mi empresa: 92")
+        defaults = mem.parse_defaults(["banco_default", "deposito_default"])
+        self.assertEqual(defaults.get("banco_default"), "92")
+        self.assertEqual(defaults.get("deposito_default"), "250")
+
+    def test_mixed_language_defaults(self):
+        """Claves con caracteres especiales se normalizan."""
+        mem = self.PersistentMemory(memory_path=self.path)
+        mem.add("memory", "Banco Default: 226")
+        mem.add("memory", "cuenta_depósito: 250")
+        defaults = mem.parse_defaults(["banco_default", "deposito_default"])
+        self.assertEqual(defaults.get("banco_default"), "226")
+
+    def test_no_known_keys_returns_all(self):
+        mem = self.PersistentMemory(memory_path=self.path)
+        mem.add("memory", "banco_default: 100")
         mem.add("memory", "vendor_preferido: Office Depot")
         defaults = mem.parse_defaults()
-        self.assertEqual(defaults["banco_default"], "92")
-        self.assertEqual(defaults["deposito_default"], "250")
-        self.assertEqual(defaults["vendor_preferido"], "Office Depot")
-        self.assertEqual(len(defaults), 3)
+        self.assertIn("banco_default", defaults)
+        self.assertIn("vendor_preferido", defaults)

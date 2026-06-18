@@ -108,22 +108,53 @@ class PersistentMemory:
 
     # --- Formato para system prompt ---
 
-    def parse_defaults(self) -> Dict[str, str]:
-        """Extrae entradas de memoria con formato 'clave: valor'.
+    @staticmethod
+    def _normalize_key(text: str) -> str:
+        """Normaliza una clave para fuzzy matching.
 
-        Las entradas de MEMORY.md que contienen ':' se interpretan
-        como pares clave-valor estructurados. El resto son notas libres.
-        Retorna un dict con las claves encontradas y sus valores.
+        Convierte a snake_case: quita espacios, tildes, guiones
+        y caracteres no alfanuméricos. "banco default" → "banco_default".
+        """
+        import re
+        text = text.lower().strip()
+        text = re.sub(r'[áàäâ]', 'a', text)
+        text = re.sub(r'[éèëê]', 'e', text)
+        text = re.sub(r'[íìïî]', 'i', text)
+        text = re.sub(r'[óòöô]', 'o', text)
+        text = re.sub(r'[úùüû]', 'u', text)
+        text = re.sub(r'[^a-z0-9]', '_', text)
+        text = re.sub(r'_+', '_', text)
+        return text.strip('_')
+
+    def parse_defaults(self, known_keys: List[str] = None) -> Dict[str, str]:
+        """Extrae entradas de memoria con formato clave:valor.
+
+        HIGH-2b: fuzzy key matching. Normaliza la clave y la compara
+        contra `known_keys`. Si una entrada normalizada contiene una
+        known_key, se asigna.
+
+        Args:
+            known_keys: Lista de claves conocidas a buscar (ej: ['banco_default']).
+                        Si es None, retorna todas las entradas con ':'.
         """
         defaults: Dict[str, str] = {}
         for entry in self.get_memory_entries():
             if ":" not in entry:
                 continue
             key, _, value = entry.partition(":")
-            key = key.strip().lower()
             value = value.strip()
-            if key and value:
-                defaults[key] = value
+            norm_key = self._normalize_key(key)
+            if not norm_key or not value:
+                continue
+
+            if known_keys is None:
+                defaults[norm_key] = value
+            else:
+                for target in known_keys:
+                    target_norm = self._normalize_key(target)
+                    if target_norm in norm_key:
+                        defaults[target] = value
+                        break
         return defaults
 
     def usage_percent(self, target: str) -> float:
