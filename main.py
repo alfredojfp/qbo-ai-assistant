@@ -87,6 +87,46 @@ load_dotenv()
 CURRENT_COMPANY = None
 COMPANY_CONTEXT = None
 
+# HIGH-3: QBO backend selector — "native" (default) or "mcp" (Intuit MCP Server)
+QB_BACKEND = os.getenv("QB_BACKEND", "native")
+_qbo_adapter = None
+
+
+def _get_qbo_adapter():
+    """Lazy-init QBOAdapter with current company tokens (HIGH-3)."""
+    global _qbo_adapter
+    if QB_BACKEND != "mcp":
+        return None
+    if _qbo_adapter is not None:
+        return _qbo_adapter
+    from dexter.core.qbo_adapter import QBOAdapter
+    from dexter.core.mcp_bridge import MCPBridge
+    mcp_dir = os.path.join(os.path.dirname(__file__), "vendor", "quickbooks-online-mcp-server")
+    if not os.path.exists(mcp_dir):
+        print("   Intuit MCP not found. Falling back to native.")
+        return None
+    env = {
+        "QUICKBOOKS_CLIENT_ID": os.getenv("QB_CLIENT_ID", ""),
+        "QUICKBOOKS_CLIENT_SECRET": os.getenv("QB_CLIENT_SECRET", ""),
+        "QUICKBOOKS_REFRESH_TOKEN": globals().get("QB_REFRESH_TOKEN", ""),
+        "QUICKBOOKS_REALM_ID": globals().get("QB_REALM_ID", ""),
+        "QUICKBOOKS_ENVIRONMENT": os.getenv("QB_ENV", "sandbox"),
+    }
+    if globals().get("QB_ACCESS_TOKEN"):
+        env["QUICKBOOKS_ACCESS_TOKEN"] = globals()["QB_ACCESS_TOKEN"]
+    bridge = MCPBridge(mcp_dir, env=env)
+    _qbo_adapter = QBOAdapter(bridge)
+    _qbo_adapter.start()
+    print("   Intuit MCP backend connected")
+    return _qbo_adapter
+
+
+def _stop_qbo_adapter():
+    global _qbo_adapter
+    if _qbo_adapter:
+        _qbo_adapter.stop()
+        _qbo_adapter = None
+
 
 # Credenciales QuickBooks
 QB_ACCESS_TOKEN = os.getenv("QB_ACCESS_TOKEN")
@@ -5270,6 +5310,9 @@ def _cambiar_empresa_bloqueado(nombre: str) -> dict:
     if not target:
         return {"success": False, "message": f"No encontré ninguna empresa registrada como '{nombre}'."}
 
+    # HIGH-3: restart MCP bridge with new company tokens
+    _stop_qbo_adapter()
+
     reset_session_state()
     # Invalidar caché de memoria para que cargue la de la nueva empresa
     global _dexter_memory
@@ -5652,6 +5695,13 @@ def tool_depositar_lote_csv(
     engine = BatchEngine(storage)
     disambiguator = Disambiguator(input_func=input, output_func=print)
     qbo = make_deposit_qbo_client(search_customer, qbo_request)
+
+    # HIGH-3: use QBOAdapter if MCP backend is active
+    adapter = _get_qbo_adapter()
+    if adapter:
+        qbo.create_deposit = adapter.create_deposit
+        qbo.create_customer = adapter.create_customer
+        qbo.search_customer = adapter.search_customer
 
     skill = DepositBatchSkill(
         engine=engine,
@@ -6507,6 +6557,8 @@ def _close_session_safely() -> None:
     try:
         print("\n" + "=" * 70)
         print("Cerrando sesión...")
+
+        _stop_qbo_adapter()
 
         duration = (datetime.now() - session_state["start_time"]).total_seconds() / 60
         total_tokens = session_state["input_tokens"] + session_state["output_tokens"]
