@@ -241,6 +241,21 @@ class TestTokenBasedFuzzyMatching(unittest.TestCase):
         score = fuzzy._name_similarity("Jon Smith", "John Smith")
         self.assertGreaterEqual(score, 0.85)
 
+    def test_middle_initial_ignored(self):
+        """'Amy M Petersen' vs 'Amy Petersen' — la 'M' no penaliza."""
+        score = fuzzy._name_similarity("Amy M Petersen", "Amy Petersen")
+        self.assertGreaterEqual(score, 0.90)
+
+    def test_middle_initial_multiple_words_still_works(self):
+        """'Amy M Petersen' match con misma persona sigue siendo alto."""
+        score = fuzzy._name_similarity("Amy M Petersen", "Amy M Petersen")
+        self.assertAlmostEqual(score, 1.0, delta=0.05)
+
+    def test_only_initials_falls_to_string_similarity(self):
+        """Query con solo iniciales usa string similarity como fallback."""
+        score = fuzzy._name_similarity("A M", "Amy Petersen")
+        self.assertLess(score, 0.85)
+
 
 if __name__ == "__main__":
     unittest.main()

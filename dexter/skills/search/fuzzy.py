@@ -32,8 +32,9 @@ def _token_similarity(query: str, candidate: str) -> float:
     - Prefijo común (Ben → Benjamin) → 0.90
     - String similarity (SequenceMatcher) → ratio()
 
-    Promedia los scores de todos los tokens del query.
-    Resuelve casos como "Ben Haselman" vs "Benjamin Haselman" (95%).
+    Los tokens de 1 carácter (iniciales como "M" en "Amy M Petersen")
+    se ignoran para no penalizar el score.
+    Promedia los scores de todos los tokens multi-carácter del query.
     """
     qt = query.lower().split()
     ct = candidate.lower().split()
@@ -41,7 +42,11 @@ def _token_similarity(query: str, candidate: str) -> float:
         return _similarity(query, candidate)
 
     total = 0.0
+    count = 0
     for q in qt:
+        if len(q) <= 1:
+            continue
+        count += 1
         best = 0.0
         for c in ct:
             if q == c:
@@ -52,7 +57,7 @@ def _token_similarity(query: str, candidate: str) -> float:
             else:
                 best = max(best, SequenceMatcher(None, q, c).ratio())
         total += best
-    return total / len(qt)
+    return total / max(count, 1) if count > 0 else _similarity(query, candidate)
 
 
 def _name_similarity(query: str, candidate: str) -> float:
