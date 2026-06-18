@@ -126,7 +126,8 @@ class ReconciliationTaggerSkill:
                 raise ValueError(f"Columnas faltantes: {missing}")
             for row in reader:
                 try:
-                    amount = float(row["amount"])
+                    raw_amount = str(row["amount"]).strip().replace("$", "").replace(",", "").replace(" ", "")
+                    amount = float(raw_amount)
                 except (ValueError, KeyError):
                     raise ValueError(f"Monto inválido: {row.get('amount')}")
                 items.append({

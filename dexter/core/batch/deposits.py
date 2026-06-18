@@ -93,7 +93,8 @@ class DepositBatchSkill:
                 raise ValueError(f"Columnas faltantes en CSV: {missing}")
             for row_num, row in enumerate(reader, start=2):  # row 1 = header
                 try:
-                    amount = float(row["amount"])
+                    raw_amount = str(row["amount"]).strip().replace("$", "").replace(",", "").replace(" ", "")
+                    amount = float(raw_amount)
                 except (ValueError, KeyError):
                     client = row.get("client_name", "?")
                     raw = row.get("amount", "(vacío)")
