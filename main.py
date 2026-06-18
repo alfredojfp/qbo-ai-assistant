@@ -5741,8 +5741,8 @@ def tool_depositar_lote_csv(
     print(f"   Items: {len(items)}")
 
     # Validar: resuelve clientes (fuzzy ≥85%) + cuentas (bank_account / line_account)
-    # HIGH-2b: pasa reglas de memoria para crear_clientes_sin_preguntar, etc.
-    validation = skill.validate(batch_id, rules=memory_rules)
+    # HIGH-2b: pasa reglas de memoria + defaults de cuentas
+    validation = skill.validate(batch_id, rules=memory_rules, defaults=memory_defaults)
 
     # Mostrar cuentas resueltas por línea
     resolved_accounts = validation.get("resolved_accounts", {})

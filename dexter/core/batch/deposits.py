@@ -308,14 +308,18 @@ class DepositBatchSkill:
             )
             return None
 
-    def resolve_accounts(self, items: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    def resolve_accounts(self, items: List[Dict[str, Any]], defaults: Dict[str, str] = None) -> Dict[str, Dict[str, Any]]:
         """
         Resuelve nombres de cuenta (bank_account, line_account) a IDs.
         HIGH-2: soporta cuentas de cualquier tipo (Bank, Income, Liability, etc.).
 
-        Returns:
-            Dict mapeando nombre de cuenta → {"id": str, "name": str, "type": str}
+        Args:
+            items: lista de items del batch
+            defaults: dict con claves como 'banco_default', 'deposito_default'
+                      Si un nombre de cuenta resuelve al mismo ID que el default,
+                      se auto-selecciona sin preguntar al usuario.
         """
+        defaults = defaults or {}
         if not self._account_finder:
             return {}
 
@@ -344,36 +348,51 @@ class DepositBatchSkill:
                 self.disambiguator.output(
                     f"  ✓ Cuenta encontrada: {name} → {candidates[0]['id']} ({candidates[0]['name']})"
                 )
-            else:
-                choice = self.disambiguator.ask_account(
-                    f"Cuenta '{name}' tiene {len(candidates)} coincidencias",
-                    candidates,
-                )
-                if choice:
-                    match = next((c for c in candidates if c.get("id") == choice), None)
+                continue
+            # Multiple candidates — check if one matches a default
+            default_id = defaults.get("banco_default") if "bank" in name.lower() or "checking" in name.lower() else defaults.get("deposito_default")
+            if default_id:
+                match = next((c for c in candidates if c.get("id") == default_id), None)
+                if match:
                     resolved[name] = {
-                        "id": choice,
-                        "name": match["name"] if match else name,
-                        "type": match.get("type", "") if match else "",
+                        "id": match["id"],
+                        "name": match["name"],
+                        "type": match.get("type", ""),
                     }
-                else:
                     self.disambiguator.output(
-                        f"  ⚠️  Cuenta '{name}' — usuario no seleccionó ninguna"
+                        f"  ✓ Cuenta default: {name} → {match['id']} ({match['name']})"
                     )
+                    continue
+            # Still ambiguous — ask user
+            choice = self.disambiguator.ask_account(
+                f"Cuenta '{name}' tiene {len(candidates)} coincidencias",
+                candidates,
+            )
+            if choice:
+                match = next((c for c in candidates if c.get("id") == choice), None)
+                resolved[name] = {
+                    "id": choice,
+                    "name": match["name"] if match else name,
+                    "type": match.get("type", "") if match else "",
+                }
+            else:
+                self.disambiguator.output(
+                    f"  ⚠️  Cuenta '{name}' — usuario no seleccionó ninguna"
+                )
 
         return resolved
 
-    def validate(self, batch_id: str, rules: Dict[str, str] = None) -> Dict[str, Any]:
+    def validate(self, batch_id: str, rules: Dict[str, str] = None, defaults: Dict[str, str] = None) -> Dict[str, Any]:
         """
         Valida el batch completo:
         1. Resuelve clientes (busca o crea) — aplica reglas de memoria
-        2. Resuelve cuentas (bank_account / line_account) HIGH-2
+        2. Resuelve cuentas (bank_account / line_account) HIGH-2 — auto-select defaults
         3. Marca items como READY o FAILED
         """
         self.engine._assert_transition(batch_id, BatchState.VALIDATED)
         result = self.resolve_clients(batch_id, rules=rules)
         items = self.engine.storage.get_items(batch_id)
-        resolved_accounts = self.resolve_accounts(items)
+        resolved_accounts = self.resolve_accounts(items, defaults=defaults)
 
         self.engine.storage.update_batch_context(batch_id, {
             "resolved_clients": result["resolved"],
