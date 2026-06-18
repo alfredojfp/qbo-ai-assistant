@@ -2,24 +2,40 @@
 
 # 🧠 Dexter — QuickBooks AI Agent
 
-[![Version](https://img.shields.io/badge/version-4.1.0_dev-blue)](https://github.com/alfredojfp/qbo-ai-assistant)
+[![Version](https://img.shields.io/badge/version-5.0.0-blue)](https://github.com/alfredojfp/qbo-ai-assistant)
 [![Python](https://img.shields.io/badge/python-3.10+-blue)](https://python.org)
-[![Tests](https://img.shields.io/badge/tests-692_passing-green)](https://github.com/alfredojfp/qbo-ai-assistant/actions)
-[![Tools](https://img.shields.io/badge/tools-116-purple)](docs/SETUP.md)
+[![Tests](https://img.shields.io/badge/tests-750_passing-green)](https://github.com/alfredojfp/qbo-ai-assistant/actions)
+[![Tools](https://img.shields.io/badge/tools-116_purple)](docs/SETUP.md)
+[![Skills](https://img.shields.io/badge/skills-22-orange)](docs/SKILL_REFACTOR.md)
 [![License](https://img.shields.io/badge/license-Proprietary-red)](LICENSE)
 [![QBO API](https://img.shields.io/badge/QBO-v3-orange)](https://developer.intuit.com)
 [![Idiomas](https://img.shields.io/badge/idiomas-ES_|_EN-brightgreen)](docs/SETUP.md)
 
-**El agente contable más completo para QuickBooks Online. Open source. Self-hosted. En español.**
+**El agente contable más completo para QuickBooks Online. Self-hosted. En español.**
 
-Habla con tu contabilidad en lenguaje natural — **español e inglés**. 116 herramientas en 21 dominios.
-Multi-empresa. OCR. Memoria persistente. Dry-run. Clasificación bank feed.
+Habla con tu contabilidad en lenguaje natural — **español e inglés**. 116 herramientas en 22 skills.
+Fuzzy matching ≥85%. Batch engine con dry-run. Multi-empresa. OCR. Memoria persistente.
 
-[Guía de Instalación](docs/SETUP.md) · [Documentación](docs/) · [Estudio de Mercado](docs/comparativa_mercado_2026.md)
+[Guía de Instalación](docs/SETUP.md) · [Documentación](docs/) · [Estudio de Mercado](docs/comparativa_mercado_2026.md) · [OpenContext](https://github.com/0xranx/OpenContext)
 
 > 📖 *This document is also available in [English](README.en.md).*
 
 </div>
+
+---
+
+## 🆕 Novedades v5.0.0
+
+| Feature | Descripción |
+|---|---|
+| **Fuzzy Matching ≥85%** | Token-based con detección de prefijos. "Ben Haselman" matchea con "Benjamin Haselman" (95%). Busca contra todos los clientes/vendors activos (cache 5min) |
+| **Batch Deposits v2** | CSV con columnas `bank_account` y `line_account`. Agrupa items con mismo date+bank en un solo depósito multi-línea. Creación de clientes en lote |
+| **Entity Format QBO** | Formato plano `{value, type}` en DepositLineDetail — corregido contra API real de QBO |
+| **Slash Autocomplete** | Presioná `/` para ver los 116 tools con fuzzy matching. Escribí `/bus` y filtra `buscar_cliente`, `buscar_vendor`, etc |
+| **MCP Backend** (experimental) | Motor dual: `native` (default) o `mcp` (Intuit MCP Server oficial, 144 tools, 396 tests). Feature flag `QB_BACKEND=mcp` |
+| **Auditoría Batch Engine** | 12 bugs corregidos, state machine completa, error reporting mejorado, mocks alineados con QBO real |
+| **Documentación** | 12 docs en OpenContext + SKILL_REFACTOR.md + Engineering Manual |
+| **Context Mode** | Plugin global para OpenCode. Sandbox de tool output, 98% reducción de contexto |
 
 ---
 
@@ -43,56 +59,40 @@ pip install -r requirements.txt
 ```
 ┌──────────────────────────────────────────────────────────┐
 │          🧠  DEXTER  ·  QBO Assistant                     │
-│               v4.1.0-dev · Sandbox Company_US_1            │
+│               v5.0.0 · Endless                             │
 └──────────────────────────────────────────────────────────┘
 
   Cargando contexto...
-  Contexto: 91 cuentas · 0 reportes · 0 reglas · ES
+  Contexto: 331 cuentas · 0 reportes · 0 reglas · ES
 
   ✓ Conexión establecida
 
   DEXTER listo. 'menu' para ayuda, 'salir' para terminar.
 
-❯ Tú: crea un cliente con nombre TechCorp
+❯ Tú: crea un depósito por $5000 en Checking con estos clientes
 
-  ⚡ buscar_cliente · nombre=TechCorp
-    ✓ 0 encontrados — procedo a crear
+  ⚡ buscar_cliente · nombre=Carla Stoner
+    ✓ Cliente encontrado (ID 3577)
+  ⚡ buscar_cliente · nombre=Tammy Burgoyne
+    ✓ Cliente encontrado (ID 3199)
 
-  ⚡ crear_cliente · nombre=TechCorp
-    ✓ Cliente TechCorp creado (ID 73)
+  ⚡ crear_deposito · cuenta_destino_id=226, lineas=2
+    ✓ Depósito creado — $5,000.00
 
-  Dexter · Cliente TechCorp creado exitosamente con ID 73.
-           ¿Necesitás algo más?
+❯ Tú: procesa el CSV de depósitos deposits_template.csv
 
-❯ Tú: crea un estimate para TechCorp por $5,000 --dry-run
+📋 BATCH abc12345 CREADO
+   Items: 3
+   Cuentas resueltas desde CSV:
+     1003 Checking - Bravera Bank → 226 (Bank)
+     2100 Customer Deposits → 250 (Liability)
 
-  ⚡ qbo_query · query=SELECT * FROM Customer WHERE...
-    ✓ Cliente encontrado (ID 73)
+DRY RUN — Resumen del batch
+   Listos para ejecutar:  3
+   Omitidos / con error:  0
 
-  [DRY-RUN] Se simularía crear_estimate(cliente_id=73, monto=5000)
-            No se ejecutó nada en QBO.
-
-  Dexter · En simulación, crearía un estimate para TechCorp
-           por $5,000.00. Decime 'ejecutalo' para hacerlo real.
-
-❯ Tú: ejecutalo
-
-  [Ejecutando: "crea un estimate para TechCorp por $5,000"]
-
-  ⚡ crear_estimate · cliente_id=73, monto=5000
-    ✓ Estimate #96 creado — $5,000.00
-
-❯ Tú: dame el P&L de este mes
-
-  ⚡ generar_reporte_pl · start_date=2026-06-01
-
-  ┌──── Profit & Loss · Junio 2026 ────────────────────────┐
-  │ Ingresos:           $45,230.00                         │
-  │ Costo de Ventas:    $12,400.00                         │
-  │ Beneficio Bruto:    $32,830.00                         │
-  │ Gastos:             $18,200.00                         │
-  │ Ingreso Neto:       $14,630.00                         │
-  └────────────────────────────────────────────────────────┘
+❯ Tú: s
+   ✓ Depósito creado: $11,767.77 | 3 clientes → ID 23587
 ```
 
 ---
@@ -101,40 +101,37 @@ pip install -r requirements.txt
 
 Dexter es un **agente de IA** que opera QuickBooks Online mediante lenguaje natural. No es un chatbot — es un asistente que ejecuta operaciones reales en QBO.
 
-```
-❯ Tú: crea un estimate para Prueba2 por $1,500
-
-  ⚡ buscar_cliente · nombre=Prueba2
-    ✓ Cliente encontrado (ID 70)
-
-  Dexter · Voy a crear un estimate para Prueba2 (ID 70) por $1,500.
-           ¿Confirmás?
-
-❯ Tú: sí
-
-  ⚡ crear_estimate · cliente_id=70, monto=1500
-    ✓ Estimate #92 creado
-```
-
 ### Capacidades
 
 | Área | Herramientas |
 |---|---|
-| 🔍 **Búsqueda** | Clientes, vendors, cuentas, items, estimates, invoices |
+| 🔍 **Búsqueda** | Clientes, vendors, cuentas, items, estimates, invoices — fuzzy matching ≥85% |
 | ✏️ **Creación** | Clientes, invoices, estimates, bills, pagos, depósitos, journal entries |
 | 📊 **Reportes** | P&L, Balance Sheet, Cash Flow, Trial Balance, 13 reportes más |
 | 📄 **OCR** | Extrae bills de PDFs, aprende formatos por proveedor |
 | 🏦 **Bank Feed** | Clasifica transacciones, aprende patrones, CSV batch |
-| 🔄 **Multi-Empresa** | Tokens, chart, memoria y clasificaciones aisladas por empresa |
+| 📦 **Batch Engine** | CSV deposits multi-cliente con state machine, dry-run, agrupación automática |
+| 🔄 **Multi-Empresa** | Tokens, chart, memoria y clasificaciones aisladas por empresa. Cambio instantáneo |
+| 🎯 **Fuzzy Matching** | Token-based ≥85% con detección de prefijos (Ben→Benjamin). Cache 5min |
 | 🌐 **Bilingüe** | Detecta español/inglés automáticamente, keywords en ambos idiomas |
 | 🛡️ **Seguridad** | Dry-run, modo confirmación, sin datos en la nube |
+| ⚡ **MCP Backend** | Motor dual: native (Python puro) o Intuit MCP Server (144 tools oficiales) |
 
 ---
 
 ## 🚀 Features
 
+### Fuzzy Matching ≥85%
+Dexter busca clientes y vendors con similitud token-based. Si QBO no encuentra "Ben Haselman", busca contra todos los clientes activos y sugiere "Benjamin Haselman" (95% similar). Detecta prefijos comunes (Ben→Benjamin, Pat→Patrick).
+
+### Batch Engine (v2)
+Procesa CSVs de depósitos con columnas `bank_account` y `line_account`. Agrupa items con misma fecha y banco en un solo depósito multi-línea. State machine completa: PENDING → VALIDATED → DRY_RUN → CONFIRMED → EXECUTING. Creación de clientes en lote (2+ clientes nuevos sin preguntar info opcional).
+
 ### Modo Simulación (Dry-Run)
 Probá cualquier operación sin tocar QBO. Agregá `--dry-run` y Dexter simula. Si te gusta, `ejecutalo`.
+
+### Slash Autocomplete (`/`)
+Presioná `/` en el prompt para ver los 116 tools con fuzzy matching. Escribí `/dep` y filtra `crear_deposito`, `depositar_lote_csv`, etc. Sin `/`, funcionamiento normal.
 
 ### Memoria Persistente
 Dexter recuerda entre sesiones. Cada empresa tiene su propia memoria donde guarda IDs, preferencias, correcciones y aprendizajes.
@@ -156,13 +153,16 @@ Interfaz con Rich: paneles, colores, indicadores de herramientas. Cada `⚡ tool
 
 | Métrica | Valor |
 |---|---|
-| Tests | 692 pasando |
-| Herramientas QBO | 106 en 21 módulos |
+| Tests | 750 pasando |
+| Herramientas QBO | 116 en 22 skills |
 | Cobertura API QBO | 93% |
-| Commits | 147 |
+| Commits | 200+ |
 | Empresas soportadas | Ilimitadas (tokens aislados) |
-| LLM | DeepSeek V3 via OpenRouter |
+| LLM | DeepSeek V3 via OpenRouter (multi-proveedor) |
 | OCR | Gemini 2.0 Flash |
+| Fuzzy Matching | Token-based ≥85% (HIGH-1) |
+| Batch Engine | v2 con agrupación (HIGH-2) |
+| MCP Backend | Intuit MCP Server (HIGH-3, experimental) |
 
 ---
 
@@ -170,19 +170,30 @@ Interfaz con Rich: paneles, colores, indicadores de herramientas. Cada `⚡ tool
 
 ```
 Qbo Scripts/
-├── main.py                    # Core del agente
+├── main.py                    # Core del agente + QBOAdapter lifecycle (HIGH-3)
+├── run_dexter.sh              # Launcher motor nativo
+├── run_dexter_mcp.sh          # Launcher motor Intuit MCP (experimental)
 ├── dexter/
-│   ├── skills/                 # 116 herramientas en 21 módulos
-│   ├── core/                  # API helpers, memoria, retry, safe_json
-│   ├── console.py             # UI con Rich
-│   └── error_log.py           # Log persistente JSONL
-├── autonomia/                 # Módulos de autonomía (web, API, bank feed)
-├── tests/                     # 692 tests
+│   ├── skills/                # 22 skills con 116 herramientas
+│   │   ├── search/fuzzy.py    # Token-based fuzzy matching ≥85% (HIGH-1)
+│   │   └── engineering/       # Manual de ingeniería + procedimientos
+│   ├── core/
+│   │   ├── batch/             # State machine + batch engine (HIGH-2)
+│   │   ├── mcp_bridge.py      # Python ↔ Node.js JSON-RPC (HIGH-3)
+│   │   ├── qbo_adapter.py     # QBOClientProtocol via Intuit MCP (HIGH-3)
+│   │   ├── qbo_client.py      # Cliente QBO nativo
+│   │   └── memory.py          # Memoria persistente
+│   ├── console.py             # UI Rich + slash autocomplete (/)
+│   └── prompt.py              # System prompt JARVIS style
+├── vendor/                    # Intuit MCP Server (gitignored, install.sh)
+├── autonomia/                 # Web search, API explorer, bank feed intelligence
+├── tests/                     # 750 tests
 ├── docs/                      # Documentación
-│   ├── SETUP.md               # Guía de instalación ← empezá acá
+│   ├── SKILL_REFACTOR.md      # Arquitectura de skills
+│   ├── SETUP.md               # Guía de instalación
 │   └── ...
 ├── companies/                 # Datos por empresa (tokens, memoria, perfil)
-├── scripts/                   # OAuth, refresh, verify, TSheets
+├── scripts/                   # OAuth, setup wizard, OCR, TSheets
 └── data/                      # Datos generados
 ```
 
@@ -193,11 +204,16 @@ Qbo Scripts/
 | Documento | Descripción |
 |---|---|
 | [SETUP.md](docs/SETUP.md) | Instalación y configuración completa |
-| [CONOCIMIENTO_CONTABLE.md](docs/CONOCIMIENTO_CONTABLE.md) | Base de conocimiento contable |
+| [SKILL_REFACTOR.md](docs/SKILL_REFACTOR.md) | Arquitectura de skills auto-descubribles |
 | [DRY_RUN.md](docs/DRY_RUN.md) | Modo simulación |
 | [MULTI_EMPRESA.md](docs/MULTI_EMPRESA.md) | Gestión multi-empresa |
 | [comparativa_mercado_2026.md](docs/comparativa_mercado_2026.md) | Estudio de mercado |
 | [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Solución de problemas |
+| `dexter/skills/engineering/SKILL.md` | Manual de ingeniería — cómo agregar features nuevas |
+
+**También disponible en OpenContext:** 12 documentos con arquitectura, skills, batch engine, fuzzy matching, auditoría, QBO integration, y MCP backend. `oc context manifest dexter` para cargarlos.
+
+---
 
 ---
 
