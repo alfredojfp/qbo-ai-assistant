@@ -321,4 +321,37 @@ git diff $(git describe --tags --abbrev=0) -- main.py | grep '^+' | wc -l
 
 ---
 
+## QBO MCP Backend (HIGH-3)
+
+Dexter soporta dos backends QBO. Para usar el oficial de Intuit:
+
+```bash
+# 1. Instalar el MCP server (una sola vez)
+bash install.sh
+
+# 2. Activar el backend
+export QB_BACKEND=mcp
+
+# 3. Iniciar Dexter normalmente
+python3 main.py
+
+# 4. Volver al backend nativo si algo falla
+export QB_BACKEND=native
+```
+
+**Arquitectura:**
+```
+Dexter tool → QBOAdapter → MCPBridge (JSON-RPC) → Intuit MCP (Node.js) → QBO API
+```
+
+`QBOAdapter` implementa `QBOClientProtocol`, así que el batch engine y el reconciliation tagger
+funcionan idénticamente con ambos backends. Si el MCP no está instalado, Dexter hace fallback
+automático a native sin error.
+
+**Ventajas del backend MCP:**
+- 144 tools mantenidos por Intuit (dueño de QBO)
+- 396 tests, 100% code coverage
+- Menos bugs de formato API (Entity, SyncToken, minorversions)
+- Nuevos endpoints agregados por Intuit se heredan automáticamente
+
 *Este manual reemplaza cualquier procedimiento anterior. Cualquier excepción debe discutirse y documentarse aquí.*

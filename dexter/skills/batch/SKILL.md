@@ -1,7 +1,22 @@
 # Motor Batch
-**Versión:** 2.0.0 | **Dominio:** Dexter v5.0 | **HIGH-2**
+**Versión:** 2.0.0 | **Dominio:** Dexter v5.0 | **HIGH-2, HIGH-3**
 
-Procesamiento por lotes de depósitos, reconciliación, y operaciones masivas. Dry-run obligatorio antes de ejecutar.
+Procesamiento por lotes de depósitos y operaciones masivas. Dry-run obligatorio antes de ejecutar.
+
+## Backend QBO (HIGH-3)
+
+Dexter soporta dos backends para operaciones QBO. Cambiar con variable de entorno:
+- **native** (default): Python puro via `qbo_client.py` + `qbo_request`/`qbo_query`
+- **mcp**: Intuit's official `quickbooks-online-mcp-server` via `QBOAdapter` + `MCPBridge`
+
+Ambos backends exponen la misma interfaz (`QBOClientProtocol`), así que el batch engine
+funciona idénticamente. El backend MCP hereda 144 tools, 396 tests y 100% cobertura de Intuit.
+Se reinicia automáticamente al cambiar de empresa.
+
+```bash
+export QB_BACKEND=mcp
+python3 main.py
+```
 
 ## Formato CSV para Depósitos (HIGH-2)
 
