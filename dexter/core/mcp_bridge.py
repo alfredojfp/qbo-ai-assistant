@@ -72,7 +72,7 @@ class MCPBridge:
     def call_tool(self, name: str, arguments: Dict[str, Any] = None) -> Dict[str, Any]:
         if not self._initialized:
             raise MCPBridgeError("MCP bridge not initialized. Call start() first.")
-        args = arguments or {}
+        args = {"params": arguments or {}}
         response = self._send("tools/call", {"name": name, "arguments": args})
         content = response.get("content", [])
         if not content:
