@@ -35,7 +35,6 @@ Fuzzy matching ≥85%. Batch engine con dry-run. Multi-empresa. OCR. Memoria per
 | **MCP Backend** (experimental) | Motor dual: `native` (default) o `mcp` (Intuit MCP Server oficial, 144 tools, 396 tests). Feature flag `QB_BACKEND=mcp` |
 | **Auditoría Batch Engine** | 12 bugs corregidos, state machine completa, error reporting mejorado, mocks alineados con QBO real |
 | **Documentación** | 12 docs en OpenContext + SKILL_REFACTOR.md + Engineering Manual |
-| **Context Mode** | Plugin global para OpenCode. Sandbox de tool output, 98% reducción de contexto |
 
 ---
 
