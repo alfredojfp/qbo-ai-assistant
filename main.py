@@ -2860,7 +2860,15 @@ def create_deposits_template():
 
     HIGH-2: columnas opcionales bank_account y line_account para control
     por línea. Compatible con el nuevo DepositBatchSkill.
+
+    Si el archivo ya existe (el usuario lo está usando), se genera
+    con un nombre distinto (deposits_template_blank.csv) para no
+    sobreescribir datos reales.
     """
+    import os
+    output_path = FILE_DEPOSITS_TEMPLATE
+    if os.path.exists(output_path):
+        output_path = "deposits_template_blank.csv"
     template_data = {
         "date": ["2026-01-15", "2026-01-15", "2026-01-16"],
         "client_name": ["Cliente Ejemplo 1", "Cliente Ejemplo 2", "Cliente Ejemplo 3"],
@@ -2871,12 +2879,14 @@ def create_deposits_template():
     }
 
     df = pd.DataFrame(template_data)
-    df.to_csv(FILE_DEPOSITS_TEMPLATE, index=False)
+    df.to_csv(output_path, index=False)
 
-    print(f"✅ Template creado: {FILE_DEPOSITS_TEMPLATE}")
+    print(f"✅ Template creado: {output_path}")
     print("   Columnas: date, client_name, amount, bank_account, line_account, memo")
     print("   bank_account: (opcional) cuenta bancaria → DepositToAccountRef")
     print("   line_account: (opcional) cuenta contable → AccountRef (puede ser Income, Liability, etc.)")
+    if output_path != FILE_DEPOSITS_TEMPLATE:
+        print(f"   ⚠️  {FILE_DEPOSITS_TEMPLATE} ya existe (tus datos no se tocaron)")
 
 # ==================== BANK FEED PROCESSING ====================
 

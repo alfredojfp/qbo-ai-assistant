@@ -91,11 +91,16 @@ class DepositBatchSkill:
                        if fld not in (reader.fieldnames or [])]
             if missing:
                 raise ValueError(f"Columnas faltantes en CSV: {missing}")
-            for row in reader:
+            for row_num, row in enumerate(reader, start=2):  # row 1 = header
                 try:
                     amount = float(row["amount"])
                 except (ValueError, KeyError):
-                    raise ValueError(f"Monto inválido: {row.get('amount')}")
+                    client = row.get("client_name", "?")
+                    raw = row.get("amount", "(vacío)")
+                    raise ValueError(
+                        f"Fila {row_num}: monto inválido '{raw}' para cliente '{client}'. "
+                        f"Debe ser un número (ej: 1500.00, no '$1,500')"
+                    )
                 item = {
                     "date": row["date"].strip(),
                     "client_name": row["client_name"].strip(),
