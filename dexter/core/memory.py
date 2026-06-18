@@ -129,14 +129,20 @@ class PersistentMemory:
     def parse_defaults(self, known_keys: List[str] = None) -> Dict[str, str]:
         """Extrae entradas de memoria con formato clave:valor.
 
-        HIGH-2b: fuzzy key matching. Normaliza la clave y la compara
-        contra `known_keys`. Si una entrada normalizada contiene una
-        known_key, se asigna.
+        HIGH-2b: fuzzy key matching con aliases. Normaliza la clave y la compara
+        contra `known_keys`. También soporta aliases: 'deposito_default' también
+        matchea 'cuenta_linea_default', 'linea_default', 'cuenta_deposito_default'.
 
         Args:
             known_keys: Lista de claves conocidas a buscar (ej: ['banco_default']).
                         Si es None, retorna todas las entradas con ':'.
         """
+        # Alias map: canonical_key → additional patterns to match
+        _ALIASES = {
+            "deposito_default": ["cuenta_linea", "linea_default", "cuenta_deposito"],
+            "banco_default": ["cuenta_banco", "banco_cuenta"],
+        }
+
         defaults: Dict[str, str] = {}
         for entry in self.get_memory_entries():
             if ":" not in entry:
@@ -155,6 +161,14 @@ class PersistentMemory:
                     if target_norm in norm_key:
                         defaults[target] = value
                         break
+                    # Check aliases
+                    for alias in _ALIASES.get(target, []):
+                        if self._normalize_key(alias) in norm_key:
+                            defaults[target] = value
+                            break
+                    else:
+                        continue
+                    break
         return defaults
 
     def parse_rules(self) -> Dict[str, str]:
