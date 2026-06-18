@@ -3,6 +3,9 @@
 HIGH-3: bridges Dexter's batch engine and reconciliation skill to
         Intuit's official QBO MCP Server. Translates Dexter's
         lowercase-key interface to MCP tool calls and back.
+
+Argument mapping based on Intuit MCP Zod schemas in
+vendor/quickbooks-online-mcp-server/src/tools/*.tool.ts
 """
 from typing import Any, Dict, List, Optional
 
@@ -21,18 +24,15 @@ class QBOAdapter:
     def stop(self):
         self._bridge.stop()
 
+    # ── Customer ───────────────────────────────────────────
+
     def search_customer(self, name: str) -> List[Dict[str, Any]]:
-        result = self._bridge.call_tool("search_customers", {"searchTerm": name})
-        customers = result.get("QueryResponse", {}).get("Customer", [])
-        results = []
-        for c in customers:
-            results.append({
-                "id": c.get("Id"),
-                "name": c.get("DisplayName", ""),
-                "company": c.get("CompanyName", ""),
-                "balance": float(c.get("Balance", 0)),
-                "active": c.get("Active", True),
-            })
+        args = {
+            "criteria": [{"field": "DisplayName", "operator": "LIKE", "value": name}],
+        }
+        result = self._bridge.call_tool("search_customers", args)
+        customers = _extract_list(result)
+        results = _adapt_customers(customers)
         if results:
             return results
         from dexter.skills.search.fuzzy import find_similar_customers
@@ -40,20 +40,21 @@ class QBOAdapter:
 
     def create_customer(self, data: Dict[str, Any]) -> Dict[str, Any]:
         display_name = data.get("DisplayName", data.get("name", ""))
-        args = {"displayName": display_name}
+        customer = {"DisplayName": display_name}
         email = data.get("PrimaryEmailAddr")
         if email:
-            if isinstance(email, dict):
-                email = email.get("Address", "")
-            args["email"] = email
+            addr = email.get("Address", email) if isinstance(email, dict) else email
+            customer["PrimaryEmailAddr"] = {"Address": addr}
         if data.get("CompanyName"):
-            args["companyName"] = data["CompanyName"]
-        result = self._bridge.call_tool("create_customer", args)
+            customer["CompanyName"] = data["CompanyName"]
+        result = self._bridge.call_tool("create_customer", {"customer": customer})
         cust = result.get("Customer", result)
         return {
             "Id": cust.get("Id", ""),
             "DisplayName": cust.get("DisplayName", display_name),
         }
+
+    # ── Deposit ─────────────────────────────────────────────
 
     def create_deposit(
         self,
@@ -62,28 +63,24 @@ class QBOAdapter:
         lines: List[Dict[str, Any]],
         memo: Optional[str] = None,
     ) -> Dict[str, Any]:
-        deposit_lines = []
+        line_items = []
         for item in lines:
-            line = {
+            li = {
                 "amount": item["amount"],
-                "accountRef": {"value": item["from_account_id"]},
+                "account_ref": item["from_account_id"],
             }
-            if item.get("customer_id"):
-                line["entity"] = {
-                    "value": item["customer_id"],
-                    "type": "Customer",
-                }
             if item.get("description"):
-                line["description"] = item["description"]
-            deposit_lines.append(line)
+                li["description"] = item["description"]
+            line_items.append(li)
 
-        args = {
-            "depositToAccountRef": {"value": account_id},
-            "txnDate": date,
-            "line": deposit_lines,
+        args: Dict[str, Any] = {
+            "deposit_to_account_ref": account_id,
+            "line_items": line_items,
         }
+        if date:
+            args["txn_date"] = date
         if memo:
-            args["privateNote"] = memo
+            args["private_note"] = memo
 
         result = self._bridge.call_tool("create_deposit", args)
         deposit = result.get("Deposit", result)
@@ -93,29 +90,39 @@ class QBOAdapter:
             "date": deposit.get("TxnDate", ""),
         }
 
+    # ── Transaction Read/Update ─────────────────────────────
+
     def get_transactions(
         self, account_id: str, start_date: str, end_date: str
     ) -> List[Dict[str, Any]]:
         txns = []
-        for txn_type, tool_name in [("Deposit", "search_deposits"), ("Purchase", "search_purchases")]:
-            try:
-                batch = self._bridge.call_tool(tool_name, {
-                    "startDate": start_date,
-                    "endDate": end_date,
+        search_args = {"txn_date_from": start_date, "txn_date_to": end_date}
+        try:
+            deposits = self._bridge.call_tool("search_deposits", search_args)
+            for d in _extract_list(deposits):
+                txns.append({
+                    "id": d.get("Id", ""),
+                    "type": "Deposit",
+                    "date": d.get("TxnDate", ""),
+                    "amount": float(d.get("TotalAmt", 0) or 0),
+                    "account_id": d.get("DepositToAccountRef", {}).get("value", ""),
+                    "raw": d,
                 })
-                for item in batch.get("QueryResponse", {}).get(txn_type, []):
-                    txns.append({
-                        "id": item.get("Id", ""),
-                        "type": txn_type,
-                        "date": item.get("TxnDate", ""),
-                        "amount": float(item.get("TotalAmt", 0) or 0),
-                        "account_id": item.get("DepositToAccountRef", {}).get("value", "")
-                        if txn_type == "Deposit"
-                        else item.get("AccountRef", {}).get("value", ""),
-                        "raw": item,
-                    })
-            except Exception:
-                pass
+        except Exception:
+            pass
+        try:
+            purchases = self._bridge.call_tool("search_purchases", {})
+            for p in _extract_list(purchases):
+                txns.append({
+                    "id": p.get("Id", ""),
+                    "type": "Purchase",
+                    "date": p.get("TxnDate", ""),
+                    "amount": float(p.get("TotalAmt", 0) or 0),
+                    "account_id": p.get("AccountRef", {}).get("value", ""),
+                    "raw": p,
+                })
+        except Exception:
+            pass
         return txns
 
     def update_transaction(
@@ -126,12 +133,73 @@ class QBOAdapter:
         sync_token: str = "0",
     ) -> Dict[str, Any]:
         tool_map = {
-            "Deposit": "update_deposit",
-            "Purchase": "update_purchase",
-            "Bill": "update_bill",
+            "Deposit": ("update_deposit", _build_update_deposit),
+            "Purchase": ("update_purchase", _build_update_purchase),
+            "Bill": ("update_bill", _build_update_bill),
         }
-        tool = tool_map.get(txn_type)
-        if not tool:
+        entry = tool_map.get(txn_type)
+        if not entry:
             raise ValueError(f"No MCP tool for transaction type: {txn_type}")
-        args = {"id": txn_id, "syncToken": sync_token, **fields}
-        return self._bridge.call_tool(tool, args)
+        tool_name, builder = entry
+        args = builder(txn_id=txn_id, sync_token=sync_token, fields=fields)
+        return self._bridge.call_tool(tool_name, args)
+
+
+# ── Internal helpers ────────────────────────────────────────
+
+def _extract_list(result: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Extract a list from Intuit MCP result (varies by tool)."""
+    if isinstance(result, list):
+        return result
+    for key in ("result", "QueryResponse"):
+        if key in result:
+            inner = result[key]
+            if isinstance(inner, list):
+                return inner
+            if isinstance(inner, dict):
+                for subkey in ("Customer", "Deposit", "Purchase", "Bill"):
+                    if subkey in inner and isinstance(inner[subkey], list):
+                        return inner[subkey]
+    return []
+
+
+def _adapt_customers(raw: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    results = []
+    for c in raw:
+        results.append({
+            "id": c.get("Id"),
+            "name": c.get("DisplayName", ""),
+            "company": c.get("CompanyName", ""),
+            "balance": float(c.get("Balance", 0)),
+            "active": c.get("Active", True),
+        })
+    return results
+
+
+def _build_update_deposit(txn_id: str, sync_token: str, fields: Dict[str, Any]) -> Dict[str, Any]:
+    args = {"id": txn_id, "sync_token": sync_token}
+    if "Memo" in fields:
+        # Intuit MCP update_deposit supports private_note, not Memo
+        args["private_note"] = fields["Memo"]
+    if "PrivateNote" in fields:
+        args["private_note"] = fields["PrivateNote"]
+    return args
+
+
+def _build_update_purchase(txn_id: str, sync_token: str, fields: Dict[str, Any]) -> Dict[str, Any]:
+    purchase: Dict[str, Any] = {"Id": txn_id, "SyncToken": sync_token}
+    if "Memo" in fields:
+        purchase["Memo"] = fields["Memo"]
+    if "PrivateNote" in fields:
+        purchase["PrivateNote"] = fields["PrivateNote"]
+    return {"purchase": purchase}
+
+
+def _build_update_bill(txn_id: str, sync_token: str, fields: Dict[str, Any]) -> Dict[str, Any]:
+    """update_bill requires full bill object. We build a minimal one."""
+    bill: Dict[str, Any] = {"Id": txn_id, "SyncToken": sync_token}
+    if "Memo" in fields:
+        bill["Memo"] = fields["Memo"]
+    if "PrivateNote" in fields:
+        bill["PrivateNote"] = fields["PrivateNote"]
+    return {"bill": bill}
