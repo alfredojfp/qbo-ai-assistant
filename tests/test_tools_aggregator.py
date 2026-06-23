@@ -81,8 +81,8 @@ class TestToolsAggregator(unittest.TestCase):
 
     def test_count_is_100(self):
         from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
-        self.assertEqual(len(ALL_SCHEMAS), 120)
-        self.assertEqual(len(ALL_FUNCTIONS), 120)
+        self.assertEqual(len(ALL_SCHEMAS), 121)
+        self.assertEqual(len(ALL_FUNCTIONS), 121)
 
     def test_no_duplicate_names(self):
         from dexter.tools import ALL_SCHEMAS
@@ -113,7 +113,7 @@ class TestAllDomainModules(unittest.TestCase):
 
     EXPECTED_DOMAINS = [
         ("search", 7),
-        ("transactions", 7),
+        ("transactions", 8),
         ("reports", 5),
         ("tokens", 2),
         ("admin", 8),
@@ -470,12 +470,12 @@ class TestSprint3Advanced(unittest.TestCase):
 
 
 class TestSprintTotalCoverage(unittest.TestCase):
-    """Tests de cobertura global: 120 tools, 22 módulos."""
+    """Tests de cobertura global: 121 tools, 22 módulos."""
 
-    def test_total_120_tools(self):
+    def test_total_121_tools(self):
         from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
-        self.assertEqual(len(ALL_SCHEMAS), 120)
-        self.assertEqual(len(ALL_FUNCTIONS), 120)
+        self.assertEqual(len(ALL_SCHEMAS), 121)
+        self.assertEqual(len(ALL_FUNCTIONS), 121)
 
     def test_total_21_modules(self):
         from dexter.tools import KEYWORDS_BY_MODULE
@@ -560,8 +560,8 @@ class TestP2OptionalReports(unittest.TestCase):
 
     def test_total_117_tools(self):
         from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
-        self.assertEqual(len(ALL_SCHEMAS), 120)
-        self.assertEqual(len(ALL_FUNCTIONS), 120)
+        self.assertEqual(len(ALL_SCHEMAS), 121)
+        self.assertEqual(len(ALL_FUNCTIONS), 121)
 
     def test_p2_reports_have_descriptions(self):
         from dexter.tools import ALL_SCHEMAS

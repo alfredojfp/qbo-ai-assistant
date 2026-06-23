@@ -1,4 +1,4 @@
-"""dexter.tools.transactions — 7 tools."""
+"""dexter.tools.transactions — 8 tools."""
 from typing import Any, Dict, List
 
 from main import (
@@ -9,6 +9,7 @@ from main import (
     tool_crear_cliente,
     tool_agregar_linea_invoice,
     tool_aplicar_customer_deposit,
+    tool_procesar_csv_customer_deposits,
 )
 
 SCHEMA: List[Dict[str, Any]] = [
@@ -19,6 +20,7 @@ SCHEMA: List[Dict[str, Any]] = [
         {'type': 'function', 'function': {'name': 'crear_cliente', 'description': 'Crea un cliente (Customer) en QuickBooks. Solo requiere el nombre (DisplayName). Email, teléfono, dirección y nombre de empresa son opcionales.', 'parameters': {'type': 'object', 'properties': {'nombre': {'type': 'string', 'description': 'Nombre del cliente (DisplayName, único en QBO)'}, 'email': {'type': 'string', 'description': 'Email principal del cliente (opcional)'}, 'telefono': {'type': 'string', 'description': 'Teléfono principal del cliente (opcional)'}, 'direccion': {'type': 'string', 'description': 'Dirección del cliente (opcional)'}, 'empresa': {'type': 'string', 'description': 'Nombre de la empresa del cliente (opcional, distinto del DisplayName)'}}, 'required': ['nombre']}}},
         {'type': 'function', 'function': {'name': 'agregar_linea_invoice', 'description': 'Agrega una línea a un invoice existente (full update). Útil para aplicar Customer Deposits o ajustes que reducen el balance. Busca el item por nombre (fuzzy), hace GET del invoice, agrega la línea, y POST del invoice completo.', 'parameters': {'type': 'object', 'properties': {'invoice_id': {'type': 'string', 'description': 'ID del invoice a modificar'}, 'item_name': {'type': 'string', 'description': 'Nombre del producto/servicio (ej. Customer Deposit)'}, 'amount': {'type': 'number', 'description': 'Monto de la línea. Negativo para reducir el balance del invoice.'}, 'description': {'type': 'string', 'description': 'Descripción opcional de la línea (ej. Aplicación de Customer Deposit)'}}, 'required': ['invoice_id', 'item_name', 'amount']}}},
         {'type': 'function', 'function': {'name': 'aplicar_customer_deposit', 'description': 'Aplica un Customer Deposit al invoice abierto de un cliente. Encadena buscar_cliente → listar_invoices_abiertos → agregar_linea_invoice. Un solo comando. Útil para conciliación de Customer Deposits. Si hay varios invoices abiertos, usa el primero (más antiguo).', 'parameters': {'type': 'object', 'properties': {'client_name': {'type': 'string', 'description': 'Nombre del cliente (fuzzy matching ≥85%)'}, 'amount': {'type': 'number', 'description': 'Monto a aplicar (se convierte a negativo automáticamente)'}, 'item_name': {'type': 'string', 'description': 'Nombre del item (default: Customer Deposit)', 'default': 'Customer Deposit'}}, 'required': ['client_name', 'amount']}}},
+        {'type': 'function', 'function': {'name': 'procesar_csv_customer_deposits', 'description': 'Procesa un CSV de customer deposits en batch. Columnas: client_name, amount. Para cada fila, aplica el customer deposit al invoice abierto. Usa fuzzy matching ≥85%. Sin dry-run. Template en templates/customer_deposit_aplicar.csv.', 'parameters': {'type': 'object', 'properties': {'ruta_archivo': {'type': 'string', 'description': 'Ruta del CSV con columnas client_name y amount'}, 'item_name': {'type': 'string', 'description': 'Nombre del item (default: Customer Deposit)', 'default': 'Customer Deposit'}}, 'required': ['ruta_archivo']}}},
 ]
 
 
@@ -37,4 +39,5 @@ FUNCTIONS: Dict[str, Any] = {
     "crear_cliente": tool_crear_cliente,
     "agregar_linea_invoice": tool_agregar_linea_invoice,
     "aplicar_customer_deposit": tool_aplicar_customer_deposit,
+    "procesar_csv_customer_deposits": tool_procesar_csv_customer_deposits,
 }

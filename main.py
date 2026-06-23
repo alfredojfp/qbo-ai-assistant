@@ -4470,6 +4470,44 @@ def tool_aplicar_customer_deposit(client_name: str, amount: float, item_name: st
         description=f"Aplicación de Customer Deposit - {client['name']}",
     )
 
+def tool_procesar_csv_customer_deposits(ruta_archivo: str, item_name: str = "Customer Deposit") -> dict:
+    """Tool: Procesa un CSV de customer deposits en batch.
+
+    Lee el archivo CSV (columnas: client_name, amount) y para cada fila
+    aplica el customer deposit al invoice abierto del cliente.
+    Sin dry-run, sin state machine — ejecución directa con resumen.
+    """
+    import csv
+    results = []
+    errors = []
+    if not os.path.exists(ruta_archivo):
+        return {"success": False, "error": f"Archivo no encontrado: {ruta_archivo}"}
+    with open(ruta_archivo, 'r', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        for row_num, row in enumerate(reader, start=2):
+            name = row.get("client_name", "").strip()
+            raw_amount = row.get("amount", "").strip()
+            if not name or not raw_amount:
+                errors.append({"row": row_num, "error": "Fila sin client_name o amount"})
+                continue
+            try:
+                amount = float(raw_amount)
+            except ValueError:
+                errors.append({"row": row_num, "error": f"Monto inválido: '{raw_amount}'"})
+                continue
+            result = tool_aplicar_customer_deposit(name, amount, item_name)
+            if result.get("success"):
+                results.append({"client": name, "amount": amount, "invoice_id": result.get("invoice_id")})
+            else:
+                errors.append({"client": name, "error": result.get("error", "")})
+    return {
+        "success": len(errors) == 0,
+        "processed": len(results),
+        "failed": len(errors),
+        "results": results,
+        "errors": errors,
+    }
+
 def tool_crear_bill(vendor_id: str, lineas: List[dict], fecha: str = None, 
                    fecha_vencimiento: str = None, memo: str = None) -> dict:
     """Tool: Crea bill"""
@@ -6121,6 +6159,7 @@ TOOL_FUNCTIONS = {
     "crear_invoice": tool_crear_invoice,
     "agregar_linea_invoice": tool_agregar_linea_invoice,
     "aplicar_customer_deposit": tool_aplicar_customer_deposit,
+    "procesar_csv_customer_deposits": tool_procesar_csv_customer_deposits,
     "crear_bill": tool_crear_bill,
     "crear_deposito": tool_crear_deposito,
     "crear_pago": tool_crear_pago,
