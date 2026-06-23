@@ -1,4 +1,4 @@
-"""dexter.tools.admin — 7 tools de administración."""
+"""dexter.tools.admin — 8 tools de administración."""
 from typing import Any, Dict, List
 
 from main import (
@@ -9,6 +9,7 @@ from main import (
     tool_gestionar_memoria,
     tool_leer_archivo,
     tool_registrar_provider_tip,
+    tool_refrescar_token_qbo,
 )
 
 SCHEMA: List[Dict[str, Any]] = [
@@ -19,6 +20,7 @@ SCHEMA: List[Dict[str, Any]] = [
         {'type': 'function', 'function': {'name': 'gestionar_memoria', 'description': 'Gestiona la memoria persistente del agente. Acciones: add (agregar), remove (eliminar), status (ver estado).', 'parameters': {'type': 'object', 'properties': {'target': {'type': 'string', 'enum': ['memory', 'user'], 'description': "Tipo: 'memory' (notas del agente) o 'user' (perfil de Alfredo)"}, 'action': {'type': 'string', 'enum': ['add', 'remove', 'status'], 'description': 'Acción a realizar'}, 'content': {'type': 'string', 'description': 'Texto a agregar (para action=add)'}, 'old_text': {'type': 'string', 'description': 'Substring a eliminar (para action=remove)'}}, 'required': ['target', 'action']}}},
         {'type': 'function', 'function': {'name': 'leer_archivo', 'description': 'Lee un archivo del proyecto (PROFILE.md, MEMORY.md, documentación, templates). Retorna el contenido. Útil para consultar datos de la empresa.', 'parameters': {'type': 'object', 'properties': {'ruta': {'type': 'string', 'description': 'Ruta relativa del archivo. Ej: companies/Sandbox/PROFILE.md'}}, 'required': ['ruta']}}},
         {'type': 'function', 'function': {'name': 'registrar_provider_tip', 'description': 'Registra un tip para procesar facturas de un proveedor. Usar cuando Alfredo corrige OCR. El tip se guarda y aplica en futuros OCR.', 'parameters': {'type': 'object', 'properties': {'provider': {'type': 'string', 'description': 'Nombre del proveedor (CFE, Amazon, etc)'}, 'tip': {'type': 'string', 'description': 'Instrucción (ej: El total está en negrita abajo a la derecha)'}}, 'required': ['provider', 'tip']}}},
+        {'type': 'function', 'function': {'name': 'refrescar_token_qbo', 'description': 'Re-autentica Dexter con QuickBooks Online via OAuth (navegador). Usar cuando el token expiró (error "invalid_grant" o "AuthenticationFailed"). Abre el navegador para que autorices de nuevo. NO usar para ver estadísticas de tokens — para eso usar obtener_estadisticas_tokens.', 'parameters': {'type': 'object', 'properties': {}}}},
 ]
 
 
@@ -26,6 +28,8 @@ SCHEMA: List[Dict[str, Any]] = [
 KEYWORDS: List[str] = [
     "refrescar", "empresa", "compañía", "registrar empresa", "cambiar empresa",
     "listar empresa", "log", "error", "errores", "diagnostico",
+    "token expirado", "oauth", "reconectar qbo", "refrescar token qbo",
+    "invalid_grant", "authentication failed",
 ]
 FUNCTIONS: Dict[str, Any] = {
     "refrescar_chart_accounts": tool_refrescar_chart_accounts,
@@ -35,4 +39,5 @@ FUNCTIONS: Dict[str, Any] = {
     "gestionar_memoria": tool_gestionar_memoria,
     "leer_archivo": tool_leer_archivo,
     "registrar_provider_tip": tool_registrar_provider_tip,
+    "refrescar_token_qbo": tool_refrescar_token_qbo,
 }

@@ -5191,6 +5191,61 @@ def tool_obtener_estadisticas_tokens(periodo: str) -> dict:
         "duracion_min": round(float(sub["duracion_min"].sum()), 1),
     }
 
+def tool_refrescar_token_qbo() -> dict:
+    """Tool: Re-autentica con QuickBooks via OAuth flow (navegador).
+
+    Usar cuando el access_token o refresh_token de QBO expiró.
+    Abre el navegador para que el usuario autorice de nuevo.
+    Al completar, recarga los tokens en meta.json y actualiza
+    las variables globales de sesión.
+
+    NO usar para ver estadísticas de tokens — para eso está
+    obtener_estadisticas_tokens.
+    """
+    from pathlib import Path
+    import subprocess
+
+    oauth_script = Path(__file__).resolve().parent / "scripts" / "oauth_flow.py"
+    if not oauth_script.exists():
+        return {"success": False, "error": f"No se encontró {oauth_script}"}
+
+    print(f"\n🔑 Lanzando OAuth flow: python3 {oauth_script}")
+    print("   Se abrirá el navegador para autorizar a Dexter con QBO.")
+    print("   Si no se abre, copiá la URL que aparece y pegala en el navegador.\n")
+
+    try:
+        result = subprocess.run(
+            ["python3", str(oauth_script)],
+            cwd=Path(__file__).resolve().parent,
+            capture_output=True, text=True, timeout=300,
+        )
+    except subprocess.TimeoutExpired:
+        return {"success": False, "error": "OAuth flow tardó más de 5 minutos. Cancelado."}
+    except FileNotFoundError:
+        return {"success": False, "error": "python3 no encontrado. Ejecutá manualmente: python3 scripts/oauth_flow.py"}
+
+    if result.returncode != 0:
+        return {
+            "success": False,
+            "error": f"OAuth flow falló (exit {result.returncode})",
+            "stderr": result.stderr[-500:],
+        }
+
+    # Recargar tokens del meta.json actualizado por oauth_flow.py
+    global QB_ACCESS_TOKEN, QB_REFRESH_TOKEN
+    if CURRENT_COMPANY:
+        from company_manager import get_company_meta
+        meta = get_company_meta(CURRENT_COMPANY["name"])
+        if meta.get("access_token") and meta.get("refresh_token"):
+            QB_ACCESS_TOKEN = meta["access_token"]
+            QB_REFRESH_TOKEN = meta["refresh_token"]
+            return {
+                "success": True,
+                "message": "Token OAuth refrescado exitosamente. Ya podés usar Dexter con QBO.",
+            }
+
+    return {"success": False, "error": "OAuth flow corrió pero no se encontraron tokens nuevos en meta.json"}
+
 def tool_generar_informe_tokens() -> dict:
     """Tool: Genera informe de tokens (Excel + summary estructurado)."""
     generate_token_report()
@@ -6070,6 +6125,7 @@ TOOL_FUNCTIONS = {
     "limpiar_log_errores": tool_limpiar_log_errores,
     "leer_archivo": tool_leer_archivo,
     "registrar_provider_tip": tool_registrar_provider_tip,
+    "refrescar_token_qbo": tool_refrescar_token_qbo,
     "procesar_csv_corregido": tool_procesar_csv_corregido,
     "procesar_estado_cuenta": tool_procesar_estado_cuenta,
 }

@@ -81,8 +81,8 @@ class TestToolsAggregator(unittest.TestCase):
 
     def test_count_is_100(self):
         from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
-        self.assertEqual(len(ALL_SCHEMAS), 116)
-        self.assertEqual(len(ALL_FUNCTIONS), 116)
+        self.assertEqual(len(ALL_SCHEMAS), 117)
+        self.assertEqual(len(ALL_FUNCTIONS), 117)
 
     def test_no_duplicate_names(self):
         from dexter.tools import ALL_SCHEMAS
@@ -116,7 +116,7 @@ class TestAllDomainModules(unittest.TestCase):
         ("transactions", 5),
         ("reports", 5),
         ("tokens", 2),
-        ("admin", 7),
+        ("admin", 8),
         ("batch", 3),
         ("reconciliation", 3),
         ("ocr", 3),
@@ -209,10 +209,10 @@ class TestErrorLogTools(unittest.TestCase):
         self.assertIn("limpiar_log_errores", names)
         self.assertIn("limpiar_log_errores", ALL_FUNCTIONS)
 
-    def test_admin_module_has_7_tools(self):
+    def test_admin_module_has_8_tools(self):
         from dexter.tools.admin import SCHEMA, FUNCTIONS
-        self.assertEqual(len(SCHEMA), 7)
-        self.assertEqual(len(FUNCTIONS), 7)
+        self.assertEqual(len(SCHEMA), 8)
+        self.assertEqual(len(FUNCTIONS), 8)
 
     def test_ver_log_errores_callable(self):
         from dexter.tools import ALL_FUNCTIONS
@@ -470,12 +470,12 @@ class TestSprint3Advanced(unittest.TestCase):
 
 
 class TestSprintTotalCoverage(unittest.TestCase):
-    """Tests de cobertura global: 100 tools, 21 módulos."""
+    """Tests de cobertura global: 117 tools, 22 módulos."""
 
-    def test_total_100_tools(self):
+    def test_total_117_tools(self):
         from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
-        self.assertEqual(len(ALL_SCHEMAS), 116)
-        self.assertEqual(len(ALL_FUNCTIONS), 116)
+        self.assertEqual(len(ALL_SCHEMAS), 117)
+        self.assertEqual(len(ALL_FUNCTIONS), 117)
 
     def test_total_21_modules(self):
         from dexter.tools import KEYWORDS_BY_MODULE
@@ -558,10 +558,10 @@ class TestP2OptionalReports(unittest.TestCase):
         self.assertIs(ALL_FUNCTIONS["reporte_class_sales"], tool_reporte_class_sales)
         self.assertIs(ALL_FUNCTIONS["reporte_department_sales"], tool_reporte_department_sales)
 
-    def test_total_100_tools(self):
+    def test_total_117_tools(self):
         from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
-        self.assertEqual(len(ALL_SCHEMAS), 116)
-        self.assertEqual(len(ALL_FUNCTIONS), 116)
+        self.assertEqual(len(ALL_SCHEMAS), 117)
+        self.assertEqual(len(ALL_FUNCTIONS), 117)
 
     def test_p2_reports_have_descriptions(self):
         from dexter.tools import ALL_SCHEMAS
