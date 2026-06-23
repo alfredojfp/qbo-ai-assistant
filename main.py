@@ -5209,15 +5209,27 @@ def tool_refrescar_token_qbo() -> dict:
     if not oauth_script.exists():
         return {"success": False, "error": f"No se encontró {oauth_script}"}
 
-    print(f"\n🔑 Lanzando OAuth flow: python3 {oauth_script}")
+    env = os.getenv("QB_ENV", "sandbox")
+    company = CURRENT_COMPANY["name"] if CURRENT_COMPANY else ""
+
+    print(f"\n🔑 Lanzando OAuth flow ({env}): python3 {oauth_script} --environment {env}")
+    if company:
+        print(f"   Empresa: {company}")
+        print(f"   Realm: {CURRENT_COMPANY.get('realm_id', '?')}")
     print("   Se abrirá el navegador para autorizar a Dexter con QBO.")
-    print("   Si no se abre, copiá la URL que aparece y pegala en el navegador.\n")
+    print("   Si estás en PRODUCCIÓN, asegurate de tener cloudflared corriendo:")
+    print("     cloudflared tunnel --url http://localhost:8000")
+    print()
+
+    cmd = ["python3", str(oauth_script), "--environment", env]
+    if company:
+        cmd.extend(["--company", company])
 
     try:
         result = subprocess.run(
-            ["python3", str(oauth_script)],
+            cmd,
             cwd=Path(__file__).resolve().parent,
-            capture_output=True, text=True, timeout=300,
+            timeout=300,
         )
     except subprocess.TimeoutExpired:
         return {"success": False, "error": "OAuth flow tardó más de 5 minutos. Cancelado."}
