@@ -109,13 +109,23 @@ TIPO DE CUENTAS:
   CostOfGoodsSold(COGS), FixedAsset, OtherAsset, OtherCurrentAsset,
   LongTermLiability, OtherCurrentLiability, Equity, CreditCard
 
-QUERY LANGUAGE (SQL-like QBO):
-  SELECT * FROM Entidad WHERE campo = 'valor' MAXRESULTS 100
+QBO SQL (SUB-LENGUAJE NO SQL COMPLETO):
+  SELECT * FROM {Entidad} WHERE campo = 'valor' MAXRESULTS N
   Entidades: Customer, Invoice, Estimate, Bill, Payment, Deposit,
   Account, Vendor, Item, Purchase, JournalEntry, etc.
-  NO soporta LIKE, JOINs, ni subconsultas.
-  COUNT(*) retorna totalCount como número, no como lista.
-  Usar qbo_query para buscar cualquier entidad.
+
+  ⚠️ REGLAS ESTRICTAS (el parser QBO las rechaza si no se cumplen):
+  - NUNCA usar .value ni sub-propiedades en WHERE: ❌ CustomerRef.value = 'x'
+                                                      ✅ CustomerRef = 'x'
+  - Siempre comillas en valores: ✅ Balance > '0'  ❌ Balance > 0
+  - String con comillas simples:   ✅ DisplayName LIKE '%John%'
+  - Metadatos con punto: ✅ Metadata.LastUpdatedTime > '2026-01-01'
+  - MAXRESULTS va al final, sin coma: ✅ WHERE ... MAXRESULTS 10
+  - NO soporta: JOIN, subconsultas, ORDER BY con ASC/DESC en texto
+  - COUNT(*) retorna totalCount como número, no como lista
+
+  Para buscar invoices abiertos de un cliente, mejor usar
+  listar_invoices_abiertos(cliente_id) — el SQL ya está validado.
 
 SIGNOS CONTABLES:
   Positivo (+) = ingreso, cobro, depósito, crédito a income

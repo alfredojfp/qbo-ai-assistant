@@ -81,8 +81,8 @@ class TestToolsAggregator(unittest.TestCase):
 
     def test_count_is_100(self):
         from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
-        self.assertEqual(len(ALL_SCHEMAS), 118)
-        self.assertEqual(len(ALL_FUNCTIONS), 118)
+        self.assertEqual(len(ALL_SCHEMAS), 119)
+        self.assertEqual(len(ALL_FUNCTIONS), 119)
 
     def test_no_duplicate_names(self):
         from dexter.tools import ALL_SCHEMAS
@@ -354,10 +354,10 @@ class TestSprint1EReportsExtra(unittest.TestCase):
 class TestSprint1FRead(unittest.TestCase):
     """Sprint 1F: 4 tools de lectura directa (CompanyInfo, Preferences, Query, QBO Query)."""
 
-    def test_read_module_has_4_tools(self):
+    def test_read_module_has_5_tools(self):
         from dexter.tools.read import SCHEMA, FUNCTIONS
-        self.assertEqual(len(SCHEMA), 4)
-        self.assertEqual(len(FUNCTIONS), 4)
+        self.assertEqual(len(SCHEMA), 5)
+        self.assertEqual(len(FUNCTIONS), 5)
 
     def test_read_all_registered(self):
         expected = ["leer_companyinfo", "leer_preferencias", "consulta_avanzada", "qbo_query"]
@@ -470,12 +470,12 @@ class TestSprint3Advanced(unittest.TestCase):
 
 
 class TestSprintTotalCoverage(unittest.TestCase):
-    """Tests de cobertura global: 118 tools, 22 módulos."""
+    """Tests de cobertura global: 119 tools, 22 módulos."""
 
-    def test_total_118_tools(self):
+    def test_total_119_tools(self):
         from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
-        self.assertEqual(len(ALL_SCHEMAS), 118)
-        self.assertEqual(len(ALL_FUNCTIONS), 118)
+        self.assertEqual(len(ALL_SCHEMAS), 119)
+        self.assertEqual(len(ALL_FUNCTIONS), 119)
 
     def test_total_21_modules(self):
         from dexter.tools import KEYWORDS_BY_MODULE
@@ -560,8 +560,8 @@ class TestP2OptionalReports(unittest.TestCase):
 
     def test_total_117_tools(self):
         from dexter.tools import ALL_SCHEMAS, ALL_FUNCTIONS
-        self.assertEqual(len(ALL_SCHEMAS), 118)
-        self.assertEqual(len(ALL_FUNCTIONS), 118)
+        self.assertEqual(len(ALL_SCHEMAS), 119)
+        self.assertEqual(len(ALL_FUNCTIONS), 119)
 
     def test_p2_reports_have_descriptions(self):
         from dexter.tools import ALL_SCHEMAS

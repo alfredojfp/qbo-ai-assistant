@@ -1,4 +1,4 @@
-"""dexter.tools.read — 4 tools de lectura directa (CompanyInfo, Preferences, Query, QBO Query)."""
+"""dexter.tools.read — 5 tools de lectura directa."""
 from typing import Any, Dict, List
 
 from main import (
@@ -6,6 +6,7 @@ from main import (
     tool_leer_preferencias,
     tool_consulta_avanzada,
     tool_qbo_query,
+    tool_listar_invoices_abiertos,
 )
 
 SCHEMA: List[Dict[str, Any]] = [
@@ -48,7 +49,7 @@ SCHEMA: List[Dict[str, Any]] = [
         "type": "function",
         "function": {
             "name": "qbo_query",
-            "description": "Ejecuta consultas SQL en QuickBooks Online. Usa este tool para buscar, filtrar o contar cualquier entidad (clientes, invoices, estimates, items, vendors, cuentas). Ejemplos: 'SELECT * FROM Estimate WHERE CustomerRef.value = \"70\"', 'SELECT COUNT(*) FROM Invoice WHERE Balance > 0'. Seguro: solo SELECT, bloquea DROP/DELETE/UPDATE/INSERT/ALTER/CREATE.",
+            "description": "Ejecuta consultas SQL en QuickBooks Online. Usa este tool para buscar, filtrar o contar cualquier entidad. Ejemplos: 'SELECT * FROM Estimate WHERE CustomerRef.value = \"70\"', 'SELECT COUNT(*) FROM Invoice WHERE Balance > 0'. Seguro: solo SELECT, bloquea DROP/DELETE/UPDATE/INSERT/ALTER/CREATE.",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -58,6 +59,19 @@ SCHEMA: List[Dict[str, Any]] = [
                     },
                 },
                 "required": ["query"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "listar_invoices_abiertos",
+            "description": "Lista invoices con balance pendiente (Balance > 0). Si se pasa cliente_id, solo los de ese cliente. El SQL ya está validado — usalo en vez de qbo_query para evitar errores de sintaxis QBO como CustomerRef.value o comillas faltantes.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "cliente_id": {"type": "string", "description": "ID del cliente (opcional). Si se omite, lista todos los invoices abiertos."},
+                },
             },
         },
     },
@@ -77,6 +91,7 @@ KEYWORDS: List[str] = [
     "filtra", "filtrame", "filtrar",
     "lista", "listado", "resumen", "detalle",
     "qué", "cual", "cuál", "cuales", "cuáles",
+    "invoices abiertos", "facturas pendientes", "balance pendiente",
 ]
 
 FUNCTIONS: Dict[str, Any] = {
@@ -84,4 +99,5 @@ FUNCTIONS: Dict[str, Any] = {
     "leer_preferencias": tool_leer_preferencias,
     "consulta_avanzada": tool_consulta_avanzada,
     "qbo_query": tool_qbo_query,
+    "listar_invoices_abiertos": tool_listar_invoices_abiertos,
 }

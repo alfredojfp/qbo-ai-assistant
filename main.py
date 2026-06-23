@@ -4348,6 +4348,34 @@ def tool_crear_invoice(customer_id: str, lineas: List[dict], fecha: str = None, 
     """Tool: Crea invoice"""
     return create_invoice(customer_id, lineas, fecha, memo)
 
+def tool_listar_invoices_abiertos(cliente_id: str = None) -> dict:
+    """Tool: Lista invoices con balance pendiente de un cliente o todos.
+
+    Usar en vez de qbo_query con SQL manual cuando el LLM necesita
+    encontrar invoices abiertos — el SQL ya está validado contra QBO.
+    """
+    log_operation("invoices")
+    if cliente_id:
+        sql = f"SELECT * FROM Invoice WHERE CustomerRef = '{cliente_id}' AND Balance > '0' MAXRESULTS 100"
+    else:
+        sql = "SELECT * FROM Invoice WHERE Balance > '0' MAXRESULTS 100"
+    result = qbo_query(sql)
+    if "error" in result:
+        return {"success": False, "error": result["error"][:300]}
+    invoices = result.get("QueryResponse", {}).get("Invoice", [])
+    output = []
+    for inv in invoices:
+        output.append({
+            "id": inv.get("Id"),
+            "doc_number": inv.get("DocNumber"),
+            "total": inv.get("TotalAmt"),
+            "balance": inv.get("Balance"),
+            "date": inv.get("TxnDate"),
+            "customer_id": inv.get("CustomerRef", {}).get("value"),
+            "customer_name": inv.get("CustomerRef", {}).get("name"),
+        })
+    return {"success": True, "total": len(output), "invoices": output}
+
 def tool_agregar_linea_invoice(invoice_id: str, item_name: str, amount: float, description: str = None) -> dict:
     """Tool: Agrega una línea a un invoice existente (full update).
     
@@ -6178,6 +6206,7 @@ TOOL_FUNCTIONS = {
     "leer_preferencias": tool_leer_preferencias,
     "consulta_avanzada": tool_consulta_avanzada,
     "qbo_query": tool_qbo_query,
+    "listar_invoices_abiertos": tool_listar_invoices_abiertos,
 
     # Sprint 2 — Recurring+Attachments
     "crear_recurringtransaction": tool_crear_recurringtransaction,
