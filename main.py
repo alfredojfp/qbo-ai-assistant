@@ -4439,6 +4439,37 @@ def tool_agregar_linea_invoice(invoice_id: str, item_name: str, amount: float, d
         }
     return {"success": False, "error": post_resp.text[:500]}
 
+def tool_aplicar_customer_deposit(client_name: str, amount: float, item_name: str = "Customer Deposit") -> dict:
+    """Tool: Aplica un Customer Deposit al invoice abierto de un cliente.
+
+    Encadena buscar_cliente → listar_invoices_abiertos → agregar_linea_invoice.
+    Si el monto es positivo, lo convierte a negativo automáticamente.
+    Usa fuzzy matching ≥85% para encontrar el cliente.
+    """
+    log_operation("invoices")
+
+    amount = -abs(amount)
+
+    clients = search_customer(client_name)
+    if not clients:
+        return {"success": False, "error": f"Cliente '{client_name}' no encontrado"}
+
+    client = clients[0]
+    invoices = tool_listar_invoices_abiertos(client["id"])
+    if not invoices.get("success") or not invoices.get("invoices"):
+        return {"success": False, "error": f"No se encontraron invoices abiertos para {client['name']}"}
+
+    inv = invoices["invoices"][0]
+    if len(invoices["invoices"]) > 1:
+        print(f"   {client['name']} tiene {len(invoices['invoices'])} invoices abiertos. Usando {inv['doc_number']} (${inv['balance']})")
+
+    return tool_agregar_linea_invoice(
+        invoice_id=inv["id"],
+        item_name=item_name,
+        amount=amount,
+        description=f"Aplicación de Customer Deposit - {client['name']}",
+    )
+
 def tool_crear_bill(vendor_id: str, lineas: List[dict], fecha: str = None, 
                    fecha_vencimiento: str = None, memo: str = None) -> dict:
     """Tool: Crea bill"""
@@ -6089,6 +6120,7 @@ TOOL_FUNCTIONS = {
     "buscar_item": tool_buscar_item,
     "crear_invoice": tool_crear_invoice,
     "agregar_linea_invoice": tool_agregar_linea_invoice,
+    "aplicar_customer_deposit": tool_aplicar_customer_deposit,
     "crear_bill": tool_crear_bill,
     "crear_deposito": tool_crear_deposito,
     "crear_pago": tool_crear_pago,

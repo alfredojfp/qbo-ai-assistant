@@ -29,6 +29,7 @@ deposits_template.csv
 *.xlsx
 *.csv
 !requirements.txt
+!templates/*.csv
 
 # =================================================================
 # PYTHON
