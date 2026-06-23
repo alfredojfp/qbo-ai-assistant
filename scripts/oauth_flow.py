@@ -37,7 +37,7 @@ ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
 REDIRECT_HOST = "localhost"
 AUTH_BASE = "https://appcenter.intuit.com/connect/oauth2"
 TOKEN_URL = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer"
-SCOPE = "com.intuit.quickbooks.accounting"
+SCOPE = "com.intuit.quickbooks.accounting openid email profile"
 
 
 def _ensure_tunnel(port: int):
