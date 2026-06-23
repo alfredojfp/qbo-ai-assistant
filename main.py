@@ -4348,6 +4348,69 @@ def tool_crear_invoice(customer_id: str, lineas: List[dict], fecha: str = None, 
     """Tool: Crea invoice"""
     return create_invoice(customer_id, lineas, fecha, memo)
 
+def tool_agregar_linea_invoice(invoice_id: str, item_name: str, amount: float, description: str = None) -> dict:
+    """Tool: Agrega una línea a un invoice existente (full update).
+    
+    Útil para aplicar Customer Deposits u otros ajustes que reducen
+    el balance del invoice sin crear un payment ni credit memo.
+    
+    Args:
+        invoice_id: ID del invoice a modificar
+        item_name: Nombre del producto/servicio (ej. "Customer Deposit")
+        amount: Monto de la línea. Negativo para reducir el balance.
+        description: Descripción opcional de la línea
+    """
+    log_operation("invoices")
+    
+    item_results = search_item(item_name)
+    if not item_results:
+        return {"success": False, "error": f"Item '{item_name}' no encontrado. Usa listar_items para ver los disponibles."}
+    item_id = item_results[0]["id"]
+    
+    get_resp = qbo_request("GET", f"invoice/{invoice_id}")
+    if get_resp.status_code != 200:
+        return {"success": False, "error": f"No se pudo leer el invoice: {get_resp.text[:300]}"}
+    invoice = get_resp.json()["Invoice"]
+    
+    new_line = {
+        "DetailType": "SalesItemLineDetail",
+        "Amount": amount,
+        "SalesItemLineDetail": {
+            "ItemRef": {"value": item_id, "name": item_name},
+            "Qty": 1,
+            "UnitPrice": amount,
+        },
+    }
+    if description:
+        new_line["Description"] = description
+    
+    lines = invoice.get("Line", [])
+    # Insert before the SubTotal line if present
+    subtotal_idx = next((i for i, l in enumerate(lines) if l.get("DetailType") == "SubTotalLineDetail"), len(lines))
+    lines.insert(subtotal_idx, new_line)
+    
+    total = sum(float(l.get("Amount", 0)) for l in lines if l.get("DetailType") != "SubTotalLineDetail")
+    for l in lines:
+        if l.get("DetailType") == "SubTotalLineDetail":
+            l["Amount"] = total
+    invoice["TotalAmt"] = total
+    invoice["Balance"] = total
+    
+    invoice["Line"] = lines
+    
+    post_resp = qbo_request("POST", "invoice", data=invoice)
+    if post_resp.status_code == 200:
+        updated = post_resp.json()["Invoice"]
+        return {
+            "success": True,
+            "invoice_id": updated["Id"],
+            "doc_number": updated.get("DocNumber"),
+            "total": updated.get("TotalAmt"),
+            "balance": updated.get("Balance"),
+            "lineas_agregadas": [{"item": item_name, "amount": amount}],
+        }
+    return {"success": False, "error": post_resp.text[:500]}
+
 def tool_crear_bill(vendor_id: str, lineas: List[dict], fecha: str = None, 
                    fecha_vencimiento: str = None, memo: str = None) -> dict:
     """Tool: Crea bill"""
@@ -5997,6 +6060,7 @@ TOOL_FUNCTIONS = {
     "buscar_cuenta": tool_buscar_cuenta,
     "buscar_item": tool_buscar_item,
     "crear_invoice": tool_crear_invoice,
+    "agregar_linea_invoice": tool_agregar_linea_invoice,
     "crear_bill": tool_crear_bill,
     "crear_deposito": tool_crear_deposito,
     "crear_pago": tool_crear_pago,
