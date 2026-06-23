@@ -90,6 +90,40 @@ class QBOAdapter:
             "date": deposit.get("TxnDate", ""),
         }
 
+    # ── Item ─────────────────────────────────────────────────
+
+    def search_item(self, name: str) -> List[Dict[str, Any]]:
+        """Busca items en QBO via Intuit MCP search_items."""
+        args = {
+            "criteria": [{"field": "Name", "operator": "LIKE", "value": name}],
+        }
+        result = self._bridge.call_tool("search_items", args)
+        items = _extract_list(result)
+        results = []
+        for it in items:
+            results.append({
+                "id": it.get("Id", ""),
+                "name": it.get("Name", ""),
+                "type": it.get("Type", ""),
+                "unit_price": float(it.get("UnitPrice", 0)),
+                "active": it.get("Active", True),
+            })
+        return results
+
+    # ── Invoice ──────────────────────────────────────────────
+
+    def update_invoice(self, invoice_id: str, patch: Dict[str, Any]) -> Dict[str, Any]:
+        """Sparse update de un invoice via Intuit MCP update_invoice."""
+        args = {"invoice_id": invoice_id, "patch": patch}
+        result = self._bridge.call_tool("update_invoice", args)
+        inv = result.get("Invoice", result)
+        return {
+            "Id": inv.get("Id", ""),
+            "DocNumber": inv.get("DocNumber", ""),
+            "TotalAmt": inv.get("TotalAmt", 0),
+            "Balance": inv.get("Balance", 0),
+        }
+
     # ── Transaction Read/Update ─────────────────────────────
 
     def get_transactions(

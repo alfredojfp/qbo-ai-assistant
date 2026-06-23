@@ -167,3 +167,48 @@ class TestQBOAdapterUpdateTransaction(unittest.TestCase):
         self.assertEqual(call[1]["txn_date_to"], "2026-06-30")
         self.assertEqual(len(txns), 1)
         self.assertEqual(txns[0]["type"], "Deposit")
+
+
+class TestQBOAdapterSearchItem(unittest.TestCase):
+
+    def test_search_item_uses_criteria_format(self):
+        """search_items expects {criteria: [{field, operator, value}]}."""
+        mock = MockMCPBridge(tools_map={
+            "search_items": lambda a: [{"Id": "50", "Name": "Customer Deposit"}]
+        })
+        adapter = QBOAdapter(mock)
+        adapter.search_item("Customer Deposit")
+        args = mock._calls[0][1]
+        self.assertEqual(args["criteria"][0]["field"], "Name")
+        self.assertEqual(args["criteria"][0]["operator"], "LIKE")
+        self.assertEqual(args["criteria"][0]["value"], "Customer Deposit")
+
+    def test_search_item_returns_dexter_format(self):
+        mock = MockMCPBridge(tools_map={
+            "search_items": lambda a: [
+                {"Id": "50", "Name": "Customer Deposit", "Type": "Service",
+                 "UnitPrice": 0, "Active": True}
+            ]
+        })
+        adapter = QBOAdapter(mock)
+        results = adapter.search_item("Customer Deposit")
+        self.assertEqual(results[0]["id"], "50")
+        self.assertEqual(results[0]["name"], "Customer Deposit")
+        self.assertEqual(results[0]["type"], "Service")
+
+
+class TestQBOAdapterUpdateInvoice(unittest.TestCase):
+
+    def test_update_invoice_passes_invoice_id_and_patch(self):
+        """update_invoice expects {invoice_id, patch}."""
+        mock = MockMCPBridge(tools_map={
+            "update_invoice": lambda a: {
+                "Invoice": {"Id": "inv_1", "Balance": 100.0}
+            }
+        })
+        adapter = QBOAdapter(mock)
+        result = adapter.update_invoice("inv_1", {"Balance": 50.0})
+        args = mock._calls[0][1]
+        self.assertEqual(args["invoice_id"], "inv_1")
+        self.assertEqual(args["patch"]["Balance"], 50.0)
+        self.assertEqual(result["Balance"], 100.0)
