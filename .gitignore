@@ -31,6 +31,9 @@ deposits_template.csv
 !requirements.txt
 !templates/*.csv
 
+# Excluir CSV con datos reales de clientes
+templates/customer_deposit_aplicar.csv
+
 # =================================================================
 # PYTHON
 # =================================================================
@@ -208,6 +211,9 @@ settings.local.json
 
 # Empresas registradas (per-company data, regenerable vía gestionar_empresas)
 companies/
+companies/**/meta.json
+companies/**/context.json
+!companies/README.md
 
 # Outputs generados (reportes, exports)
 outputs/
