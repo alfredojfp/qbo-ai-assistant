@@ -2,7 +2,7 @@
 
 # 🧠 Dexter — QuickBooks AI Agent
 
-[![Version](https://img.shields.io/badge/version-5.0.0-blue)](https://github.com/alfredojfp/qbo-ai-assistant)
+[![Version](https://img.shields.io/badge/version-4.1.0--dev-blue)](https://github.com/alfredojfp/qbo-ai-assistant)
 [![Python](https://img.shields.io/badge/python-3.10+-blue)](https://python.org)
 [![Tests](https://img.shields.io/badge/tests-766_passing-green)](https://github.com/alfredojfp/qbo-ai-assistant/actions)
 [![Tools](https://img.shields.io/badge/tools-121_purple)](docs/SETUP.md)
@@ -16,25 +16,11 @@
 Habla con tu contabilidad en lenguaje natural — **español e inglés**. 121 herramientas en 24 skills.
 Fuzzy matching ≥85%. Batch engine con dry-run. Multi-empresa. OCR. Memoria persistente.
 
-[Guía de Instalación](docs/SETUP.md) · [Documentación](docs/) · [Estudio de Mercado](docs/comparativa_mercado_2026.md) · [OpenContext](https://github.com/0xranx/OpenContext)
+[Guía de Instalación](docs/SETUP.md) · [Documentación](docs/) · [Estudio de Mercado](docs/comparativa_mercado_2026.md)
 
 > 📖 *This document is also available in [English](README.en.md).*
 
 </div>
-
----
-
-## 🆕 Novedades v5.0.0
-
-| Feature | Descripción |
-|---|---|
-| **Fuzzy Matching ≥85%** | Token-based con detección de prefijos. "Ben Haselman" matchea con "Benjamin Haselman" (95%). Busca contra todos los clientes/vendors activos (cache 5min) |
-| **Batch Deposits v2** | CSV con columnas `bank_account` y `line_account`. Agrupa items con mismo date+bank en un solo depósito multi-línea. Creación de clientes en lote |
-| **Entity Format QBO** | Formato plano `{value, type}` en DepositLineDetail — corregido contra API real de QBO |
-| **Slash Autocomplete** | Presioná `/` para ver los 121 tools con fuzzy matching. Escribí `/bus` y filtra `buscar_cliente`, `buscar_vendor`, etc |
-| **MCP Backend** (experimental) | Motor dual: `native` (default) o `mcp` (Intuit MCP Server oficial, 144 tools, 396 tests). Feature flag `QB_BACKEND=mcp` |
-| **Auditoría Batch Engine** | 12 bugs corregidos, state machine completa, error reporting mejorado, mocks alineados con QBO real |
-| **Documentación** | 12 docs en OpenContext + SKILL_REFACTOR.md + Engineering Manual |
 
 ---
 
@@ -58,7 +44,7 @@ pip install -r requirements.txt
 ```
 ┌──────────────────────────────────────────────────────────┐
 │          🧠  DEXTER  ·  QBO Assistant                     │
-│               v5.0.0 · Endless                             │
+│               v4.1.0-dev · Endless                         │
 └──────────────────────────────────────────────────────────┘
 
   Cargando contexto...
@@ -114,7 +100,6 @@ Dexter es un **agente de IA** que opera QuickBooks Online mediante lenguaje natu
 | 🎯 **Fuzzy Matching** | Token-based ≥85% con detección de prefijos (Ben→Benjamin). Cache 5min |
 | 🌐 **Bilingüe** | Detecta español/inglés automáticamente, keywords en ambos idiomas |
 | 🛡️ **Seguridad** | Dry-run, modo confirmación, sin datos en la nube |
-| ⚡ **MCP Backend** | Motor dual: native (Python puro) o Intuit MCP Server (144 tools oficiales) |
 
 ---
 
@@ -159,9 +144,8 @@ Interfaz con Rich: paneles, colores, indicadores de herramientas. Cada `⚡ tool
 | Empresas soportadas | Ilimitadas (tokens aislados) |
 | LLM | DeepSeek V3 via OpenRouter (multi-proveedor) |
 | OCR | Gemini 2.0 Flash |
-| Fuzzy Matching | Token-based ≥85% (HIGH-1) |
-| Batch Engine | v2 con agrupación (HIGH-2) |
-| MCP Backend | Intuit MCP Server (HIGH-3, experimental) |
+| Fuzzy Matching | Token-based ≥85% |
+| Batch Engine | v2 con agrupación |
 
 ---
 
@@ -169,30 +153,26 @@ Interfaz con Rich: paneles, colores, indicadores de herramientas. Cada `⚡ tool
 
 ```
 Qbo Scripts/
-├── main.py                    # Core del agente + QBOAdapter lifecycle (HIGH-3)
-├── run_dexter.sh              # Launcher motor nativo
-├── run_dexter_mcp.sh          # Launcher motor Intuit MCP (experimental)
+├── main.py                    # Core del agente
+├── run_dexter.sh              # Launcher
 ├── dexter/
 │   ├── skills/                # 24 skills con 121 herramientas
-│   │   ├── search/fuzzy.py    # Token-based fuzzy matching ≥85% (HIGH-1)
+│   │   ├── search/fuzzy.py    # Token-based fuzzy matching ≥85%
 │   │   └── engineering/       # Manual de ingeniería + procedimientos
 │   ├── core/
-│   │   ├── batch/             # State machine + batch engine (HIGH-2)
-│   │   ├── mcp_bridge.py      # Python ↔ Node.js JSON-RPC (HIGH-3)
-│   │   ├── qbo_adapter.py     # QBOClientProtocol via Intuit MCP (HIGH-3)
+│   │   ├── batch/             # State machine + batch engine
 │   │   ├── qbo_client.py      # Cliente QBO nativo
 │   │   └── memory.py          # Memoria persistente
 │   ├── console.py             # UI Rich + slash autocomplete (/)
-│   └── prompt.py              # System prompt JARVIS style
-├── vendor/                    # Intuit MCP Server (gitignored, install.sh)
+│   └── prompt.py              # System prompt
 ├── autonomia/                 # Web search, API explorer, bank feed intelligence
-├── tests/                     # 750 tests
+├── tests/                     # 766 tests
 ├── docs/                      # Documentación
 │   ├── SKILL_REFACTOR.md      # Arquitectura de skills
 │   ├── SETUP.md               # Guía de instalación
 │   └── ...
 ├── companies/                 # Datos por empresa (tokens, memoria, perfil)
-├── scripts/                   # OAuth, setup wizard, OCR, TSheets
+├── scripts/                   # OAuth, setup wizard, OCR
 └── data/                      # Datos generados
 ```
 
@@ -210,15 +190,11 @@ Qbo Scripts/
 | [TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Solución de problemas |
 | `dexter/skills/engineering/SKILL.md` | Manual de ingeniería — cómo agregar features nuevas |
 
-**También disponible en OpenContext:** 12 documentos con arquitectura, skills, batch engine, fuzzy matching, auditoría, QBO integration, y MCP backend. `oc context manifest dexter` para cargarlos.
-
----
-
 ---
 
 ## 🔒 Privacidad
 
-Dexter es **100% self-hosted**. Tus datos contables nunca salen de tu máquina. Las credenciales se almacenan en `~/.config/dexter/CREDENTIALS` con permisos 600. El código es auditado con pre-commit hooks que detectan filtraciones de API keys.
+Dexter es **100% self-hosted**. Tus datos contables nunca salen de tu máquina. Las credenciales se almacenan en `companies/` (excluido de git). El código es auditado con pre-commit hooks que detectan filtraciones de API keys.
 
 ---
 
