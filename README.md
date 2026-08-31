@@ -4,16 +4,16 @@
 
 [![Version](https://img.shields.io/badge/version-5.0.0-blue)](https://github.com/alfredojfp/qbo-ai-assistant)
 [![Python](https://img.shields.io/badge/python-3.10+-blue)](https://python.org)
-[![Tests](https://img.shields.io/badge/tests-750_passing-green)](https://github.com/alfredojfp/qbo-ai-assistant/actions)
-[![Tools](https://img.shields.io/badge/tools-116_purple)](docs/SETUP.md)
-[![Skills](https://img.shields.io/badge/skills-22-orange)](docs/SKILL_REFACTOR.md)
+[![Tests](https://img.shields.io/badge/tests-766_passing-green)](https://github.com/alfredojfp/qbo-ai-assistant/actions)
+[![Tools](https://img.shields.io/badge/tools-121_purple)](docs/SETUP.md)
+[![Skills](https://img.shields.io/badge/skills-24-orange)](docs/SKILL_REFACTOR.md)
 [![License](https://img.shields.io/badge/license-Proprietary-red)](LICENSE)
 [![QBO API](https://img.shields.io/badge/QBO-v3-orange)](https://developer.intuit.com)
 [![Idiomas](https://img.shields.io/badge/idiomas-ES_|_EN-brightgreen)](docs/SETUP.md)
 
 **El agente contable más completo para QuickBooks Online. Self-hosted. En español.**
 
-Habla con tu contabilidad en lenguaje natural — **español e inglés**. 116 herramientas en 22 skills.
+Habla con tu contabilidad en lenguaje natural — **español e inglés**. 121 herramientas en 24 skills.
 Fuzzy matching ≥85%. Batch engine con dry-run. Multi-empresa. OCR. Memoria persistente.
 
 [Guía de Instalación](docs/SETUP.md) · [Documentación](docs/) · [Estudio de Mercado](docs/comparativa_mercado_2026.md) · [OpenContext](https://github.com/0xranx/OpenContext)
@@ -31,7 +31,7 @@ Fuzzy matching ≥85%. Batch engine con dry-run. Multi-empresa. OCR. Memoria per
 | **Fuzzy Matching ≥85%** | Token-based con detección de prefijos. "Ben Haselman" matchea con "Benjamin Haselman" (95%). Busca contra todos los clientes/vendors activos (cache 5min) |
 | **Batch Deposits v2** | CSV con columnas `bank_account` y `line_account`. Agrupa items con mismo date+bank en un solo depósito multi-línea. Creación de clientes en lote |
 | **Entity Format QBO** | Formato plano `{value, type}` en DepositLineDetail — corregido contra API real de QBO |
-| **Slash Autocomplete** | Presioná `/` para ver los 116 tools con fuzzy matching. Escribí `/bus` y filtra `buscar_cliente`, `buscar_vendor`, etc |
+| **Slash Autocomplete** | Presioná `/` para ver los 121 tools con fuzzy matching. Escribí `/bus` y filtra `buscar_cliente`, `buscar_vendor`, etc |
 | **MCP Backend** (experimental) | Motor dual: `native` (default) o `mcp` (Intuit MCP Server oficial, 144 tools, 396 tests). Feature flag `QB_BACKEND=mcp` |
 | **Auditoría Batch Engine** | 12 bugs corregidos, state machine completa, error reporting mejorado, mocks alineados con QBO real |
 | **Documentación** | 12 docs en OpenContext + SKILL_REFACTOR.md + Engineering Manual |
@@ -130,7 +130,7 @@ Procesa CSVs de depósitos con columnas `bank_account` y `line_account`. Agrupa 
 Probá cualquier operación sin tocar QBO. Agregá `--dry-run` y Dexter simula. Si te gusta, `ejecutalo`.
 
 ### Slash Autocomplete (`/`)
-Presioná `/` en el prompt para ver los 116 tools con fuzzy matching. Escribí `/dep` y filtra `crear_deposito`, `depositar_lote_csv`, etc. Sin `/`, funcionamiento normal.
+Presioná `/` en el prompt para ver los 121 tools con fuzzy matching. Escribí `/dep` y filtra `crear_deposito`, `depositar_lote_csv`, etc. Sin `/`, funcionamiento normal.
 
 ### Memoria Persistente
 Dexter recuerda entre sesiones. Cada empresa tiene su propia memoria donde guarda IDs, preferencias, correcciones y aprendizajes.
@@ -152,10 +152,10 @@ Interfaz con Rich: paneles, colores, indicadores de herramientas. Cada `⚡ tool
 
 | Métrica | Valor |
 |---|---|
-| Tests | 750 pasando |
-| Herramientas QBO | 116 en 22 skills |
+| Tests | 766 pasando |
+| Herramientas QBO | 121 en 24 skills |
 | Cobertura API QBO | 93% |
-| Commits | 200+ |
+| Commits | 236 |
 | Empresas soportadas | Ilimitadas (tokens aislados) |
 | LLM | DeepSeek V3 via OpenRouter (multi-proveedor) |
 | OCR | Gemini 2.0 Flash |
@@ -173,7 +173,7 @@ Qbo Scripts/
 ├── run_dexter.sh              # Launcher motor nativo
 ├── run_dexter_mcp.sh          # Launcher motor Intuit MCP (experimental)
 ├── dexter/
-│   ├── skills/                # 22 skills con 116 herramientas
+│   ├── skills/                # 24 skills con 121 herramientas
 │   │   ├── search/fuzzy.py    # Token-based fuzzy matching ≥85% (HIGH-1)
 │   │   └── engineering/       # Manual de ingeniería + procedimientos
 │   ├── core/

@@ -4,15 +4,15 @@
 
 [![Version](https://img.shields.io/badge/version-4.1.0_dev-blue)](https://github.com/alfredojfp/qbo-ai-assistant)
 [![Python](https://img.shields.io/badge/python-3.10+-blue)](https://python.org)
-[![Tests](https://img.shields.io/badge/tests-692_passing-green)](https://github.com/alfredojfp/qbo-ai-assistant/actions)
-[![Tools](https://img.shields.io/badge/tools-116-purple)](docs/SETUP.md)
+[![Tests](https://img.shields.io/badge/tests-766_passing-green)](https://github.com/alfredojfp/qbo-ai-assistant/actions)
+[![Tools](https://img.shields.io/badge/tools-121-purple)](docs/SETUP.md)
 [![License](https://img.shields.io/badge/license-Proprietary-red)](LICENSE)
 [![QBO API](https://img.shields.io/badge/QBO-v3-orange)](https://developer.intuit.com)
 [![Languages](https://img.shields.io/badge/languages-ES_|_EN-brightgreen)](docs/SETUP.md)
 
 **The most complete open-source AI agent for QuickBooks Online. Self-hosted. Private.**
 
-Talk to your accounting in natural language — **Spanish & English**. 116 tools across 21 domains.
+Talk to your accounting in natural language — **Spanish & English**. 121 tools across 24 domains.
 Multi-company. OCR. Persistent memory. Dry-run. Bank feed classification.
 
 [Setup Guide](docs/SETUP.md) · [Documentation](docs/) · [Market Comparison](docs/comparativa_mercado_2026.md)
@@ -144,10 +144,10 @@ Rich-powered UI: panels, colors, tool indicators. Every `⚡ tool_call` shows pa
 
 | Metric | Value |
 |---|---|
-| Tests | 692 passing |
-| QBO Tools | 106 in 21 modules |
+| Tests | 766 passing |
+| QBO Tools | 121 in 24 modules |
 | QBO API Coverage | 93% |
-| Commits | 149 |
+| Commits | 236 |
 | Companies Supported | Unlimited (isolated tokens) |
 | LLM | DeepSeek V3 via OpenRouter |
 | OCR | Gemini 2.0 Flash |
@@ -160,12 +160,12 @@ Rich-powered UI: panels, colors, tool indicators. Every `⚡ tool_call` shows pa
 Qbo Scripts/
 ├── main.py                    # Agent core
 ├── dexter/
-│   ├── skills/                 # 116 tools in 21 modules
+│   ├── skills/                 # 121 tools in 24 modules
 │   ├── core/                  # API helpers, memory, retry, safe_json
 │   ├── console.py             # Rich-powered CLI
 │   └── error_log.py           # Persistent JSONL error log
 ├── autonomia/                 # Autonomy modules (web, API, bank feed)
-├── tests/                     # 692 tests
+├── tests/                     # 766 tests
 ├── docs/                      # Documentation
 │   ├── SETUP.md               # Setup guide ← start here
 │   └── ...
