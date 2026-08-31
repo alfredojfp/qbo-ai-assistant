@@ -7,7 +7,7 @@
 [![Tests](https://img.shields.io/badge/tests-766_passing-green)](https://github.com/alfredojfp/qbo-ai-assistant/actions)
 [![Tools](https://img.shields.io/badge/tools-121-purple)](docs/SETUP.md)
 [![Skills](https://img.shields.io/badge/skills-24-orange)](docs/SKILL_REFACTOR.md)
-[![License](https://img.shields.io/badge/license-Proprietary-red)](LICENSE)
+[![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![QBO API](https://img.shields.io/badge/QBO-v3-orange)](https://developer.intuit.com)
 [![Languages](https://img.shields.io/badge/languages-ES_|_EN-brightgreen)](docs/SETUP.md)
 
@@ -200,7 +200,7 @@ Dexter is **100% self-hosted**. Your accounting data never leaves your machine. 
 
 ## 📄 License
 
-**Proprietary — All Rights Reserved.** Use of this software requires express authorization from the owner. See [LICENSE](LICENSE) for full details.
+**MIT License.** See [LICENSE](LICENSE) for full details.
 
 ---
 

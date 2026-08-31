@@ -1,60 +1,21 @@
-# LICENSE — Dexter QuickBooks AI Agent
+MIT License
 
-Copyright © 2026 Alfredo. All Rights Reserved.
+Copyright (c) 2026 Alfredo Ferrer
 
-## Proprietary Software License
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-This software and associated documentation files (the "Software") are the exclusive
-intellectual property of the copyright holder.
-
-### NO USE IS PERMITTED WITHOUT EXPRESS WRITTEN AUTHORIZATION
-
-The Software is **not** open source. The source code is made available for
-transparency and review purposes only.
-
-**No person or entity may:**
-
-1. Use, copy, or execute the Software for any purpose whatsoever without prior
-   written authorization from the copyright holder
-
-2. Modify, adapt, translate, or create derivative works based on the Software
-
-3. Distribute, sublicense, lease, rent, loan, or otherwise transfer the Software
-   to any third party
-
-4. Reverse engineer, decompile, disassemble, or attempt to derive the source
-   code, underlying ideas, algorithms, or structure of the Software
-
-5. Remove, obscure, or alter any copyright, trademark, or proprietary rights
-   notices contained in the Software
-
-6. Use the Software to provide services to third parties, whether commercial
-   or non-commercial
-
-7. Publish, post, upload, or otherwise make the Software available to any
-   third party, including but not limited to public code repositories, cloud
-   services, or shared servers
-
-### Obtaining Authorization
-
-To request a license for any use of the Software, contact the copyright holder.
-
-Unauthorized use, reproduction, or distribution of the Software constitutes
-copyright infringement and will be pursued to the fullest extent of the law.
-
-### No Warranty
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-
-### Governing Law
-
-This license shall be governed by the laws of the copyright holder's jurisdiction.
-Any unauthorized use constitutes infringement under applicable copyright laws,
-including but not limited to the Digital Millennium Copyright Act (DMCA) in
-the United States.
-
----
-
-**© 2026 Alfredo. All Rights Reserved.**
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
